@@ -43,19 +43,21 @@ info 2014-03-03 14:03:58 index.js:66 | Start server <192.168.114.27:9999>
 </pre>
 <p>说明配置成功</p>
 <h3>第三步，运行测试文件</h3>
-<p>大家可以先将totoro项目下载到本地，看一下范例是怎么工作的</p>
 <pre class="brush:js;gutter:false;">
 git clone git@github.com:RubyLouvre/avalon.test.git
 cd avalon.test
 totoro
 </pre>
 <p>会依次弹出三个窗口（或更多），成功会输出如下内容：</p>
-<p><img src="https://f.cloud.github.com/assets/340282/891944/7c099544-fa71-11e2-828b-5da8c0566834.png"/></p>
+<p><img src="https://raw.github.com/RubyLouvre/avalon.test/master/step.jpg"/></p>
 
-
-
-依赖于mocha,expect
+<p>在src中拥有两个库,分别是mocha,expect,下载地址分别为</p>
+<pre class="brush:js;gutter:false;">
 
 https://github.com/visionmedia/mocha/releases
 
 https://github.com/LearnBoost/expect.js/blob/master/index.js
+</pre>
+<p>至于如何编写测试,请看以下链接</p>
+<p><a href="http://www.alloyteam.com/2013/12/hour-class-learning-costs-javascript-unit-testing-tool-matcha-mocha-and-chai/">Javascript单元测试工具“抹茶”——Mocha 和 Chai </a></p>
+<p><a href="http://cnodejs.org/topic/516526766d38277306c7d277">初识 mocha in NodeJS</a></p>
