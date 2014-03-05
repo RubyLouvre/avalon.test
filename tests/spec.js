@@ -13,6 +13,14 @@ define([], function() {
 
             expect(avalon.isWindow(obj)).to.be(false)
             expect(avalon.isWindow(window)).to.ok()
+
+
+            var iframe = document.createElement("iframe")
+            document.body.appendChild(iframe)
+            var iwin = iframe.contentWindow || iframe.contentDocument.parentWindow
+            //检测iframe的window对象
+            expect(avalon.isWindow(iwin)).to.ok()
+            document.body.removeChild(iframe)
         })
 
     })
@@ -95,11 +103,47 @@ define([], function() {
 
     describe('range', function() {
         it('be', function() {
-            expect(avalon.range(10)).to.eql([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-            expect(avalon.range(1, 11)).to.eql([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-            expect(avalon.range(0, 30, 5)).to.eql([0, 5, 10, 15, 20, 25]);
-            expect(avalon.range(0, -10, -1)).to.eql([0, -1, -2, -3, -4, -5, -6, -7, -8, -9]);
-            expect(avalon.range(0)).to.eql([]);
+            expect(avalon.range(10)).to.eql([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+            expect(avalon.range(1, 11)).to.eql([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+            expect(avalon.range(0, 30, 5)).to.eql([0, 5, 10, 15, 20, 25])
+            expect(avalon.range(0, -10, -1)).to.eql([0, -1, -2, -3, -4, -5, -6, -7, -8, -9])
+            expect(avalon.range(0)).to.eql([])
+        })
+    })
+
+    describe('oneObject', function() {
+        it('be', function() {
+            expect(avalon.oneObject("aa,bb,cc")).to.eql({
+                "aa": 1,
+                "bb": 1,
+                "cc": 1
+            })
+            expect(avalon.oneObject([1, 2, 3], false)).to.eql({
+                "1": false,
+                "2": false,
+                "3": false
+            })
+        })
+    })
+
+    describe('slice', function() {
+        it('be', function() {
+            var a = [1, 2, 3, 4, 5, 6, 7];
+            expect(avalon.slice(a, 0)).to.eql(a.slice(0));
+            expect(avalon.slice(a, 1, 4)).to.eql(a.slice(1, 4));
+            expect(avalon.slice(a, -1)).to.eql(a.slice(-1));
+            expect(avalon.slice(a, 1, -2)).to.eql(a.slice(1, -2));
+            expect(avalon.slice(a, 1, NaN)).to.eql(a.slice(1, NaN));
+            expect(avalon.slice(a, 1, 2.1)).to.eql(a.slice(1, 2.1));
+            expect(avalon.slice(a, 1.1, 4)).to.eql(a.slice(1.1, 4));
+            expect(avalon.slice(a, 1.2, NaN)).to.eql(a.slice(1, NaN));
+            expect(avalon.slice(a, NaN)).to.eql(a.slice(NaN));
+            expect(avalon.slice(a, 1.3, 3.1)).to.eql(a.slice(1.3, 3.1));
+            expect(avalon.slice(a, 2, "XXX")).to.eql(a.slice(2, "XXX"));
+            expect(avalon.slice(a, -2)).to.eql(a.slice(-2));
+            expect(avalon.slice(a, 1, 9)).to.eql(a.slice(1, 9));
+            expect(avalon.slice(a, 20, -21)).to.eql(a.slice(20, -21));
+            expect(avalon.slice(a, -1, null)).to.eql(a.slice(-1, null));
         })
     })
 
