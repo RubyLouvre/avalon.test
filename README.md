@@ -51,13 +51,9 @@ totoro
 <p>会依次弹出三个窗口（或更多），成功会输出如下内容：</p>
 <p><img src="https://raw.github.com/RubyLouvre/avalon.test/master/step.jpg"/></p>
 
-<p>在src中拥有两个库,分别是mocha,expect,下载地址分别为</p>
-<pre class="brush:js;gutter:false;">
+<p>在src中拥有两个库,分别是<a href="https://github.com/visionmedia/mocha/releases">mocha</a>,
+<a href="https://github.com/LearnBoost/expect.js/blob/master/index.js">expect</a>,大家可以到它们的官网看介绍.</p>
 
-https://github.com/visionmedia/mocha/releases
-
-https://github.com/LearnBoost/expect.js/blob/master/index.js
-</pre>
 <p>至于如何编写测试,请看以下链接</p>
 <p><a href="http://www.alloyteam.com/2013/12/hour-class-learning-costs-javascript-unit-testing-tool-matcha-mocha-and-chai/">Javascript单元测试工具“抹茶”——Mocha 和 Chai </a></p>
 <p><a href="http://cnodejs.org/topic/516526766d38277306c7d277">初识 mocha in NodeJS</a></p>
