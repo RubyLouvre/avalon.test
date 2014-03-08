@@ -1,8 +1,7 @@
 avalon.test
 ===========
 
-专门用于放置avalon的单元测试
-
+专门用于放置<a href="https://github.com/RubyLouvre/avalon">avalon</a>的单元测试
 
 
 <h3>第一步，安装node.js相关包</h3>
