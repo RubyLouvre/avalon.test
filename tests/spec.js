@@ -172,13 +172,45 @@ define([], function() {
 
         })
     })
-    describe('has.or[', function() {
+    describe('/\w\[.*\]|\w\.\w/', function() {
         it('be', function() {
             var reg = /\w\[.*\]|\w\.\w/
-
+            //用于ms-duplex
             expect(reg.test("aaa[bbb]")).to.be(true)
             expect(reg.test("aaa.kkk")).to.be(true)
             expect(reg.test("eee")).to.be(false)
+        })
+
+        it("async", function(done) {
+            var model = avalon.define('test', function(vm) {
+                vm.aaa = {
+                    xxx: "444",
+                    yyy: "555"
+                }
+                vm.bbb = "yyy"
+                vm.ccc = "text";
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = ['<input ms-duplex="aaa[\'xxx\']">',
+                '<input ms-duplex="aaa[bbb]">',
+                '<input ms-duplex="ccc"/>',
+                '<p>{{ccc}}</p>',
+                '<p>{{aaa.xxx}}</p>',
+                '<p>{{aaa.yyy}}</p>'].join('')
+            body.appendChild(div)
+            avalon.scan(div, model)
+
+            setTimeout(function() {
+                var ps = div.getElementsByTagName("p")
+                expect(ps[0].innerHTML).to.be("text")
+                expect(ps[1].innerHTML).to.be("444")
+                expect(ps[2].innerHTML).to.be("555")
+                model.ccc = "change"
+                expect(ps[0].innerHTML).to.be("change")
+                body.removeChild(div)
+                done()
+            }, 300)
 
         })
 
