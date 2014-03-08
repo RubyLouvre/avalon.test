@@ -172,6 +172,7 @@ define([], function() {
 
         })
     })
+
     describe('/\w\[.*\]|\w\.\w/', function() {
         it('be', function() {
             var reg = /\w\[.*\]|\w\.\w/
@@ -201,7 +202,7 @@ define([], function() {
             body.appendChild(div)
             avalon.scan(div, model)
 
-            setTimeout(function() {
+            setTimeout(function() {//必须等扫描后才能开始测试，400ms是一个合理的数字
                 var ps = div.getElementsByTagName("p")
                 expect(ps[0].innerHTML).to.be("text")
                 expect(ps[1].innerHTML).to.be("444")
@@ -217,17 +218,19 @@ define([], function() {
     })
 
     describe('ms-duplex-bool', function() {
-        it("be", function() {
+//ms-duplex-bool只能用于radio控件，会自动转换value为布尔，同步到VM
+        it("async", function(done) {
             var model = avalon.define('test', function(vm) {
                 vm.aaa = false
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = ['<input ms-duplex-bool="aaa" value="true">',
-                '<input ms-duplex-bool="aaa" value="false">'
+            div.innerHTML = ['<input ms-duplex-bool="aaa" type="radio" value="true">',
+                '<input ms-duplex-bool="aaa" type="radio" value="false">'
             ].join('')
             body.appendChild(div)
             avalon.scan(div, model)
+
             setTimeout(function() {
                 var inputs = div.getElementsByTagName("input")
                 expect(inputs[0].checked).to.be(false)
