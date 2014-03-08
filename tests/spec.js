@@ -210,10 +210,35 @@ define([], function() {
                 expect(ps[0].innerHTML).to.be("change")
                 body.removeChild(div)
                 done()
-            }, 300)
+            }, 400)
 
         })
 
+    })
+
+    describe('ms-duplex-bool', function() {
+        it("be", function() {
+            var model = avalon.define('test', function(vm) {
+                vm.aaa = false
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = ['<input ms-duplex-bool="aaa" value="true">',
+                '<input ms-duplex-bool="aaa" value="false">'
+            ].join('')
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var inputs = div.getElementsByTagName("input")
+                expect(inputs[0].checked).to.be(false)
+                expect(inputs[1].checked).to.be(true)
+                inputs[0].click()
+                expect(inputs[0].checked).to.be(true)
+                expect(model.aaa).to.be(true)
+                body.removeChild(div)
+                done()
+            }, 400)
+        })
     })
 
 
