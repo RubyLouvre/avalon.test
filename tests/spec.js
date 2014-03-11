@@ -3,7 +3,7 @@ define([], function() {
 
     describe('isWindow', function() {
 
-        it('be', function() {
+        it("sync", function() {
             expect(avalon.isWindow(1)).to.be(false)
             expect(avalon.isWindow({})).to.be(false)
             //自定义的环引用对象
@@ -27,7 +27,7 @@ define([], function() {
 
     describe('isPlainObject', function() {
 
-        it('be', function() {
+        it("sync", function() {
             //不能DOM, BOM与自定义"类"的实例
             expect(avalon.isPlainObject([])).to.be(false)
             expect(avalon.isPlainObject(1)).to.be(false)
@@ -75,7 +75,7 @@ define([], function() {
             return false
         }
 
-        it('be', function() {
+        it("sync", function() {
             //函数,正则,元素,节点,文档,window等对象为非
             expect(isArrayLike(function() {
             })).to.be(false);
@@ -103,7 +103,7 @@ define([], function() {
 
     describe('range', function() {
 
-        it('be', function() {
+        it("sync", function() {
             expect(avalon.range(10)).to.eql([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
             expect(avalon.range(1, 11)).to.eql([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
             expect(avalon.range(0, 30, 5)).to.eql([0, 5, 10, 15, 20, 25])
@@ -115,7 +115,7 @@ define([], function() {
 
     describe('oneObject', function() {
 
-        it('be', function() {
+        it("sync", function() {
             expect(avalon.oneObject("aa,bb,cc")).to.eql({
                 "aa": 1,
                 "bb": 1,
@@ -132,7 +132,7 @@ define([], function() {
 
     describe('slice', function() {
 
-        it('be', function() {
+        it("sync", function() {
             var a = [1, 2, 3, 4, 5, 6, 7]
             expect(avalon.slice(a, 0)).to.eql(a.slice(0))
             expect(avalon.slice(a, 1, 4)).to.eql(a.slice(1, 4))
@@ -155,7 +155,7 @@ define([], function() {
 
     describe('textNode.nodeValue === textNode.data', function() {
 
-        it('be', function() {
+        it("sync", function() {
 
             var element = document.createElement("div")
             element.innerHTML = "zzzz<!--yyy-->"
@@ -174,7 +174,7 @@ define([], function() {
     })
 
     describe('/\w\[.*\]|\w\.\w/', function() {
-        it('be', function() {
+        it("sync", function() {
             var reg = /\w\[.*\]|\w\.\w/
             //用于ms-duplex
             expect(reg.test("aaa[bbb]")).to.be(true)
@@ -211,7 +211,7 @@ define([], function() {
                 expect(ps[0].innerHTML).to.be("change")
                 body.removeChild(div)
                 done()
-            }, 400)
+            }, 300)
 
         })
 
@@ -227,7 +227,7 @@ define([], function() {
             var div = document.createElement("div")
             div.innerHTML = ['<input ms-duplex-bool="aaa" type="radio" value="true">',
                 '<input ms-duplex-bool="aaa" type="radio" value="false">'
-            ].join('')
+            ].join("")
             body.appendChild(div)
             avalon.scan(div, model)
 
@@ -240,11 +240,11 @@ define([], function() {
                 expect(model.aaa).to.be(true)
                 body.removeChild(div)
                 done()
-            }, 400)
+            }, 300)
         })
     })
 
-    describe('compute', function() {
+    describe("compute", function() {
         it("async", function() {
             var model = avalon.define("test", function(vm) {
                 vm.firstName = "司徒";
@@ -270,10 +270,99 @@ define([], function() {
             expect(model.firstName).to.be("清风")
             expect(model.lastName).to.be("火羽")
         })
+        it("async2", function(done) {
+            var model = avalon.define("test", function(vm) {
+                vm.test0 = false;
+                vm.test1 = {
+                    set: function(val) {
+                        this.test0 = val;
+                    },
+                    get: function() {
+                        return this.test0;
+                    }
+                };
+                vm.test2 = false;
+                vm.$watch('test1', function(val) {
+                    vm.test2 = val;
+                });
+                vm.one = function() {
+                    vm.test1 = !vm.test1;
+                };
+                vm.two = function() {
+                    vm.test0 = !vm.test0;
+                };
+            });
 
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div ms-controller=\"test\"> <button ms-click=\"one\" type=\"button\">\u6D4B\u8BD51</button> <button ms-click=\"two\" type=\"button\">\u6D4B\u8BD52</button> <br>test1: {{test1}} <br>test2: {{test2}}</div>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var buttons = div.getElementsByTagName("button")
+                buttons[0].click()
+                expect(model.test0).to.be(true)
+                expect(model.test1).to.be(true)
+                setTimeout(function() {
+                    buttons[1].click()
+                    expect(model.test0).to.be(false)
+                    expect(model.test1).to.be(false)
+
+                    body.removeChild(div)
+                    done()
+                }, 100)
+
+            }, 300)
+
+        })
+
+        it("async3", function(done) {
+            var model = avalon.define("test2", function(vm) {
+                vm.test0 = false;
+                vm.test1 = false;
+                vm.test2 = false;
+                vm.msg = '';
+                vm.$watch('test0', function(val) {
+                    if (val) {
+                        vm.msg += 'test0-';
+                        vm.test1 = true;
+                        if (vm.test2) {
+                            vm.msg = 'ok';
+                        }
+                        vm.msg += '！！';
+                    }
+                });
+                vm.$watch('test1', function(val) {
+                    if (val) {
+                        vm.msg += 'test1-';
+                        vm.test2 = true;
+                    }
+                });
+                vm.one = function() {
+                    vm.test0 = true;
+                };
+            });
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div ms-controller=\"test2\" type=\"button\"><button ms-click=\"one\">\u6D4B\u8BD51</button><br>test0: {{test0}}<br>test1: {{test1}}<br>test2: {{test2}}<br>msg: {{msg}}</div>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                div.getElementsByTagName("button")[0].click()
+                setTimeout(function() {
+                    expect(model.test0).to.be(true)
+                    expect(model.test1).to.be(true)
+                    expect(model.test2).to.be(true)
+                    expect(model.msg).to.be("ok！！")
+                    body.removeChild(div)
+                    done()
+                })
+            }, 300)
+
+        })
 
     });
-    describe('ms-duplex-bool', function() {
+    describe("iteratorCallback", function() {
 //ms-with, ms-each, ms-repeat的各种回调
         it("async", function(done) {
             var model = avalon.define("test", function(vm) {
