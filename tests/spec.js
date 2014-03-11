@@ -244,6 +244,82 @@ define([], function() {
         })
     })
 
+    describe('compute', function() {
+        it("async", function() {
+            var model = avalon.define("test", function(vm) {
+                vm.firstName = "司徒";
+                vm.lastName = "正美"
+                vm.fullName = {
+                    set: function(val) {
+                        var array = val.split(" ")
+                        this.firstName = array[0]
+                        this.lastName = array[1]
+                    },
+                    get: function() {
+                        return this.firstName + " " + this.lastName;
+                    }
+                }
+                vm.$watch("fullName", function(a) {
+                    expect(a).to.be("清风 火羽")
+                })
 
+            })
+
+            expect(model.fullName).to.be("司徒 正美")
+            model.fullName = "清风 火羽"
+            expect(model.firstName).to.be("清风")
+            expect(model.lastName).to.be("火羽")
+        })
+
+
+    });
+    describe('ms-duplex-bool', function() {
+//ms-with, ms-each, ms-repeat的各种回调
+        it("async", function(done) {
+            var model = avalon.define("test", function(vm) {
+                vm.array = [1, 2, 3, 4]
+                vm.object = {
+                    a: 1,
+                    b: 2,
+                    c: 3
+                }
+                vm.sort = function() {
+                    return ["b", "a", "c"]
+                }
+                vm.callback = function(a) {
+                    expect(a).to.be("add")
+                    expect(this.tagName.toLowerCase()).to.be("ul")
+                    end()
+                }
+                vm.callback2 = function(a) {
+                    expect(a).to.be("add")
+                    expect(this.tagName.toLowerCase()).to.be("ol")
+                    end()
+                }
+                vm.callback3 = function(a) {
+                    expect(a).to.be("append")
+                    expect(this.tagName.toLowerCase()).to.be("tr")
+                    var cells = this.cells
+                    expect(cells[0].innerHTML).to.be("b:2")
+                    expect(cells[1].innerHTML).to.be("a:1")
+                    expect(cells[2].innerHTML).to.be("c:3")
+                    end()
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div ms-controller=\"test\"><ul ms-each=\"array\" data-each-rendered=\"callback\"><li>{{el}}</li></ul><ol><li ms-repeat=\"array\" data-repeat-rendered=\"callback2\">{{el}}</li></ol>\n            <table border=\"1\"><tbody><tr ms-with=\"object\" data-with-sorted=\"sort\" data-with-rendered=\"callback3\"><td>{{$key}}:{{$val}}</td></tr></tbody></table></div>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            var endIndex = 0
+            function end() {
+                endIndex++
+                if (endIndex == 3) {
+                    body.removeChild(div)
+                    done()
+                }
+            }
+        })
+    })
 
 })

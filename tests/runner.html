@@ -14,7 +14,7 @@
         <script>
             (function() {
                 mocha.ui('bdd')
-
+                mocha.setup({timeout: 100000})
                 require(["../tests/spec.js"], function() {
                     mocha.run()
                 })
