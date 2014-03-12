@@ -211,7 +211,7 @@ define([], function() {
                 expect(ps[0].innerHTML).to.be("change")
                 body.removeChild(div)
                 done()
-            }, 300)
+            }, 100)
 
         })
 
@@ -240,7 +240,7 @@ define([], function() {
                 expect(model.aaa).to.be(true)
                 body.removeChild(div)
                 done()
-            }, 300)
+            }, 100)
         })
     })
 
@@ -312,7 +312,7 @@ define([], function() {
                     done()
                 }, 100)
 
-            }, 300)
+            }, 100)
 
         })
 
@@ -357,7 +357,7 @@ define([], function() {
                     body.removeChild(div)
                     done()
                 })
-            }, 300)
+            }, 100)
 
         })
 
@@ -408,6 +408,21 @@ define([], function() {
                     done()
                 }
             }
+        })
+    })
+
+    describe("filters.date", function() {
+        //验证最常用的日期过滤器
+        it("async", function() {
+            var format = "yyyy MM dd:HH:mm:ss"
+            expect(avalon.filters.date(new Date("2014/4/1"), format)).to.be("2014 04 01:00:00:00")
+            expect(avalon.filters.date("2011/07/08", format)).to.be("2011 07 08:00:00:00")
+            expect(avalon.filters.date("2011-07-08", format)).to.be("2011 07 08:00:00:00")
+            expect(avalon.filters.date("01-10-2000", format)).to.be("2000 01 10:00:00:00")
+            expect(avalon.filters.date("07 04,2000", format)).to.be("2000 07 04:00:00:00")
+            expect(avalon.filters.date("3 14,2000", format)).to.be("2000 03 14:00:00:00")
+            expect(avalon.filters.date("1373021259229", format)).to.be("2013 07 05:18:47:39")
+            expect(avalon.filters.date(1373021259229, format)).to.be("2013 07 05:18:47:39")
         })
     })
 

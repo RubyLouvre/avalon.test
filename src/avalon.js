@@ -2285,10 +2285,11 @@
         "each": function(method, pos, el) {
             var data = this
             var group = data.group
-            var parent = data.parent
-            if (data.startRepeat) {//https://github.com/RubyLouvre/avalon/issues/300
-                parent = data.parent = data.startRepeat.parentNode
+            var pp = data.startRepeat && data.startRepeat.parentNode
+            if (pp) {//fix  #300 #307
+                data.parent = pp
             }
+            var parent = data.parent
             var proxies = data.proxies
             if (method === "del" || method === "move") {
                 var locatedNode = getLocatedNode(parent, data, pos)
@@ -3543,6 +3544,8 @@
             }
             return string
         }
+        var rfixFFDate = /^(\d+)-(\d+)-(\d{4})$/
+        var rfixIEDate = /^(\d+)\s+(\d+),(\d{4})$/
         filters.date = function(date, format) {
             var locate = filters.date.locate,
                     text = "",
@@ -3554,6 +3557,10 @@
                 if (NUMBER_STRING.test(date)) {
                     date = toInt(date)
                 } else {
+                    var trimDate = date.trim()
+                    if (trimDate.match(rfixFFDate) || trimDate.match(rfixIEDate)) {
+                        date = RegExp.$3 + "/" + RegExp.$1 + "/" + RegExp.$2
+                    }
                     date = jsonStringToDate(date)
                 }
                 date = new Date(date)
