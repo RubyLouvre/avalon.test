@@ -426,4 +426,59 @@ define([], function() {
         })
     })
 
+    describe('$remove', function() {
+
+        it("async", function(done) {
+            var model = avalon.define("test", function(vm) {
+                vm.array = ["a", "b", "c", "d", "e", "f", "g", "h"]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<ul ms-controller=\"test\"><li ms-repeat=\"array\"><button type=\"button\" ms-click=\"$remove\">{{el}}</button></li></ul>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var buttons = div.getElementsByTagName("button")
+                buttons[1].click()
+                buttons = div.getElementsByTagName("button")
+                expect(buttons[1].innerHTML).to.be("c")
+                buttons[3].click()
+                buttons = div.getElementsByTagName("button")
+                expect(buttons[3].innerHTML).to.be("f")
+                buttons[1].click()
+                buttons = div.getElementsByTagName("button")
+                expect(buttons[1].innerHTML).to.be("d")
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+
+    })
+
+    describe('vm.array=newArray', function() {
+        it("async", function(done) {
+            var model = avalon.define("test", function(vm) {
+                vm.array = []
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<table ms-controller=\"test\" border=\"1\"><tbody><tr><td>11</td><th ms-repeat=\"array\">{{el}}</th><td>22</td></tr></tbody></table>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                model.array = ["aaa", "bbb", "ccc"]
+                setTimeout(function() {
+                    var cells = div.getElementsByTagName("tr")[0].cells
+                    expect(cells[0].tagName).to.be("TD")
+                    expect(cells[1].tagName).to.be("TH")
+                    expect(cells[2].tagName).to.be("TH")
+                    expect(cells[3].tagName).to.be("TH")
+                    expect(cells[4].tagName.toLowerCase()).to.be("td")
+                    body.removeChild(div)
+                    done()
+                })
+            }, 100)
+        })
+    })
+
 })
