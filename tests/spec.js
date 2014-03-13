@@ -481,4 +481,32 @@ define([], function() {
         })
     })
 
+    describe("ms-repeat", function() {
+        it("async", function(done) {
+            var model = avalon.define("xxx", function(vm) {
+                vm.object = {"kkk": "vvv", "kkk2": "vvv2", "kkk3": "vvv3"}
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div ms-controller=\"xxx\"><ul><li ms-repeat=\"object\">{{$key}}:{{$val}}</li></ul><ol ms-with=\"object\"><li>{{$key}}:{{$val}}</li></ol></div>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var ul = div.getElementsByTagName("ul")[0]
+                expect(ul.children.length).to.be(3)
+                expect(ul.children[0].innerHTML).to.be("kkk:vvv")
+                expect(ul.children[1].innerHTML).to.be("kkk2:vvv2")
+                expect(ul.children[2].innerHTML).to.be("kkk3:vvv3")
+                var ol = div.getElementsByTagName("ol")[0]
+                expect(ol.children.length).to.be(3)
+                expect(ol.children[0].innerHTML).to.be("kkk:vvv")
+                expect(ol.children[1].innerHTML).to.be("kkk2:vvv2")
+                expect(ol.children[2].innerHTML).to.be("kkk3:vvv3")
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+    })
+
+
 })
