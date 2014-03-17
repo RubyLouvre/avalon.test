@@ -1,5 +1,5 @@
 //==================================================
-// avalon.mobile 1.2.3 2014.3.4，mobile 注意： 只能用于IE10及高版本的标准浏览器
+// avalon.mobile 1.2.3 2014.3.14，mobile 注意： 只能用于IE10及高版本的标准浏览器
 //==================================================
 (function(DOC) {
     var Registry = {} //将函数曝光到此对象上，方便访问器收集依赖
@@ -1518,11 +1518,13 @@
     var cacheExpr = createCache(256)
     //根据一段文本与一堆VM，转换为对应的求值函数及匹配的VM(解释器模式)
     var rduplex = /\w\[.*\]|\w\.\w/
+    var rproxy = /(\$proxy\$[a-z]+)\d+$/
     function parseExpr(code, scopes, data, four) {
+        var dataType = data.type
+        var filters = dataType == "html" || dataType === "text" ? data.filters : ""
         var exprId = scopes.map(function(el) {
-            return el.$id
-        }) + code + data.filters + (four || "")
-
+            return el.$id.replace(rproxy, "$1")
+        }) + code + dataType + filters
         var vars = getVariables(code),
                 assigns = [],
                 names = [],
@@ -1539,12 +1541,12 @@
             }
         }
         //---------------args----------------
-        if (data.filters) {
+        if (filters) {
             args.push(avalon.filters)
         }
         data.args = args
         //---------------cache----------------
-        var fn = cacheExpr[exprId]
+        var fn = cacheExpr[exprId] //直接从缓存，免得重复生成
         if (fn) {
             data.evaluator = fn
             return
@@ -1553,34 +1555,7 @@
         if (prefix) {
             prefix = "var " + prefix
         }
-        //----------------duplex----------------
-        if (four === "duplex") {
-            var _body = "'use strict';\nreturn function(vvv){\n\t" +
-                    prefix +
-                    ";\n\tif(!arguments.length){\n\t\treturn " +
-                    code +
-                    "\n\t}\n\t" + (!rduplex.test(code) ? vars.get : code) +
-                    "= vvv;\n} "
-            try {
-                fn = Function.apply(Function, names.concat(_body))
-                data.evaluator = cacheExpr(exprId, fn)
-            } catch (e) {
-            }
-            return
-        }
-        //------------------on----------------
-        if (data.type === "on") {
-            if (code.indexOf(".bind(") === -1) {
-                code = code.replace("(", ".call(this,")
-            } else {
-                code = code.replace(".bind(", ".call(")
-            }
-            if (four === "$event") {
-                names.push(four)
-            }
-        }
-        //---------------filter----------------
-        if (data.filters) {
+        if (filters) {//文本绑定，双工绑定才有过滤器
             code = "\nvar ret" + expose + " = " + code
             var textBuffer = [],
                     fargs
@@ -1600,25 +1575,41 @@
             code = textBuffer.join("")
             code += "\nreturn ret" + expose
             names.push("filters" + expose)
-        } else {
+        } else if (dataType === "duplex") {//双工绑定
+            var _body = "'use strict';\nreturn function(vvv){\n\t" +
+                    prefix +
+                    ";\n\tif(!arguments.length){\n\t\treturn " +
+                    code +
+                    "\n\t}\n\t" + (!rduplex.test(code) ? vars.get : code) +
+                    "= vvv;\n} "
+            try {
+                fn = Function.apply(noop, names.concat(_body))
+                data.evaluator = cacheExpr(exprId, fn)
+            } catch (e) {
+            }
+            return
+        } else if (dataType === "on") {//事件绑定
+            code = code.replace("(", ".call(this,")
+            if (four === "$event") {
+                names.push(four)
+            }
             code = "\nreturn " + code + ";" //IE全家 Function("return ")出错，需要Function("return ;")
-        }
-        if (data.type === "on") {
             var lastIndex = code.lastIndexOf("\nreturn")
             var header = code.slice(0, lastIndex)
             var footer = code.slice(lastIndex)
             code = header + "\nif(avalon.openComputedCollect) return ;" + footer
+        } else {//其他绑定
+            code = "\nreturn " + code + ";" //IE全家 Function("return ")出错，需要Function("return ;")
         }
-        //---------------other----------------
         try {
-            fn = Function.apply(Function, names.concat("'use strict';\n" + prefix + code))
+            fn = Function.apply(noop, names.concat("'use strict';\n" + prefix + code))
             if (data.type !== "on") {
                 fn.apply(fn, args)
             }
             data.evaluator = cacheExpr(exprId, fn)
         } catch (e) {
         } finally {
-            textBuffer = names = null //释放内存
+            vars = textBuffer = names = null //释放内存
         }
     }
 
@@ -1689,6 +1680,7 @@
     }
     var includeContents = {}
     var ifSanctuary = DOC.createElement("div")
+    var rwhitespace = /^\s+$/
     //这里的函数每当VM发生改变后，都会被执行（操作方为notifySubscribers）
     var bindingExecutors = avalon.bindingExecutors = {
         "attr": function(val, elem, data) {
@@ -1963,6 +1955,12 @@
                         avalon.log("ms-if errer" + e.message)
                     }
                 }
+                if (rbind.test(elem.outerHTML)) {
+                    scanAttr(elem, data.vmodels)
+//                    if (data.param.indexOf("once") >= 0) {
+//                        data.handler = noop
+//                    }
+                }
             } else { //移出DOM树，放进ifSanctuary DIV中，并用注释节点占据原位置
                 if (data.msInDocument) {
                     data.msInDocument = false
@@ -2134,11 +2132,18 @@
                 data.parent.insertBefore(startRepeat, endRepeat)
                 template.appendChild(elem)
             } else {
-                while (elem.firstChild) {
-                    template.appendChild(elem.firstChild)
+                var node
+                while (node = elem.firstChild) {
+                    if (node.nodeType === 3 && rwhitespace.test(node.data)) {
+                        elem.removeChild(node)
+                    } else {
+                        template.appendChild(node)
+                    }
                 }
             }
             data.template = template
+            node = template.firstChild
+            data.fastRepeat = node.nodeType === 1 && template.lastChild === node && !node.attributes["ms-controller"] && !node.attributes["ms-important"]
             if (freturn) {
                 return
             }
@@ -2186,7 +2191,6 @@
                 data.msInDocument = data.placehoder = DOC.createComment("ms-if")
             }
             data.vmodels = vmodels
-            scanAttr(elem, vmodels)
             parseExprProxy(data.value, vmodels, data)
         },
         "on": function(data, vmodels) {
@@ -2726,23 +2730,28 @@
     function shimController(data, transation, spans, proxy) {
         var tview = data.template.cloneNode(true)
         var id = proxy.$id
-        VMODELS[id] = proxy
-        var span = DOC.createElement("msloop")
-        span.style.display = "none"
+        var span = tview.firstChild
+        if (!data.fastRepeat) {
+            span = DOC.createElement("msloop")
+            span.style.display = "none"
+            span.appendChild(tview)
+        }
         span.setAttribute("ms-controller", id)
-        span.appendChild(tview)
         spans.push(span)
         transation.appendChild(span)
+        VMODELS[id] = proxy
         function fn() {
             delete VMODELS[id]
-            span.parentNode.removeChild(span)
-            var n = span.childNodes.length
-            while (span.firstChild) {
-                transation.appendChild(span.firstChild)
-            }
-            if (fn.node !== void 0) {
-                data.group = n
-                fn.parent.insertBefore(transation, fn.node)
+            data.group = 1
+            if (!data.fastRepeat) {
+                data.group = span.childNodes.length
+                span.parentNode.removeChild(span)
+                while (span.firstChild) {
+                    transation.appendChild(span.firstChild)
+                }
+                if (fn.node !== void 0) {
+                    fn.parent.insertBefore(transation, fn.node)
+                }
             }
         }
         return span.patchRepeat = fn
@@ -2785,7 +2794,7 @@
     var watchEachOne = oneObject("$index,$first,$last")
 
     function createWithProxy(key, val, $outer) {
-        return modelFactory({
+        var proxy = modelFactory({
             $key: key,
             $outer: $outer,
             $val: val
@@ -2793,6 +2802,8 @@
             $val: 1,
             $key: 1
         })
+        proxy.$id = "$proxy$with" + Math.random()
+        return proxy
     }
 
     function createEachProxy(index, item, data, last) {
@@ -2809,6 +2820,7 @@
             return data.getter().removeAt(proxy.$index)
         }
         var proxy = modelFactory(source, 0, watchEachOne)
+        proxy.$id = "$proxy$" + data.type + Math.random()
         return proxy
     }
     /*********************************************************************

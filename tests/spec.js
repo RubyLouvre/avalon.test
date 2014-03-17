@@ -509,4 +509,42 @@ define([], function() {
     })
 
 
+    describe('ms-duplex', function() {
+        //检测值的同步
+        it("async", function(done) {
+            var model = avalon.define("ttyy", function(vm) {
+                vm.array = ["aaa", "bbb", "ccc", "ddd"]
+                vm.selected = "ddd"
+                vm.$watch("selected", function(a, b) {
+                    expect(model.$model.selected).to.be("bbb")
+                    expect(a).to.be("bbb")
+                    expect(b).to.be("ddd")
+                    body.removeChild(div)
+                    done()
+                })
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div ms-controller=\"test\"><select ms-duplex=\"selected\"><option ms-repeat=\"array\" ms-value=\"el\">{{el}}</option></select></div>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            function fireEvent(element, event) {
+                if (document.createEventObject) {
+                    var evt = document.createEventObject();
+                    return element.fireEvent('on' + event, evt)
+                } else {
+                    var evt = document.createEvent("HTMLEvents");
+                    evt.initEvent(event, true, true)
+                    return !element.dispatchEvent(evt);
+                }
+            }
+            setTimeout(function() {
+                var el = div.getElementsByTagName("select")[0]
+                el.options[1].selected = true//改动属性
+                fireEvent(el, "change")//触发事件
+            }, 300)
+        })
+    })
+
+
 })
