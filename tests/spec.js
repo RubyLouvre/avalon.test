@@ -528,20 +528,39 @@ define([], function() {
             div.innerHTML = "<div ms-controller=\"test\"><select ms-duplex=\"selected\"><option ms-repeat=\"array\" ms-value=\"el\">{{el}}</option></select></div>"
             body.appendChild(div)
             avalon.scan(div, model)
-            function fireEvent(element, event) {
-                if (document.createEventObject) {
-                    var evt = document.createEventObject();
-                    return element.fireEvent('on' + event, evt)
-                } else {
+            function fireEvent(element, type) {
+                if (document.createEvent) {
                     var evt = document.createEvent("HTMLEvents");
-                    evt.initEvent(event, true, true)
+                    evt.initEvent(type, true, true)
                     return !element.dispatchEvent(evt);
+                } else if (document.createEventObject) {
+                    var evt = document.createEventObject();
+                    return element.fireEvent('on' + type, evt)
                 }
             }
             setTimeout(function() {
                 var el = div.getElementsByTagName("select")[0]
                 el.options[1].selected = true//改动属性
                 fireEvent(el, "change")//触发事件
+            }, 200)
+        })
+    })
+    describe('ms-src', function() {
+        //检测值的同步
+        it("async", function(done) {
+            var model = avalon.define("ms-src", function(vm) {
+                vm.data = {}
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div ms-controller=\"ms-src\"><img ms-src=\"data.path\"/></div>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var el = div.getElementsByTagName("img")[0]
+                expect(/undefined$/.test(el.src)).to.be(true)
+                body.removeChild(div)
+                done()
             }, 300)
         })
     })
