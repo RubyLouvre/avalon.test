@@ -565,5 +565,23 @@ define([], function() {
         })
     })
 
-
+    describe('html-filter', function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            var model = avalon.define("html-filter", function(vm) {
+                vm.yyy = "<li >1</li><li>2</li><li>3</li><li>4</li>"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<ul ms-controller=\"html-filter\">{{yyy|html}}<li class=\"last\">last</li></ul>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var el = div.getElementsByTagName("li")[0]
+                expect(el.className).to.be("")
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+    })
 })
