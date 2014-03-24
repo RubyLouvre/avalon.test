@@ -584,4 +584,29 @@ define([], function() {
             }, 100)
         })
     })
+
+    describe('ms-repeat nest-object', function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            var model = avalon.define("nest-object", function(vm) {
+                vm.list = {
+                    a: {str: 444},
+                    b: {str: 666}
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<ul ms-controller=\"nest-object\"><li ms-repeat=\"list\"><input ms-duplex=\"$val.str\"/></li></ul>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var inputs = div.getElementsByTagName("input")
+                expect(inputs[0].value).to.be("444")
+                expect(inputs[1].value).to.be("666")
+                delete avalon.vmodels["nest-object"]
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+    })
 })
