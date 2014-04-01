@@ -461,10 +461,10 @@
 
     function loopModel(name, val, model, normalProperties, accessingProperties, computedProperties, watchProperties) {
         model[name] = val
-        if (normalProperties[name] || (val && val.nodeType)) { //如果是指明不用监控的系统属性或元素节点，或放到 $skipArray里面
+        if (normalProperties[name] || (val && val.nodeType)) { //如果是元素节点或在全局的skipProperties里或在当前的$skipArray里
             return normalProperties[name] = val
         }
-        if (name.charAt(0) === "$" && !watchProperties[name]) { //如果是$开头，并且不在watchMore里面的
+        if (name.charAt(0) === "$" && !watchProperties[name]) { //如果是$开头，并且不在watchProperties里
             return normalProperties[name] = val
         }
         var valueType = getType(val)
@@ -1682,7 +1682,8 @@
     var rmsAttr = /ms-(\w+)-?(.*)/
     var priorityMap = {
         "if": 10,
-        "repeat": 100,
+        "repeat": 90,
+        "widget": 110,
         "each": 1400,
         "with": 1500,
         "duplex": 2000
@@ -1713,11 +1714,11 @@
                         if (type === "if" && param.indexOf("loop") > -1) {
                             binding.priority += 100
                         }
-                        if (type === "widget") {
+                        if (vmodels.length) {
                             bindings.push(binding)
-                            elem.msData = elem.msData || msData
-                        } else if (vmodels.length) {
-                            bindings.push(binding)
+                            if (type === "widget") {
+                                elem.msData = elem.msData || msData
+                            }
                         }
                     }
                 }
@@ -1733,6 +1734,7 @@
         switch (firstBinding.type) {
             case "if":
             case "repeat":
+            case "widget":
                 executeBindings([firstBinding], vmodels)
                 break
             default:
@@ -2433,12 +2435,8 @@
                 }
                 if (rbind.test(elem.outerHTML)) {
                     scanAttr(elem, data.vmodels)
-//                    if (data.param.indexOf("once") >= 0) {
-//                        data.handler = noop
-//                    }
                 }
             } else { //移出DOM树，放进ifSanctuary DIV中，并用注释节点占据原位置
-
                 if (data.msInDocument) {
                     data.msInDocument = false
                     elem.parentNode.replaceChild(placehoder, elem)
@@ -2722,7 +2720,7 @@
             if (typeof constructor === "function") { //ms-widget="tabs,tabsAAA,optname"
                 vmodels = element.vmodels || vmodels
                 for (var i = 0, v; v = vmodels[i++]; ) {
-                    if (VMODELS[v.$id]) { //取得离它最近由用户定义的VM
+                    if (!/^\$proxy\$[a-z]+0\.\d+$/.test(v.$id)) { //过滤代理VM #337
                         var nearestVM = v
                         break
                     }
@@ -2740,19 +2738,34 @@
                 data[widget + "Id"] = args[1]
                 data[widget + "Options"] = avalon.mix({}, constructor.defaults, vmOptions, widgetData)
                 element.removeAttribute("ms-widget")
-                var widgetVM = constructor(element, data, vmodels)
+                var vmodel = constructor(element, data, vmodels)
                 data.evaluator = noop
-                var callback = getBindingCallback(element, "data-widget-defined", vmodels)
-                if (callback) {
-                    callback.call(element, widgetVM)
+                if (vmodel.hasOwnProperty("$init")) {
+                    vmodel.$init()
+                }
+                if (vmodel.hasOwnProperty("$remove")) {
+                    var offTree = function() {
+                        vmodel.$remove()
+                        delete VMODELS[vmodel.$id]
+                    }
+                    if (supportMutationEvents) {
+                        element.addEventListener("DOMNodeRemoved", function(e) {
+                            if (e.target === this) {
+                                offTree()
+                            }
+                        })
+                    } else {
+                        element.offTree = offTree
+                        launchImpl(element)
+                    }
                 }
             } else if (vmodels.length) { //如果该组件还没有加载，那么保存当前的vmodels
                 element.vmodels = vmodels
             }
-            return true
         }
     }
 
+    var supportMutationEvents = W3C && DOC.implementation.hasFeature("MutationEvents", "2.0")
 
 
     //============================ class preperty binding  =======================
@@ -2892,22 +2905,28 @@
             }
         }
         element.oldValue = element.value
+        element.onTree = onTree
         launch(element)
         registerSubscriber(data)
     }
     var TimerID, ribbon = [],
             launch = noop
 
+    function onTree() {
+        if (this.oldValue !== this.value) {
+            var event = DOC.createEvent("Event")
+            event.initEvent("input", true, true)
+            this.dispatchEvent(event)
+        }
+    }
+
     function ticker() {
         for (var n = ribbon.length - 1; n >= 0; n--) {
             var el = ribbon[n]
             if (avalon.contains(root, el)) {
-                if (el.oldValue !== el.value) {
-                    var event = DOC.createEvent("Event")
-                    event.initEvent("input", true, true)
-                    el.dispatchEvent(event)
-                }
+                el.onTree && el.onTree()
             } else {
+                el.offTree && el.offTree()
                 ribbon.splice(n, 1)
             }
         }
@@ -3195,7 +3214,7 @@
             return this
         },
         set: function(index, val) {
-            if ( index >= 0 ) {
+            if (index >= 0) {
                 var valueType = getType(val)
                 if (val && val.$model) {
                     val = val.$model
@@ -3709,7 +3728,6 @@
             if (!modules[id]) { //如果之前没有加载过
                 modules[id] = {
                     id: id,
-                    parent: parent,
                     exports: {}
                 }
                 if (shim) { //shim机制

@@ -609,4 +609,26 @@ define([], function() {
             }, 100)
         })
     })
+
+
+    describe("avalon.innerHTML", function() {
+        //确保位置没有错乱
+        it("sync", function() {
+
+            var body = document.body
+            var div = document.createElement("div")
+            var id = "ms" + (new Date - 0)
+            var str = "<span></span><script>avalon.XXXX = 'XXXX'<\/script>".replace(/XXXX/g, id)
+            body.appendChild(div)
+            avalon.innerHTML(div, str)
+
+            var spans = div.getElementsByTagName("span")
+            expect(spans.length).to.be(1)
+            expect(avalon[id]).to.be(id)
+            delete avalon[id]
+
+            body.removeChild(div)
+
+        })
+    })
 })
