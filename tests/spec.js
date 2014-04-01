@@ -631,4 +631,37 @@ define([], function() {
 
         })
     })
+	
+	
+	  describe('newparser', function() {
+        //确保位置没有错乱
+        it("sync", function() {
+
+            var str = 'bbb["a\aa"]'
+
+            var rcomments = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg  // form http://jsperf.com/remove-comments
+            var rbracketstr = /\[(['"])[^'"]+\1\]/g
+            var rspareblanks = /\s*(\.|'|")\s*/g
+            var rvariable = /"(?:[^"\\]|\\[\s\S])*"|'(?:[^'\\]|\\[\s\S])*'|\.?[a-z_$]\w*/ig
+            var rexclude = /^['".]/
+            function getVariables(code) {
+                var match = code
+                        .replace(rcomments, "")//移除所有注释
+                        .replace(rbracketstr, "")//将aaa["xxx"]转换为aaa 去掉子属性
+                        .replace(rspareblanks, "$1")//将"' aaa .  bbb'"转换为"'aaa.ddd'"
+                        .match(rvariable) || []
+                var vars = [], unique = {}
+                for (var i = 0; i < match.length; ++i) {
+                    var variable = match[i]
+                    if (!rexclude.test(variable) && !unique[variable]) {
+                        unique[variable] = vars.push(variable)
+                    }
+                }
+                return vars
+            }
+            var arr = getVariables(str)
+            expect(arr.length).to.be(1)
+            expect(arr[0]).to.be("bbb")
+        })
+    })
 })
