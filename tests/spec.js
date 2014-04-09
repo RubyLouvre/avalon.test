@@ -113,6 +113,33 @@ define([], function() {
 
     })
 
+
+    describe('对于不存在的属性将不移除对应的插值表达式或绑定属性', function() {
+//移除操作分别在parseExprProxy与executeBindings里
+        it("async", function(done) {
+            var model = avalon.define('parseExprProxy', function(vm) {
+                vm.name = "名字"
+                vm.answer = "短笛"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div >我的{{name}}叫{{answer}},他的{{name}}叫{{no}},{{10*10}}" +
+                    "</div><p  ms-text=\"name\"></p> <p  ms-text=\"no\"></p>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+
+            setTimeout(function() {
+                var test = div.getElementsByTagName("div")[0]
+                var pp = div.getElementsByTagName("p")
+                expect(test.innerHTML).to.be("我的名字叫短笛,他的名字叫{{no}},100")
+                expect(pp[0].getAttribute("ms-text")||"").to.be("")
+                expect(pp[1].getAttribute("ms-text")).to.be("no")
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+
+    })
     describe('oneObject', function() {
 
         it("sync", function() {
@@ -631,9 +658,9 @@ define([], function() {
 
         })
     })
-	
-	
-	  describe('newparser', function() {
+
+
+    describe('newparser', function() {
         //确保位置没有错乱
         it("sync", function() {
 
