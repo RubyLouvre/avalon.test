@@ -80,7 +80,6 @@ define([], function() {
             expect(isArrayLike(function() {
             })).to.be(false);
             expect(isArrayLike(document.createElement("select"))).to.be(true);
-
             expect(isArrayLike("string")).to.be(false)
             expect(isArrayLike(/test/)).to.be(false)
 
@@ -132,7 +131,7 @@ define([], function() {
                 var test = div.getElementsByTagName("div")[0]
                 var pp = div.getElementsByTagName("p")
                 expect(test.innerHTML).to.be("我的名字叫短笛,他的名字叫{{no}},100")
-                expect(pp[0].getAttribute("ms-text")||"").to.be("")
+                expect(pp[0].getAttribute("ms-text") || "").to.be("")
                 expect(pp[1].getAttribute("ms-text")).to.be("no")
                 body.removeChild(div)
                 done()
@@ -199,6 +198,36 @@ define([], function() {
 
         })
     })
+    describe('确保事件绑定位于双工绑定之后', function() {
+
+        it("async", function(done) {
+
+            var div = document.createElement("div")
+            div.innerHTML = '<input ms-duplex-text="xxx" type="radio" ms-change="change" value="aaa">aaa' +
+                    '<input ms-duplex-text="xxx" type="radio" ms-change="change" value="bbb">bbb' +
+                    '<input ms-duplex-text="xxx" type="radio" ms-change="change" value="ccc">ccc'
+            document.body.appendChild(div)
+
+            var model = avalon.define("ms-click-ms-duplex", function(vm) {
+                vm.xxx = "bbb"
+                vm.change = function() {
+                    avalon.nextTick(function() {
+                        expect(model.xxx).to.be("ccc")
+                        done()
+                        div.innerHTML = ""
+                        document.body.removeChild(div)
+                    })
+                }
+            })
+            avalon.scan(div, model)
+            setTimeout(function() {//必须等扫描后才能开始测试，400ms是一个合理的数字
+                var ps = div.getElementsByTagName("input")
+                ps[2].click()
+            }, 100)
+        })
+
+    })
+
 
     describe('/\w\[.*\]|\w\.\w/', function() {
         it("sync", function() {
@@ -319,7 +348,6 @@ define([], function() {
                     vm.test0 = !vm.test0;
                 };
             });
-
             var body = document.body
             var div = document.createElement("div")
             div.innerHTML = "<div ms-controller=\"test\"> <button ms-click=\"one\" type=\"button\">\u6D4B\u8BD51</button> <button ms-click=\"two\" type=\"button\">\u6D4B\u8BD52</button> <br>test1: {{test1}} <br>test2: {{test2}}</div>"
