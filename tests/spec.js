@@ -112,6 +112,36 @@ define([], function() {
 
     })
 
+    describe('移除数组最后一个元素后确保$last正确无误', function() {
+
+        it("async", function(done) {
+            var model = avalon.define('removeLastElement', function(vm) {
+                vm.array = [2, 3, 4, 5]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul>' +
+                    '<li ms-repeat="array">{{$last}}<button type="button" ms-click="$remove">移除</button></li>' +
+                    '</ul>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+
+            setTimeout(function() {
+                var buttons = div.getElementsByTagName("button")
+                var button = buttons[buttons.length - 1]
+                button.click()
+                setTimeout(function() {
+                    var lis = div.getElementsByTagName("li")
+                    var li = lis[lis.length - 1]
+                    expect(/true/.test(li.innerHTML)).to.be(true)
+                    body.removeChild(div)
+                    done()
+                }, 50)
+
+
+            }, 50)
+        })
+    })
 
     describe('对于不存在的属性将不移除对应的插值表达式或绑定属性', function() {
 //移除操作分别在parseExprProxy与executeBindings里
