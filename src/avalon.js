@@ -324,7 +324,6 @@
     }
 
     //只让节点集合，纯数组，arguments与拥有非负整数的length属性的纯JS对象通过
-
     function isArrayLike(obj) {
         if (obj && typeof obj === "object" && !avalon.isWindow(obj)) {
             var n = obj.length
@@ -768,7 +767,7 @@
                         return i
                 return -1
             },
-            //定位引操作，同上，不过是从后遍历。
+            //定位操作，同上，不过是从后遍历。
             lastIndexOf: function(item, index) {
                 var n = this.length,
                         i = index == null ? n - 1 : index
@@ -984,15 +983,16 @@
                     var val = this.attr(name)
                     return parseData(val)
                 case 0:
-                    var attrs = this[0].attributes,
-                            ret = {}
-                    for (var i = 0, attr; attr = attrs[i++]; ) {
-                        name = attr.name
-                        if (!name.indexOf("data-")) {
-                            name = camelize(name.slice(5))
-                            ret[name] = parseData(attr.value)
+                    var ret = {}
+                    ap.forEach.call(this[0].attributes, function(attr) {
+                        if (attr) {
+                            name = attr.name
+                            if (!name.indexOf("data-")) {
+                                name = camelize(name.slice(5))
+                                ret[name] = parseData(attr.value)
+                            }
                         }
-                    }
+                    })
                     return ret
             }
         },
@@ -1217,16 +1217,6 @@
                     op = alpha ? alpha.opacity : 100
             return (op / 100) + "" //确保返回的是字符串
         }
-        //旧式IE无法通过currentStyle取得没有定义在样式表中的width, height值
-        "width,height".replace(rword, function(name) {
-            cssHooks[name + ":get"] = function(node) {
-                if (name === "width") {
-                    return node.clientWidth - avalon.css(node, "paddingLeft", true) - avalon.css(node, "paddingRight", true)
-                } else {
-                    return node.clientHeight - avalon.css(node, "paddingTop", true) - avalon.css(node, "paddingBottom", true)
-                }
-            }
-        })
     }
 
     "top,left".replace(rword, function(name) {
@@ -1236,6 +1226,7 @@
                     avalon(node).position()[name] + "px"
         }
     })
+
     var cssShow = {
         position: "absolute",
         visibility: "hidden",
@@ -1268,10 +1259,29 @@
                 clientProp = "client" + name,
                 scrollProp = "scroll" + name,
                 offsetProp = "offset" + name
-        cssHooks[method + "::get"] = function(node) {
+        cssHooks[method + ":get"] = function(node, which, override) {
+            var boxSizing = "content-box"
+            if (typeof override === "string") {
+                boxSizing = override
+            }
+            which = name === "Width" ? ["Left", "Right"] : ["Top", "Bottom"]
+            switch (boxSizing) {
+                case "content-box":
+                    return node["client" + name] - avalon.css(node, "padding" + which[0], true) -
+                            avalon.css(node, "padding" + which[1], true)
+                case "padding-box":
+                    return node["client" + name]
+                case "border-box":
+                    return node["offset" + name]
+                case "margin-box":
+                    return node["offset" + name] + avalon.css(node, "margin" + which[0], true) +
+                            avalon.css(node, "margin" + which[1], true)
+            }
+        }
+        cssHooks[method + "&get"] = function(node) {
             var hidden = [];
             showHidden(node, hidden);
-            var val = avalon.css(node, method, true)
+            var val = cssHooks[method + ":get"](node)
             for (var i = 0, obj; obj = hidden[i++]; ) {
                 node = obj.node
                 for (var n in obj) {
@@ -1282,7 +1292,7 @@
             }
             return val;
         }
-        avalon.fn[method] = function(value) {
+        avalon.fn[method] = function(value) {//会忽视其display
             var node = this[0]
             if (arguments.length === 0) {
                 if (node.setTimeout) { //取得窗口尺寸,IE9后可以用node.innerWidth /innerHeight代替
@@ -1295,40 +1305,49 @@
                     //IE 怪异模式 : html.scrollHeight 最大等于可视窗口多一点？
                     return Math.max(node.body[scrollProp], doc[scrollProp], node.body[offsetProp], doc[offsetProp], doc[clientProp])
                 }
-                return cssHooks[method + "::get"](node)
+                return cssHooks[method + "&get"](node)
             } else {
                 return this.css(method, value)
             }
         }
-
+        avalon.fn["inner" + name] = function() {
+            return cssHooks[method + ":get"](this[0], void 0, "padding-box")
+        }
+        avalon.fn["outer" + name] = function(includeMargin) {
+            return cssHooks[method + ":get"](this[0], void 0, includeMargin === true ? "border-box" : "margin-box")
+        }
     })
     avalon.fn.offset = function() { //取得距离页面左右角的坐标
         var node = this[0],
-                doc = node && node.ownerDocument
-        var pos = {
-            left: 0,
-            top: 0
-        }
-        if (!doc) {
-            return pos
+                doc = node && node.ownerDocument,
+                win = doc.defaultView || doc.parentWindow,
+                body = doc.body,
+                root = doc.documentElement,
+                box = {
+                    left: 0,
+                    top: 0
+                }
+        if (!doc || !avalon.contains(root, node)) {
+            return box
         }
         //http://hkom.blog1.fc2.com/?mode=m&no=750 body的偏移量是不包含margin的
         //我们可以通过getBoundingClientRect来获得元素相对于client的rect.
         //http://msdn.microsoft.com/en-us/library/ms536433.aspx
-        var box = node.getBoundingClientRect(),
-                //chrome1+, firefox3+, ie4+, opera(yes) safari4+    
-                win = doc.defaultView || doc.parentWindow,
-                root = (navigator.vendor || doc.compatMode === "BackCompat") ? doc.body : doc.documentElement,
-                clientTop = root.clientTop >> 0,
-                clientLeft = root.clientLeft >> 0,
-                scrollTop = win.pageYOffset || root.scrollTop,
-                scrollLeft = win.pageXOffset || root.scrollLeft
+        if (typeof node.getBoundingClientRect !== "undefined") {
+            box = node.getBoundingClientRect()// BlackBerry 5, iOS 3 (original iPhone)
+        }
+        //chrome/IE6: body.scrollTop, firefox/other: root.scrollTop
+        var clientTop = root.clientTop || body.clientTop,
+                clientLeft = root.clientLeft || body.clientLeft,
+                scrollTop = Math.max(win.pageYOffset || 0, root.scrollTop, body.scrollTop),
+                scrollLeft = Math.max(win.pageXOffset || 0, root.scrollLeft, body.scrollLeft)
         // 把滚动距离加到left,top中去。
         // IE一些版本中会自动为HTML元素加上2px的border，我们需要去掉它
         // http://msdn.microsoft.com/en-us/library/ms533564(VS.85).aspx
-        pos.top = box.top + scrollTop - clientTop
-        pos.left = box.left + scrollLeft - clientLeft
-        return pos
+        return {
+            top: box.top + scrollTop - clientTop,
+            left: box.left + scrollLeft - clientLeft
+        }
     }
 
     //==================================val相关============================
@@ -1433,11 +1452,11 @@
             for (var i = 0, el; el = els[i++]; ) {
                 if (!el.type || scriptTypes[el.type]) { //如果script节点的MIME能让其执行脚本
                     neo = script.cloneNode(false) //FF不能省略参数
-                    for (var j = 0, attr; attr = el.attributes[j++]; ) {
-                        if (attr.specified) { //复制其属性
-                            neo[attr.name] = attr.value
+                    ap.forEach.call(el.attributes, function(attr) {
+                        if (attr && attr.specified) {
+                            neo[attr.name] = attr.value //复制其属性
                         }
-                    }
+                    })
                     neo.text = el.text //必须指定,因为无法在attributes中遍历出来
                     el.parentNode.replaceChild(neo, el) //替换节点
                 }
@@ -1613,6 +1632,10 @@
         //扫描顺序  ms-skip(0) --> ms-important(1) --> ms-controller(2) --> ms-if(10) --> ms-repeat(100) 
         //--> ms-if-loop(110) --> ms-attr(970) ...--> ms-each(1400)-->ms-with(1500)--〉ms-duplex(2000)垫后
         var a = elem.getAttribute(prefix + "skip")
+        //#360 在旧式IE中 Object标签在引入Flash等资源时,可能出现没有getAttributeNode,innerHTML的情形
+        if (!elem.getAttributeNode) {
+            return log("warning " + elem.tagName + " no getAttributeNode method")
+        }
         var b = elem.getAttributeNode(prefix + "important")
         var c = elem.getAttributeNode(prefix + "controller")
         if (typeof a === "string") {
@@ -1625,7 +1648,7 @@
             //ms-important不包含父VM，ms-controller相反
             vmodels = node === b ? [newVmodel] : [newVmodel].concat(vmodels)
             elem.removeAttribute(node.name) //removeAttributeNode不会刷新[ms-controller]样式规则
-            avalon(elem).removeClass(node.name) //处理IE6
+            avalon(elem).removeClass(node.name)
         }
         scanAttr(elem, vmodels) //扫描特性节点
     }
@@ -1764,7 +1787,8 @@
         var cacheAttr = createCache(512)
         var rattrs = /\s+(ms-[^=\s]+)(?:=("[^"]*"|'[^']*'|[^\s>]+))?/g,
                 rquote = /^['"]/,
-                rtag = /<\w+\b(?:(["'])[^"]*?(\1)|[^>])*>/i
+                rtag = /<\w+\b(?:(["'])[^"]*?(\1)|[^>])*>/i,
+                ramp = /&amp;/g
         var getAttributes = function(elem) {
             if (elem.outerHTML.slice(0, 2) === "</") { //处理旧式IE模拟HTML5新元素带来的伪标签
                 return []
@@ -1778,12 +1802,15 @@
             }
             while (k = rattrs.exec(str)) {
                 v = k[2]
+                if (v) {
+                    v = (rquote.test(v) ? v.slice(1, -1) : v).replace(ramp, "&")
+                }
                 var name = k[1].toLowerCase()
                 match = name.match(rmsAttr)
                 var binding = {
                     name: name,
                     specified: true,
-                    value: v ? rquote.test(v) ? v.slice(1, -1) : v : ""
+                    value: v || ""
                 }
                 attributes.push(binding)
             }
@@ -2325,7 +2352,7 @@
                         spans = null
                         break
                     case "del": //将pos后的el个元素删掉(pos, el都是数字)
-                        proxies.splice(pos, el) //移除对应的子VM
+                        proxies.splice(pos, el)
                         removeFromSanctuary(removeView(locatedNode, group, el))
                         break
                     case "index": //将proxies中的第pos个起的所有元素重新索引（pos为数字，el用作循环变量）
@@ -2599,15 +2626,16 @@
                     elem = data.element,
                     list
             parseExpr(data.value, vmodels, data)
-            data.getter = function() {
-                return this.evaluator.apply(0, this.args || [])
-            }
-            data.handler = bindingExecutors.each
-            data.callbackName = "data-" + (type || "each") + "-rendered"
             if (type !== "repeat") {
                 log("warning:建议使用ms-repeat代替ms-each, ms-with, ms-repeat只占用一个标签并且性能更好")
             }
+            data.$outer = {}
+            data.handler = bindingExecutors.each
+            data.callbackName = "data-" + (type || "each") + "-rendered"
             data.callbackElement = data.parent = elem
+            data.getter = function() {
+                return this.evaluator.apply(0, this.args || [])
+            }
             var freturn = true
             try {
                 list = data.getter()
@@ -2628,7 +2656,6 @@
                     break
                 }
             }
-            data.$outer = data.$outer || {}
             var template = documentFragment.cloneNode(false)
             if (type === "repeat") {
                 var startRepeat = DOC.createComment("ms-repeat-start")
@@ -2666,7 +2693,7 @@
                     for (var key in list) {
                         if (list.hasOwnProperty(key) && key !== "hasOwnProperty") {
                             (function(k, v) {
-                                pool[k] = createWithProxy(k, v, data.$outer)
+                                pool[k] = createWithProxy(k, v, {})
                                 pool[k].$watch("$val", function(val) {
                                     list[k] = val //#303
                                 })
@@ -2728,30 +2755,25 @@
             parseExprProxy(data.value, vmodels, data)
         },
         "widget": function(data, vmodels) {
-            var args = data.value.match(rword),
-                    element = data.element,
-                    widget = args[0],
-                    vmOptions = {}
-
-            if (args[1] === "$") {
-                args[1] = void 0
-            }
-            if (!args[1]) {
+            var args = data.value.match(rword)
+            var element = data.element
+            var widget = args[0]
+            if (args[1] === "$" || !args[1]) {
                 args[1] = widget + setTimeout("1")
             }
             data.value = args.join(",")
             var constructor = avalon.ui[widget]
             if (typeof constructor === "function") { //ms-widget="tabs,tabsAAA,optname"
                 vmodels = element.vmodels || vmodels
+                var optName = args[2] || widget //尝试获得配置项的名字，没有则取widget的名字
                 for (var i = 0, v; v = vmodels[i++]; ) {
-                    if (!/^\$proxy\$[a-z]+0\.\d+$/.test(v.$id)) { //过滤代理VM #337
+                    if (v.hasOwnProperty(optName) && typeof v[optName] === "object") {
                         var nearestVM = v
                         break
                     }
                 }
-                var optName = args[2] || widget //尝试获得配置项的名字，没有则取widget的名字
-                if (nearestVM && typeof nearestVM[optName] === "object") {
-                    vmOptions = nearestVM[optName]
+                if (nearestVM) {
+                    var vmOptions = nearestVM[optName]
                     vmOptions = vmOptions.$model || vmOptions
                     var id = vmOptions[widget + "Id"]
                     if (typeof id === "string") {
@@ -2760,11 +2782,11 @@
                 }
                 var widgetData = avalon.getWidgetData(element, args[0]) //抽取data-tooltip-text、data-tooltip-attr属性，组成一个配置对象
                 data[widget + "Id"] = args[1]
-                data[widget + "Options"] = avalon.mix({}, constructor.defaults, vmOptions, widgetData)
+                data[widget + "Options"] = avalon.mix({}, constructor.defaults, vmOptions || {}, widgetData)
                 element.removeAttribute("ms-widget")
                 var vmodel = constructor(element, data, vmodels) || {}//防止组件不返回VM
                 data.evaluator = noop
-                element.msData["ms-widget-id"] = vmodel.$id
+                element.msData["ms-widget-id"] = vmodel.$id || ""
                 if (vmodel.hasOwnProperty("$init")) {
                     vmodel.$init()
                 }
@@ -3249,6 +3271,7 @@
                     target.clear().push.apply(target, val)
                 } else if (target !== val) {
                     this[index] = val
+                    this.$model[index] = val
                     notifySubscribers(this, "set", index, val)
                 }
             }
@@ -3324,7 +3347,18 @@
                 }
             }
         }
-        parent.textContent = ""
+        if (parent.textContent) {
+            parent.textContent = ""
+        } else {
+            while (comment = parent.firstChild) {
+                if (comment.nodeType === 1) {
+                    comment.innerHTML = ""
+                } else if (comment.nodeType === 3) {
+                    comment.data = ""
+                }
+                parent.removeChild(comment)
+            }
+        }
     }
 
     function iteratorCallback(args) {
@@ -3349,6 +3383,7 @@
         span.setAttribute("ms-controller", id)
         spans.push(span)
         transation.appendChild(span)
+        proxy.$outer = data.$outer
         VMODELS[id] = proxy
         function fn() {
             delete VMODELS[id]
