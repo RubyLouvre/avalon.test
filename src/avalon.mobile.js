@@ -581,34 +581,17 @@
         return (target + "").replace(rregexp, "\\$&")
     }
     var plugins = {
-        alias: function(val) {
-            log("warning: alias方法已废弃，请用paths, shim配置项")
-            for (var c in val) {
-                if (ohasOwn.call(val, c)) {
-                    var currValue = val[c]
-                    switch (getType(currValue)) {
-                        case "string":
-                            kernel.paths[c] = currValue
-                            break;
-                        case "object":
-                            if (currValue.src) {
-                                kernel.paths[c] = currValue.src
-                                delete currValue.src
-                            }
-                            kernel.shim[c] = currValue
-                            break;
-                    }
+        debug: function(open) {
+            if (window.console) {
+                if (!console._log) {
+                    console._log = console.log
                 }
+                console.log = open ? console._log : noop
             }
         },
-        loader: function(bool) {
-            if (bool) {
-                window.define = innerRequire.define
-                window.require = innerRequire
-            } else {
-                window.define = otherDefine
-                window.require = otherRequire
-            }
+        loader: function(builtin) {
+            window.define = builtin ? innerRequire.define : otherDefine
+            window.require = builtin ? innerRequire : otherRequire
         },
         interpolate: function(array) {
             if (Array.isArray(array) && array[0] && array[1] && array[0] !== array[1]) {
@@ -1189,7 +1172,7 @@
                 } catch (e) {
                     delete data.evaluator
                     if (data.nodeType === 3) {
-                        data.handler(openTag + data.value + closeTag, data.element, data)
+                        data.node.data = openTag + data.value + closeTag
                     }
                     log("error:evaluator of [" + data.value + "] throws error!")
                 }
@@ -1480,20 +1463,32 @@
             + ",arguments,let,yield"
 
             + ",undefined"
-    var rrexpstr = /\/\*(?:.|\n)*?\*\/|\/\/[^\n]*\n|\/\/[^\n]*$|'[^']*'|"[^"]*"|[\s\t\n]*\.[\s\t\n]*[$\w\.]+/g
+    var rrexpstr = /\/\*[\w\W]*?\*\/|\/\/[^\n]*\n|\/\/[^\n]*$|"(?:[^"\\]|\\[\w\W])*"|'(?:[^'\\]|\\[\w\W])*'|[\s\t\n]*\.[\s\t\n]*[$\w\.]+/g
     var rsplit = /[^\w$]+/g
     var rkeywords = new RegExp(["\\b" + keywords.replace(/,/g, '\\b|\\b') + "\\b"].join('|'), 'g')
     var rnumber = /\b\d[^,]*/g
     var rcomma = /^,+|,+$/g
+    var cacheVars = createCache(512)
     var getVariables = function(code) {
-        code = code
+        code = "?" + code.trim()
+        if (cacheVars[code]) {
+            return cacheVars[code]
+        }
+        var match = code
                 .replace(rrexpstr, "")
                 .replace(rsplit, ",")
                 .replace(rkeywords, "")
                 .replace(rnumber, "")
                 .replace(rcomma, "")
-
-        return code ? code.split(/,+/) : []
+                .split(/^$|,+/)
+        var vars = [], unique = {}
+        for (var i = 0; i < match.length; ++i) {
+            var variable = match[i]
+            if (!unique[variable]) {
+                unique[variable] = vars.push(variable)
+            }
+        }
+        return cacheVars(code, vars)
     }
     //添加赋值语句
 
@@ -1513,29 +1508,19 @@
 
     }
 
-    function uniqArray(arr, vm) {
-        var length = arr.length
-        if (length <= 1) {
-            return arr
-        } else if (length === 2) {
-            return arr[0] !== arr[1] ? arr : [arr[0]]
-        }
+    function uniqVmodels(arr) {
         var uniq = {}
         return arr.filter(function(el) {
-            var key = vm ? el && el.$id : el
-            if (!uniq[key]) {
-                uniq[key] = 1
+            if (!uniq[el.$id]) {
+                uniq[el.$id] = 1
                 return true
             }
-            return false
         })
     }
 
     //缓存求值函数，以便多次利用
-
     function createCache(maxLength) {
         var keys = []
-
         function cache(key, value) {
             if (keys.push(key) > maxLength) {
                 delete cache[keys.shift()]
@@ -1554,13 +1539,13 @@
         var exprId = scopes.map(function(el) {
             return el.$id.replace(rproxy, "$1")
         }) + code + dataType + filters
-        var vars = getVariables(code),
+        var vars = getVariables(code).concat(),
                 assigns = [],
                 names = [],
                 args = [],
                 prefix = ""
         //args 是一个对象数组， names 是将要生成的求值函数的参数
-        vars = uniqArray(vars), scopes = uniqArray(scopes, 1)
+        scopes = uniqVmodels(scopes)
         for (var i = 0, sn = scopes.length; i < sn; i++) {
             if (vars.length) {
                 var name = "vm" + expose + "_" + i
@@ -2009,6 +1994,7 @@
             }
             elem.$vmodel = vmodels[0]
             elem.$vmodels = vmodels
+            data.param = data.param.replace(/-\d+$/, "")// ms-on-mousemove-10
             if (typeof data.specialBind === "function") {
                 data.specialBind(elem, callback)
             } else {
@@ -2263,7 +2249,7 @@
         },
         "widget": function(data, vmodels) {
             var args = data.value.match(rword)
-            var element = data.element
+            var elem = data.element
             var widget = args[0]
             if (args[1] === "$" || !args[1]) {
                 args[1] = widget + setTimeout("1")
@@ -2271,7 +2257,7 @@
             data.value = args.join(",")
             var constructor = avalon.ui[widget]
             if (typeof constructor === "function") { //ms-widget="tabs,tabsAAA,optname"
-                vmodels = element.vmodels || vmodels
+                vmodels = elem.vmodels || vmodels
                 var optName = args[2] || widget //尝试获得配置项的名字，没有则取widget的名字
                 for (var i = 0, v; v = vmodels[i++]; ) {
                     if (v.hasOwnProperty(optName) && typeof v[optName] === "object") {
@@ -2287,35 +2273,35 @@
                         args[1] = id
                     }
                 }
-                var widgetData = avalon.getWidgetData(element, args[0]) //抽取data-tooltip-text、data-tooltip-attr属性，组成一个配置对象
+                var widgetData = avalon.getWidgetData(elem, args[0]) //抽取data-tooltip-text、data-tooltip-attr属性，组成一个配置对象
                 data[widget + "Id"] = args[1]
                 data[widget + "Options"] = avalon.mix({}, constructor.defaults, vmOptions || {}, widgetData)
-                element.removeAttribute("ms-widget")
-                var vmodel = constructor(element, data, vmodels) || {}//防止组件不返回VM
+                elem.removeAttribute("ms-widget")
+                var vmodel = constructor(elem, data, vmodels) || {}//防止组件不返回VM
                 data.evaluator = noop
-                element.msData["ms-widget-id"] = vmodel.$id || ""
+                elem.msData["ms-widget-id"] = vmodel.$id || ""
                 if (vmodel.hasOwnProperty("$init")) {
                     vmodel.$init()
                 }
                 if (vmodel.hasOwnProperty("$remove")) {
                     var offTree = function() {
                         vmodel.$remove()
-                        element.msData = {}
+                        elem.msData = {}
                         delete VMODELS[vmodel.$id]
                     }
                     if (supportMutationEvents) {
-                        element.addEventListener("DOMNodeRemoved", function(e) {
+                        elem.addEventListener("DOMNodeRemoved", function(e) {
                             if (e.target === this && !this.msRetain) {
                                 offTree()
                             }
                         })
                     } else {
-                        element.offTree = offTree
-                        launchImpl(element)
+                        elem.offTree = offTree
+                        launchImpl(elem)
                     }
                 }
             } else if (vmodels.length) {//如果该组件还没有加载，那么保存当前的vmodels
-                element.vmodels = vmodels
+                elem.vmodels = vmodels
             }
         }
 
