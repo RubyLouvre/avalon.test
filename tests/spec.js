@@ -208,6 +208,19 @@ define([], function() {
         })
 
     })
+    
+     describe("确保不会误删元素", function() {
+
+        it("sync", function() {
+            var model = avalon.define("removeArray", function(vm){
+                vm.array = [1,2,3,4]
+            })
+            expect(model.array.remove(5)).to.eql([])
+            expect(model.array.removeAt(-1)).to.eql([])
+            delete avalon.vmodels["removeArray"]
+
+        })
+    })
 
     describe('textNode.nodeValue === textNode.data', function() {
 
