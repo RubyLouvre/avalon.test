@@ -1604,9 +1604,6 @@
                 if (remove) { //如果它没有在DOM树
                     list.splice(i, 1)
                     log("debug: remove " + fn.name)
-//                    for (var key in fn) {
-//                        fn[key] = null
-//                    }
                 } else if (typeof fn === "function") {
                     fn.apply(0, args) //强制重新计算自身
                 } else if (fn.getter) {
@@ -2638,7 +2635,7 @@
                 }
             }
         },
-        "each": function(data, vmodels) {
+        "repeat": function(data, vmodels) {
             var type = data.type,
                     list
             parseExpr(data.value, vmodels, data)
@@ -2706,7 +2703,7 @@
             if (freturn) {
                 return
             }
-            data.callbackName = "data-" + (type || "each") + "-rendered"
+            data.callbackName = "data-" + type  + "-rendered"
             data.handler = bindingExecutors.each
             data.$outer = {}
             var check0 = "$key",
@@ -2847,8 +2844,8 @@
     "hover,active".replace(rword, function(method) {
         bindingHandlers[method] = bindingHandlers["class"]
     })
-    "with,repeat".replace(rword, function(name) {
-        bindingHandlers[name] = bindingHandlers.each
+    "with,each".replace(rword, function(name) {
+        bindingHandlers[name] = bindingHandlers.repeat
     })
     //============================= boolean preperty binding =======================
     "disabled,enabled,readonly,selected".replace(rword, function(name) {
@@ -3486,7 +3483,6 @@
                 proxy.$first = index === 0
                 proxy.$last = last
                 pond.splice(i, 1)
-
                 return proxy
             }
         }

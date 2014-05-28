@@ -476,7 +476,6 @@
                         var fn = rebindings[newValue.$id]
                         fn && fn() //更新视图
                         var parent = watchProperties.vmodel
-                        // withProxyCount && updateWithProxy(parent.$id, name, newValue)//同步循环绑定中的代理VM
                         model[name] = newValue.$model //同步$model
                         notifySubscribers(realAccessor) //通知顶层改变
                         safeFire(parent, name, model[name], preValue) //触发$watch回调
@@ -611,6 +610,7 @@
     kernel.plugins['interpolate'](["{{", "}}"])
     kernel.paths = {}
     kernel.shim = {}
+    kernel.poolSize = 100
     avalon.config = kernel
 
     /*********************************************************************
@@ -1058,7 +1058,7 @@
     }
 
     avalon.clearHTML = function(node) {
-        expelFromSanctuary(node)
+        node.textContent = ""
         return node
     }
     var script = DOC.createElement("script")
@@ -1200,9 +1200,6 @@
                 var el = fn.element
                 if (el && !ifSanctuary.contains(el) && (!root.contains(el))) {
                     list.splice(i, 1)
-                    for (var key in fn) {
-                        fn[key] = null
-                    }
                     log("debug: remove " + fn.name)
                 } else if (typeof fn === "function") {
                     fn.apply(0, args) //强制重新计算自身
@@ -1846,7 +1843,7 @@
                                 lastFn = {}
                         for (var i = 0, n = arr.length; i < n; i++) {
                             var ii = i + pos
-                            var proxy = createEachProxy(ii, arr[i], data, last)
+                            var proxy = getEachProxy(ii, arr[i], data, last)
                             proxies.splice(ii, 0, proxy)
                             lastFn = shimController(data, transation, spans, proxy)
                         }
@@ -1860,7 +1857,10 @@
                         spans = null
                         break
                     case "del": //将pos后的el个元素删掉(pos, el都是数字)
-                        proxies.splice(pos, el)
+                        var removed = proxies.splice(pos, el)
+                        for (var i = 0, proxy; proxy = removed[i++]; ) {
+                            setEachProxy(proxy)
+                        }
                         expelFromSanctuary(removeView(locatedNode, group, el))
                         break
                     case "index": //将proxies中的第pos个起的所有元素重新索引（pos为数字，el用作循环变量）
@@ -2115,7 +2115,7 @@
                 }
             }
         },
-        "each": function(data, vmodels) {
+        "repeat": function(data, vmodels) {
             var type = data.type,
                     list
             parseExpr(data.value, vmodels, data)
@@ -2182,7 +2182,7 @@
             if (freturn) {
                 return
             }
-            data.callbackName = "data-" + (type || "each") + "-rendered"
+            data.callbackName = "data-" + type + "-rendered"
             data.handler = bindingExecutors.each
             data.$outer = {}
             var check0 = "$key",
@@ -2322,8 +2322,8 @@
     "hover,active".replace(rword, function(method) {
         bindingHandlers[method] = bindingHandlers["class"]
     })
-    "with,repeat".replace(rword, function(name) {
-        bindingHandlers[name] = bindingHandlers.each
+    "with,each".replace(rword, function(name) {
+        bindingHandlers[name] = bindingHandlers.repeat
     })
     //============================= boolean preperty binding =======================
     "disabled,enabled,readonly,selected".replace(rword, function(name) {
@@ -2869,7 +2869,35 @@
         proxy.$id = "$proxy$with" + Math.random()
         return proxy
     }
-
+    var pond = []
+    function getEachProxy(index, item, data, last) {
+        var param = data.param || "el"
+        for (var i = 0, n = pond.length; i < n; i++) {
+            var proxy = pond[i]
+            if (proxy.hasOwnProperty(param)) {
+                proxy.$remove = function() {
+                    return data.getter().removeAt(proxy.$index)
+                }
+                proxy.$index = index
+                proxy.$outer = data.$outer
+                proxy[param] = item
+                proxy.$first = index === 0
+                proxy.$last = last
+                pond.splice(i, 1)
+                return proxy
+            }
+        }
+        return createEachProxy(index, item, data, last)
+    }
+    function setEachProxy(proxy) {
+        var obj = proxy.$accessors
+        obj.$index[subscribers].length = 0
+        obj.$last[subscribers].length = 0
+        obj[proxy.$itemName][subscribers].length = 0
+        if (pond.unshift(proxy) > kernel.poolSize) {
+            pond.pop()
+        }
+    }
     function createEachProxy(index, item, data, last) {
         var param = data.param || "el"
         var source = {
