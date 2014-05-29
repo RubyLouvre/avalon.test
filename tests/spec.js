@@ -167,12 +167,11 @@ define([], function() {
             }, 50)
         })
     })
-    
-        describe("重写一个空对象", function() {
+
+    describe("重写一个空对象", function() {
         it("async", function(done) {
             var vmodel = avalon.define("override2", function(vm) {
                 vm.first = {
-                   
                 }
             })
             var body = document.body
@@ -200,6 +199,32 @@ define([], function() {
                     expect(lis[5].innerHTML).to.be("coconut:椰子")
                     expect(lis[6].innerHTML).to.be("pitaya:火龙果")
                     expect(lis[7].innerHTML).to.be("orange:橙子")
+                    body.removeChild(div)
+                    div.innerHTML = ""
+                    done()
+                }, 50)
+
+            }, 50)
+        })
+    })
+
+    describe("重写对象数组的一个属性", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define("overrideprop", function(vm) {
+                vm.persons = [{name: 'Tom', phone: '1234'}]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul ms-each-person="persons"><li>{{person.name}}</li></ul>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var lis = div.getElementsByTagName("li")
+                expect(lis[0].innerHTML).to.be("Tom")
+                vmodel.persons[0].name = "Daniel"
+                setTimeout(function() {
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis[0].innerHTML).to.be("Daniel")
                     body.removeChild(div)
                     div.innerHTML = ""
                     done()
