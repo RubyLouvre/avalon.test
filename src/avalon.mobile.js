@@ -1,5 +1,5 @@
 //==================================================
-// avalon.mobile 1.3 2014.5.25，mobile 注意： 只能用于IE10及高版本的标准浏览器
+// avalon.mobile 1.3 2014.5.29，mobile 注意： 只能用于IE10及高版本的标准浏览器
 //==================================================
 (function(DOC) {
     var Registry = {} //将函数曝光到此对象上，方便访问器收集依赖
@@ -610,7 +610,7 @@
     kernel.plugins['interpolate'](["{{", "}}"])
     kernel.paths = {}
     kernel.shim = {}
-    kernel.poolSize = 100
+    kernel.maxRepeatSize = 100
     avalon.config = kernel
 
     /*********************************************************************
@@ -1175,7 +1175,7 @@
                     if (data.nodeType === 3) {
                         data.node.data = openTag + data.value + closeTag
                     }
-                    log("error:evaluator of [" + data.value + "] throws error!")
+                    log("warning:evaluator of [" + data.value + "] throws error!")
                 }
             }
         } else { //如果是计算属性的accessor
@@ -1841,6 +1841,7 @@
                         var last = data.getter().length - 1
                         var spans = [],
                                 lastFn = {}
+                        transation = transation.cloneNode(false)
                         for (var i = 0, n = arr.length; i < n; i++) {
                             var ii = i + pos
                             var proxy = getEachProxy(ii, arr[i], data, last)
@@ -2913,7 +2914,7 @@
         ["$index", "$last", "$first", proxy.$itemName].forEach(function(prop) {
             obj[prop][subscribers].length = 0
         })
-        if (eachPool.unshift(proxy) > kernel.poolSize) {
+        if (eachPool.unshift(proxy) > kernel.maxRepeatSize) {
             eachPool.pop()
         }
     }

@@ -168,6 +168,35 @@ define([], function() {
         })
     })
 
+    describe("ms-each同时循环两行", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define("ms-each-double", function(vm) {
+                vm.data = {list: [1, 2, 3, 4, 5, 6, 7]}
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul  ms-each-el="data.list"><li ms-if="$index ==  0">Name: {{el}}</li><li ms-if="$index !==  0" class="test">Name: {{el}}</li></ul>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var ul = div.getElementsByTagName("ul")[0]
+                var lis = ul.children
+                expect(lis.length).to.be("7")
+                expect(lis[0].className).to.be("test")
+                expect(lis[1].className).to.be("test")
+                expect(lis[2].className).to.be("test")
+                expect(lis[3].className).to.be("test")
+                expect(lis[4].innerHTML).to.be("test")
+                expect(lis[5].innerHTML).to.be("test")
+                expect(lis[6].innerHTML).to.be("test")
+                body.removeChild(div)
+                div.innerHTML = ""
+                delete avalon.vmodels["ms-each-double"]
+                done()
+            }, 500)
+        })
+    })
+
     describe("重写一个空对象", function() {
         it("async", function(done) {
             var vmodel = avalon.define("override2", function(vm) {
