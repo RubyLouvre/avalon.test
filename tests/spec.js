@@ -112,6 +112,131 @@ define([], function() {
 
     })
 
+    describe("重写一个对象", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define("override1", function(vm) {
+                vm.first = {
+                    array: ["aaa", "bbb", "ccc", "ddd"],
+                    object: {
+                        banana: "香蕉",
+                        apple: "苹果",
+                        peach: "桃子",
+                        pear: "雪梨"
+                    }
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul><li ms-repeat="first.array">{{el}}</li></ul><ol><li ms-repeat="first.object">{{$key}}:{{$val}}</li></ol>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var lis = div.getElementsByTagName("li")
+                expect(lis[0].innerHTML).to.be("aaa")
+                expect(lis[1].innerHTML).to.be("bbb")
+                expect(lis[2].innerHTML).to.be("ccc")
+                expect(lis[3].innerHTML).to.be("ddd")
+                expect(lis[4].innerHTML).to.be("banana:香蕉")
+                expect(lis[5].innerHTML).to.be("apple:苹果")
+                expect(lis[6].innerHTML).to.be("peach:桃子")
+                expect(lis[7].innerHTML).to.be("pear:雪梨")
+                vmodel.first = {
+                    array: ["@@@", "###", "$$$", "%%%"],
+                    object: {
+                        grape: "葡萄",
+                        coconut: "椰子",
+                        pitaya: "火龙果",
+                        orange: "橙子"
+                    }
+                }
+                setTimeout(function() {
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis[0].innerHTML).to.be("@@@")
+                    expect(lis[1].innerHTML).to.be("###")
+                    expect(lis[2].innerHTML).to.be("$$$")
+                    expect(lis[3].innerHTML).to.be("%%%")
+                    expect(lis[4].innerHTML).to.be("grape:葡萄")
+                    expect(lis[5].innerHTML).to.be("coconut:椰子")
+                    expect(lis[6].innerHTML).to.be("pitaya:火龙果")
+                    expect(lis[7].innerHTML).to.be("orange:橙子")
+                    body.removeChild(div)
+                    div.innerHTML = ""
+                    done()
+                }, 50)
+
+            }, 50)
+        })
+    })
+    
+
+    describe("ms-each同时循环两行", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define("ms-each-double", function(vm) {
+                vm.data = {list: [1, 2, 3, 4, 5, 6, 7]}
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul  ms-each-el="data.list"><li ms-if="$index ==  0">Name: {{el}}</li><li ms-if="$index !==  0" class="test">Name: {{el}}</li></ul>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var ul = div.getElementsByTagName("ul")[0]
+                var lis = ul.children
+                expect(lis.length).to.be("7")
+                expect(lis[0].className).to.be("test")
+                expect(lis[1].className).to.be("test")
+                expect(lis[2].className).to.be("test")
+                expect(lis[3].className).to.be("test")
+                expect(lis[4].innerHTML).to.be("test")
+                expect(lis[5].innerHTML).to.be("test")
+                expect(lis[6].innerHTML).to.be("test")
+                body.removeChild(div)
+                div.innerHTML = ""
+                delete avalon.vmodels["ms-each-double"]
+                done()
+            }, 500)
+        })
+    })
+        describe("重写一个空对象", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define("override2", function(vm) {
+                vm.first = {
+                   
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul><li ms-repeat="first.array">{{el}}</li></ul><ol><li ms-repeat="first.object">{{$key}}:{{$val}}</li></ol>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                vmodel.first = {
+                    array: ["@@@", "###", "$$$", "%%%"],
+                    object: {
+                        grape: "葡萄",
+                        coconut: "椰子",
+                        pitaya: "火龙果",
+                        orange: "橙子"
+                    }
+                }
+                setTimeout(function() {
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis[0].innerHTML).to.be("@@@")
+                    expect(lis[1].innerHTML).to.be("###")
+                    expect(lis[2].innerHTML).to.be("$$$")
+                    expect(lis[3].innerHTML).to.be("%%%")
+                    expect(lis[4].innerHTML).to.be("grape:葡萄")
+                    expect(lis[5].innerHTML).to.be("coconut:椰子")
+                    expect(lis[6].innerHTML).to.be("pitaya:火龙果")
+                    expect(lis[7].innerHTML).to.be("orange:橙子")
+                    body.removeChild(div)
+                    div.innerHTML = ""
+                    done()
+                }, 50)
+
+            }, 50)
+        })
+    })
     describe('移除数组最后一个元素后确保$last正确无误', function() {
 
         it("async", function(done) {
@@ -207,6 +332,19 @@ define([], function() {
             expect(avalon.slice(a, -1, null)).to.eql(a.slice(-1, null))
         })
 
+    })
+
+    describe("确保不会误删元素", function() {
+
+        it("sync", function() {
+            var model = avalon.define("removeArray", function(vm) {
+                vm.array = [1, 2, 3, 4]
+            })
+            expect(model.array.remove(5)).to.eql([])
+            expect(model.array.removeAt(-1)).to.eql([])
+            delete avalon.vmodels["removeArray"]
+
+        })
     })
 
     describe('textNode.nodeValue === textNode.data', function() {
