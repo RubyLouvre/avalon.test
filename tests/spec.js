@@ -100,6 +100,19 @@ define([], function() {
 
     })
 
+
+    describe("commentInterpolate", function() {
+
+        it("sync", function() {
+
+            expect(/^<\S{3},\S{2}>$/.test(["<!--", "-->"])).to.eq(true)
+            expect(/^<\S{3},\S{2}>$/.test(["<aaa", "bb>"])).to.eq(true)
+
+            expect(/^<[^<>]{3},[^<>]{2}>$/.test(["<,,,", "-->"])).to.be(true)
+
+        })
+    })
+
     describe('range', function() {
 
         it("sync", function() {
@@ -167,7 +180,7 @@ define([], function() {
             }, 50)
         })
     })
-    
+
 
     describe("ms-each同时循环两行", function() {
         it("async", function(done) {
@@ -197,11 +210,10 @@ define([], function() {
             }, 500)
         })
     })
-        describe("重写一个空对象", function() {
+    describe("重写一个空对象", function() {
         it("async", function(done) {
             var vmodel = avalon.define("override2", function(vm) {
                 vm.first = {
-                   
                 }
             })
             var body = document.body

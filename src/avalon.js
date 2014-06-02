@@ -887,9 +887,21 @@
             window.require = builtin ? innerRequire : otherRequire
         },
         interpolate: function(array) {
-            if (Array.isArray(array) && array[0] && array[1] && array[0] !== array[1]) {
+            if (Array.isArray(array) && array[0] && array[1]) {
                 openTag = array[0]
                 closeTag = array[1]
+                if (openTag === closeTag) {
+                    avalon.error("openTag!==closeTag", TypeError)
+                }
+                if (/^<[^<>]{3},[^<>]{2}>$/.test(array)) {
+                    kernel.commentInterpolate = true
+                }else if (/[<>]/.test(array)) {
+                    if (DOC.documentMode === 9) {//IE9
+                        avalon.error("IE9不支持用<或>做定界符", TypeError)
+                    } else if (!/^<[^<>]+,[^<>]+>$/.test(array)) {
+                        avalon.error("定界符如果包含<或>，请保证openTag以<开头，closeTag以>结束", TypeError)
+                    }
+                }
                 var o = escapeRegExp(openTag),
                         c = escapeRegExp(closeTag)
                 rexpr = new RegExp(o + "(.*?)" + c)
@@ -1673,18 +1685,34 @@
         var node = parent.firstChild
         while (node) {
             var nextNode = node.nextSibling
-            if (node.nodeType === 1) {
-                scanTag(node, vmodels)
-            } else if (node.nodeType === 3 && rexpr.test(node.data)) {
-                scanText(node, vmodels)
+            var nodeType = node.nodeType
+            if (nodeType === 1) {
+                scanTag(node, vmodels) //扫描元素节点
+            } else if (nodeType === 3 && rexpr.test(node.data)) {
+                scanText(node, vmodels) //扫描文本节点
+            } else if (kernel.commentInterpolate && nodeType === 8 && !rexpr.test(node.nodeValue)) {
+                scanText(node, vmodels) //扫描注释节点
             }
             node = nextNode
         }
     }
 
     function scanText(textNode, vmodels) {
-        var bindings = [],
-                tokens = scanExpr(textNode.data)
+        var bindings = []
+        if (textNode.nodeType === 8) {
+            var leach = []
+            var value = trimFilter(textNode.nodeValue, leach)
+            var token = {
+                expr: true,
+                value: value
+            }
+            if (leach.length) {
+                token.filters = leach
+            }
+            var tokens = [token]
+        } else {
+            tokens = scanExpr(textNode.data)
+        }
         if (tokens.length) {
             for (var i = 0, token; token = tokens[i++]; ) {
                 var node = DOC.createTextNode(token.value) //将文本转换为文本节点，并替换原来的文本节点
@@ -1847,7 +1875,18 @@
             r11b = /U2hvcnRDaXJjdWl0/g,
             rlt = /&lt;/g,
             rgt = /&gt;/g
-
+    function trimFilter(value, leach) {
+        if (value.indexOf("|") > 0) { // 抽取过滤器 先替换掉所有短路与
+            value = value.replace(r11a, "U2hvcnRDaXJjdWl0") //btoa("ShortCircuit")
+            value = value.replace(rfilters, function(c, d, e) {
+                leach.push(d + (e || ""))
+                return ""
+            })
+            value = value.replace(r11b, "||") //还原短路与
+        }
+        return value
+    }
+    
     function scanExpr(str) {
         var tokens = [],
                 value, start = 0,
@@ -1872,14 +1911,7 @@
             value = str.slice(start, stop)
             if (value) { //处理{{ }}插值表达式
                 var leach = []
-                if (value.indexOf("|") > 0) { // 抽取过滤器 先替换掉所有短路与
-                    value = value.replace(r11a, "U2hvcnRDaXJjdWl0") //btoa("ShortCircuit")
-                    value = value.replace(rfilters, function(c, d, e) {
-                        leach.push(d + (e || ""))
-                        return ""
-                    })
-                    value = value.replace(r11b, "||") //还原短路与
-                }
+                value = trimFilter(value, leach)
                 tokens.push({
                     value: value,
                     expr: true,
@@ -2483,7 +2515,7 @@
                         log("debug: ms-if  " + e.message)
                     }
                 }
-                if (rbind.test(elem.outerHTML)) {
+                if (rbind.test(elem.outerHTML.replace(rlt, "<").replace(rgt, ">"))) {
                     scanAttr(elem, data.vmodels)
                 }
             } else { //移出DOM树，放进ifSanctuary DIV中，并用注释节点占据原位置
@@ -2869,6 +2901,7 @@
 
         var composing = false
 
+
         function compositionStart() {
             composing = true
         }
@@ -2979,10 +3012,14 @@
 
             }
         }
-        element.oldValue = element.value
+
         element.onTree = onTree
         launch(element)
+        element.oldValue = element.value
         registerSubscriber(data)
+        if (launch !== launchImpl) {
+            data.changed.call(element, element.value)
+        }
     }
     var TimerID, ribbon = [],
             launch = noop
@@ -3068,6 +3105,7 @@
                 clearInterval(id)
                 //先等到select里的option元素被扫描后，才根据model设置selected属性  
                 registerSubscriber(data)
+                data.changed.call(element, evaluator())
             } else {
                 innerHTML = currHTML
             }
@@ -3201,6 +3239,9 @@
             var n = this._add(arguments)
             notifySubscribers(this, "index", n > 2 ? n - 2 : 0)
             return n
+        },
+        pushArray: function(array) {
+            return this.push.apply(this, array)
         },
         unshift: function() {
             ap.unshift.apply(this.$model, arguments)
@@ -4194,13 +4235,13 @@
             doScrollCheck()
         }
     }
-
-    avalon.ready = function(fn) {
-        innerRequire("ready!", fn)
-    }
     avalon.config({
         loader: true
     })
+    avalon.ready = function(fn) {
+        innerRequire("ready!", fn)
+    }
+
     avalon.ready(function() {
         //IE6-9下这个通常只要1ms,而且没有副作用，不会发出请求，setImmediate如果只执行一次，与setTimeout一样要140ms上下
         if (window.VBArray && !window.setImmediate) {
