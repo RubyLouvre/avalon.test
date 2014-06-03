@@ -101,18 +101,6 @@ define([], function() {
     })
 
 
-    describe("commentInterpolate", function() {
-
-        it("sync", function() {
-
-            expect(/^<\S{3},\S{2}>$/.test(["<!--", "-->"])).to.eq(true)
-            expect(/^<\S{3},\S{2}>$/.test(["<aaa", "bb>"])).to.eq(true)
-
-            expect(/^<[^<>]{3},[^<>]{2}>$/.test(["<,,,", "-->"])).to.be(true)
-
-        })
-    })
-
     describe('range', function() {
 
         it("sync", function() {
@@ -189,20 +177,20 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<ul  ms-each-el="data.list"><li ms-if="$index ==  0">Name: {{el}}</li><li ms-if="$index !==  0" class="test">Name: {{el}}</li></ul>'
+            div.innerHTML = '<ul  ms-each-el="data.list"><li ms-if="$index ==  0">Name: {{el}}</li><li ms-if="$index !==  0" class="test">Name:{{el}}</li></ul>'
             body.appendChild(div)
             avalon.scan(div, vmodel)
             setTimeout(function() {
                 var ul = div.getElementsByTagName("ul")[0]
                 var lis = ul.children
-                expect(lis.length).to.be("7")
-                expect(lis[0].className).to.be("test")
+                expect(lis.length).to.be(7)
+                expect(lis[0].className).to.be("")
                 expect(lis[1].className).to.be("test")
                 expect(lis[2].className).to.be("test")
                 expect(lis[3].className).to.be("test")
-                expect(lis[4].innerHTML).to.be("test")
-                expect(lis[5].innerHTML).to.be("test")
-                expect(lis[6].innerHTML).to.be("test")
+                expect(lis[4].innerHTML).to.be("Name:5")
+                expect(lis[5].innerHTML).to.be("Name:6")
+                expect(lis[6].innerHTML).to.be("Name:7")
                 body.removeChild(div)
                 div.innerHTML = ""
                 delete avalon.vmodels["ms-each-double"]
