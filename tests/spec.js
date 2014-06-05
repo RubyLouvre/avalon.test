@@ -169,6 +169,67 @@ define([], function() {
         })
     })
 
+    describe("对象数组全部删光再添加,确保ms-duplex还可以用#403", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define("recycleEachProxy", function(vm) {
+                vm.array = [{
+                        a: 1
+                    }, {
+                        a: 2
+                    }, {
+                        a: 3
+                    }]
+                vm.add = function() {
+                    vmodel.array.push({
+                        a: 4
+                    })
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul><li ms-repeat="array" ms-click="$remove"><input ms-duplex="el.a">{{el.a}}</li></ul><button ms-click="add" type="button">add</button>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            var prop = "innerText" in div ? "innerText" : "textContent"
+            setTimeout(function() {
+                var lis = div.getElementsByTagName("li")
+                expect(lis.length).to.be(3)
+                expect(lis[0][prop].trim()).to.be("1")
+                expect(lis[1][prop].trim()).to.be("2")
+                expect(lis[2][prop].trim()).to.be("3")
+                lis[0].click()
+                lis = div.getElementsByTagName("li")
+                lis[0].click()
+                lis = div.getElementsByTagName("li")
+                lis[0].click()
+                setTimeout(function() {
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis.length).to.be(0)
+                    var button = div.getElementsByTagName("button")[0]
+                    button.click()
+                    button.click()
+                    button.click()
+                    setTimeout(function() {
+                        var lis = div.getElementsByTagName("li")
+                        expect(lis.length).to.be(3)
+                        expect(lis[0][prop].trim()).to.be("4")
+                        expect(lis[1][prop].trim()).to.be("4")
+                        expect(lis[2][prop].trim()).to.be("4")
+                        vmodel.array[2].a = 5
+                        expect(lis[2][prop].trim()).to.be("5")
+                        body.removeChild(div)
+                        div.innerHTML = ""
+                        delete avalon.vmodels["recycleEachProxy"]
+                        done()
+                    }, 300)
+
+                }, 300)
+
+
+            }, 300)
+
+        })
+    })
 
     describe("ms-each同时循环两行", function() {
         it("async", function(done) {
