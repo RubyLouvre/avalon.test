@@ -8,7 +8,7 @@
  avalon 1.3.1 2014.6.3
  ==================================================*/
 (function(DOC) {
-    var Registry = {} //将函数曝光到此对象上，方便访问器收集依赖
+    var prefix = "ms-"
     var expose = new Date - 0
     var subscribers = "$" + expose
     var window = this || (0, eval)("this") //http://addyosmani.com/blog/understanding-mvvm-a-guide-for-javascript-developers/
@@ -19,18 +19,18 @@
     var rnative = /\[native code\]/  //判定是否原生函数
     var rcomplexType = /^(?:object|array)$/
     var rwindow = /^\[object (Window|DOMWindow|global)\]$/
-    var class2type = {}
     var oproto = Object.prototype
     var ohasOwn = oproto.hasOwnProperty
-    var prefix = "ms-"
-    var W3C = window.dispatchEvent
-    var root = DOC.documentElement
     var serialize = oproto.toString
     var ap = Array.prototype
     var aslice = ap.slice
-    var head = DOC.head || DOC.getElementsByTagName("head")[0] //HEAD元素
+    var Registry = {} //将函数曝光到此对象上，方便访问器收集依赖
+    var W3C = window.dispatchEvent
+    var root = DOC.documentElement
+    var head = DOC.getElementsByTagName("head")[0] //HEAD元素
     var hyperspace = DOC.createDocumentFragment()
     var cinerator = DOC.createElement("div")
+    var class2type = {}
     "Boolean Number String Function Array Date RegExp Object Error".replace(rword, function(name) {
         class2type["[object " + name + "]"] = name.toLowerCase()
     })
@@ -902,9 +902,8 @@
                 kernel.commentInterpolate = true
             } else {
                 var test = openTag + "test" + closeTag
-                var cinerator = DOC.createElement("div")
                 cinerator.innerHTML = test
-                if (cinerator.innerHTML !== test && cinerator.innerHTML.indexOf("&lt;") !== 0) {
+                if (cinerator.innerHTML !== test && cinerator.innerHTML.indexOf("&lt;") >= 0) {
                     throw new SyntaxError("此定界符不合法")
                 }
                 cinerator.innerHTML = ""
@@ -3358,7 +3357,7 @@
                         b = bbb[i]
                 if (!isEqual(a, b)) {
                     sorted = true
-                    var index = getIndex(a, bbb, i)
+                    var index = bbb.indexOf(a, i)
                     var remove = this._splice(index, 1)[0]
                     var remove2 = bbb.splice(index, 1)[0]
                     this._splice(i, 0, remove)
@@ -3381,16 +3380,6 @@
         return val
     }
 
-    //取得el在array的位置
-
-    function getIndex(a, array, start) {
-        for (var i = start, n = array.length; i < n; i++) {
-            if (isEqual(a, array[i])) {
-                return i
-            }
-        }
-        return -1
-    }
     //============ each/repeat/with binding 用到的辅助函数与对象 ======================
     //得到某一元素节点或文档碎片对象下的所有注释节点
     var queryComments = DOC.createTreeWalker ? function(parent) {
