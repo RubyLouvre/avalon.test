@@ -35,7 +35,9 @@ define([], function() {
             expect(avalon.isPlainObject(void 0)).to.be(false)
             expect(avalon.isPlainObject(window)).to.be(false)
             expect(avalon.isPlainObject(document.body)).to.be(false)
-            expect(avalon.isPlainObject(window.location)).to.be(false)
+            if (window.dispatchEvent) {
+                expect(avalon.isPlainObject(window.location)).to.be(false)
+            }
             var fn = function() {
             }
             expect(avalon.isPlainObject(fn)).to.be(false)
@@ -44,13 +46,13 @@ define([], function() {
                 }
             };
             expect(avalon.isPlainObject(new fn)).to.be(false)
-            expect(avalon.isPlainObject({})).to.be.ok()
+            expect(avalon.isPlainObject({})).to.be(true)
             expect(avalon.isPlainObject({
                 aa: "aa",
                 bb: "bb",
                 cc: "cc"
-            })).to.be.ok()
-            expect(avalon.isPlainObject(new Object)).to.be.ok()
+            })).to.be(true)
+            expect(avalon.isPlainObject(new Object)).to.be(true)
         })
 
     })
@@ -109,6 +111,23 @@ define([], function() {
             expect(avalon.range(0, 30, 5)).to.eql([0, 5, 10, 15, 20, 25])
             expect(avalon.range(0, -10, -1)).to.eql([0, -1, -2, -3, -4, -5, -6, -7, -8, -9])
             expect(avalon.range(0)).to.eql([])
+        })
+
+    })
+
+    describe('xss', function() {
+
+        it("sync", function() {
+            var str = "<a href='javascript:void0'>sss</a><img onclick=333 src=http://tp2.sinaimg.cn/1823438905/180/40054009869/1/><p onfocus='aaa' ontap=\"ddd\" title=eee onkeypress=eee>onmousewheel=eee<span onmouseup='ddd'>ddd</span></p><script>alert(1)<\/script>"
+            var ret = avalon.filters.sanitize(str)
+            expect(ret.indexOf("javascript")).to.be(-1)
+            expect(ret.indexOf("onclick")).to.be(-1)
+            expect(ret.indexOf("ontap")).to.be(-1)
+            expect(ret.indexOf("onkeypress")).to.be(-1)
+            expect(ret.indexOf("onfocus")).to.be(-1)
+            expect(ret.indexOf("onmouseup")).to.be(-1)
+            expect(ret.indexOf("script")).to.be(-1)
+            expect(ret.indexOf("onmousewheel")).not.to.be(-1)
         })
 
     })
@@ -243,7 +262,7 @@ define([], function() {
             avalon.scan(div, vmodel)
             setTimeout(function() {
                 var ul = div.getElementsByTagName("ul")[0]
-                var lis = ul.children
+                var lis = ul.getElementsByTagName("li")
                 expect(lis.length).to.be(7)
                 expect(lis[0].className).to.be("")
                 expect(lis[1].className).to.be("test")
@@ -777,15 +796,17 @@ define([], function() {
             avalon.scan(div, model)
             setTimeout(function() {
                 var ul = div.getElementsByTagName("ul")[0]
-                expect(ul.children.length).to.be(3)
-                expect(ul.children[0].innerHTML).to.be("kkk:vvv")
-                expect(ul.children[1].innerHTML).to.be("kkk2:vvv2")
-                expect(ul.children[2].innerHTML).to.be("kkk3:vvv3")
+                var lis = ul.getElementsByTagName("li")
+                expect(lis.length).to.be(3)
+                expect(lis[0].innerHTML).to.be("kkk:vvv")
+                expect(lis[1].innerHTML).to.be("kkk2:vvv2")
+                expect(lis[2].innerHTML).to.be("kkk3:vvv3")
                 var ol = div.getElementsByTagName("ol")[0]
-                expect(ol.children.length).to.be(3)
-                expect(ol.children[0].innerHTML).to.be("kkk:vvv")
-                expect(ol.children[1].innerHTML).to.be("kkk2:vvv2")
-                expect(ol.children[2].innerHTML).to.be("kkk3:vvv3")
+                var lis = ol.getElementsByTagName("li")
+                expect(lis.length).to.be(3)
+                expect(lis[0].innerHTML).to.be("kkk:vvv")
+                expect(lis[1].innerHTML).to.be("kkk2:vvv2")
+                expect(lis[2].innerHTML).to.be("kkk3:vvv3")
                 body.removeChild(div)
                 done()
             }, 100)
