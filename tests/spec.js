@@ -473,7 +473,11 @@ define([], function() {
             avalon.scan(div, model)
             setTimeout(function() {//必须等扫描后才能开始测试，400ms是一个合理的数字
                 var ps = div.getElementsByTagName("input")
-                ps[2].click()
+                var input = ps[2]
+               input.click()
+                if(input.fireEvent){
+                    input.fireEvent("onchange")
+                }
             }, 100)
         })
 
