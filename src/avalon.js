@@ -113,7 +113,6 @@
                 return false;
             }
         } catch (e) {//IE8 9会在这里抛错
-            // IE8,9 Will throw exceptions on certain host objects #9897
             return false;
         }
         for (key in obj) {
@@ -763,7 +762,7 @@
             return this.replace(rtrim, "")
         }
     }
-      var hasDontEnumBug = !({'toString': null}).propertyIsEnumerable('toString'),
+    var hasDontEnumBug = !({'toString': null}).propertyIsEnumerable('toString'),
             hasProtoEnumBug = (function() {
             }).propertyIsEnumerable('prototype'),
             dontEnums = [
