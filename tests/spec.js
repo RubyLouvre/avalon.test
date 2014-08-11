@@ -1,6 +1,5 @@
 define([], function() {
 
-
     describe('isWindow', function() {
 
         it("sync", function() {
@@ -56,6 +55,31 @@ define([], function() {
         })
 
     })
+
+    describe('slice', function() {
+
+        it("sync", function() {
+            var a = [1, 2, 3, 4, 5, 6, 7]
+            expect(avalon.slice(a, 0)).to.eql(a.slice(0))
+            expect(avalon.slice(a, 1, 4)).to.eql(a.slice(1, 4))
+            expect(avalon.slice(a, -1)).to.eql(a.slice(-1))
+            expect(avalon.slice(a, 1, -2)).to.eql(a.slice(1, -2))
+            expect(avalon.slice(a, 1, NaN)).to.eql(a.slice(1, NaN))
+            expect(avalon.slice(a, 1, 2.1)).to.eql(a.slice(1, 2.1))
+            expect(avalon.slice(a, 1.1, 4)).to.eql(a.slice(1.1, 4))
+            expect(avalon.slice(a, 1.2, NaN)).to.eql(a.slice(1, NaN))
+            expect(avalon.slice(a, NaN)).to.eql(a.slice(NaN))
+            expect(avalon.slice(a, 1.3, 3.1)).to.eql(a.slice(1.3, 3.1))
+            expect(avalon.slice(a, 2, "XXX")).to.eql(a.slice(2, "XXX"))
+            expect(avalon.slice(a, -2)).to.eql(a.slice(-2))
+            expect(avalon.slice(a, 1, 9)).to.eql(a.slice(1, 9))
+            expect(avalon.slice(a, 20, -21)).to.eql(a.slice(20, -21))
+            expect(avalon.slice(a, -1, null)).to.eql(a.slice(-1, null))
+        })
+
+    })
+
+
 
 
     describe('isArrayLike', function() {
@@ -317,6 +341,7 @@ define([], function() {
             }, 50)
         })
     })
+
     describe('移除数组最后一个元素后确保$last正确无误', function() {
 
         it("async", function(done) {
@@ -349,7 +374,7 @@ define([], function() {
     })
 
     describe('对于不存在的属性将不移除对应的插值表达式或绑定属性', function() {
-//移除操作分别在parseExprProxy与executeBindings里
+        //移除操作分别在parseExprProxy与executeBindings里
         it("async", function(done) {
             var model = avalon.define('parseExprProxy', function(vm) {
                 vm.name = "名字"
@@ -391,28 +416,7 @@ define([], function() {
 
     })
 
-    describe('slice', function() {
 
-        it("sync", function() {
-            var a = [1, 2, 3, 4, 5, 6, 7]
-            expect(avalon.slice(a, 0)).to.eql(a.slice(0))
-            expect(avalon.slice(a, 1, 4)).to.eql(a.slice(1, 4))
-            expect(avalon.slice(a, -1)).to.eql(a.slice(-1))
-            expect(avalon.slice(a, 1, -2)).to.eql(a.slice(1, -2))
-            expect(avalon.slice(a, 1, NaN)).to.eql(a.slice(1, NaN))
-            expect(avalon.slice(a, 1, 2.1)).to.eql(a.slice(1, 2.1))
-            expect(avalon.slice(a, 1.1, 4)).to.eql(a.slice(1.1, 4))
-            expect(avalon.slice(a, 1.2, NaN)).to.eql(a.slice(1, NaN))
-            expect(avalon.slice(a, NaN)).to.eql(a.slice(NaN))
-            expect(avalon.slice(a, 1.3, 3.1)).to.eql(a.slice(1.3, 3.1))
-            expect(avalon.slice(a, 2, "XXX")).to.eql(a.slice(2, "XXX"))
-            expect(avalon.slice(a, -2)).to.eql(a.slice(-2))
-            expect(avalon.slice(a, 1, 9)).to.eql(a.slice(1, 9))
-            expect(avalon.slice(a, 20, -21)).to.eql(a.slice(20, -21))
-            expect(avalon.slice(a, -1, null)).to.eql(a.slice(-1, null))
-        })
-
-    })
 
     describe("确保不会误删元素", function() {
 
@@ -428,7 +432,6 @@ define([], function() {
     })
 
     describe('textNode.nodeValue === textNode.data', function() {
-
         it("sync", function() {
 
             var element = document.createElement("div")
@@ -522,7 +525,7 @@ define([], function() {
     })
 
     describe('ms-duplex-bool', function() {
-//ms-duplex-bool只能用于radio控件，会自动转换value为布尔，同步到VM
+        //ms-duplex-bool只能用于radio控件，会自动转换value为布尔，同步到VM
         it("async", function(done) {
             var model = avalon.define('test', function(vm) {
                 vm.aaa = false
@@ -666,7 +669,7 @@ define([], function() {
 
     });
     describe("iteratorCallback", function() {
-//ms-with, ms-each, ms-repeat的各种回调
+        //ms-with, ms-each, ms-repeat的各种回调
         it("async", function(done) {
             var model = avalon.define("test", function(vm) {
                 vm.array = [1, 2, 3, 4]
@@ -854,7 +857,9 @@ define([], function() {
         //检测值的同步
         it("async", function(done) {
             var model = avalon.define("ms-src", function(vm) {
-                vm.data = {}
+                vm.data = {
+                    path: 'http://su.bdimg.com/static/superplus/img/logo_white.png'
+                }
             })
             var body = document.body
             var div = document.createElement("div")
@@ -863,7 +868,7 @@ define([], function() {
             avalon.scan(div, model)
             setTimeout(function() {
                 var el = div.getElementsByTagName("img")[0]
-                expect(/undefined$/.test(el.src)).to.be(true)
+                expect(el.src).to.be("http://su.bdimg.com/static/superplus/img/logo_white.png")
                 body.removeChild(div)
                 done()
             }, 300)
@@ -915,7 +920,6 @@ define([], function() {
         })
     })
 
-
     describe("avalon.innerHTML", function() {
         //确保位置没有错乱
         it("sync", function() {
@@ -936,7 +940,6 @@ define([], function() {
 
         })
     })
-
 
     describe('newparser', function() {
         //确保位置没有错乱
