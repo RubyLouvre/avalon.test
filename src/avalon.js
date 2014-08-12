@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.2 2014.7.25
+ avalon 1.3.2 2014.8.11
  ==================================================*/
 (function(DOC) {
     /*********************************************************************
@@ -798,7 +798,7 @@
                         skipConstructor = ctor && ctor.prototype === object;
                 for (var j = 0; j < dontEnumsLength; j++) {
                     var dontEnum = dontEnums[j];
-                    if (!(skipConstructor && dontEnum === 'constructor') &&  ohasOwn.call(object, dontEnum)) {
+                    if (!(skipConstructor && dontEnum === 'constructor') && ohasOwn.call(object, dontEnum)) {
                         theKeys.push(dontEnum);
                     }
                 }
@@ -1046,7 +1046,7 @@
     var ClassListMethods = {
         toString: function() {
             var node = this.node//IE6,7元素节点不存在hasAttribute方法
-            return (node.hasAttribute ? node.getAttribute("class") : node.className).split(/\s+/).join(" ")
+            return (node.hasAttribute ? node.getAttribute("class") || "" : node.className).split(/\s+/).join(" ")
         },
         contains: function(cls) {
             return (" " + this + " ").indexOf(" " + cls + " ") > -1
@@ -1930,10 +1930,25 @@
                     //如果是以指定前缀命名的
                     var type = match[1]
                     var param = match[2] || ""
-                    msData[attr.name] = attr.value
+                    var value = attr.value
+                    var name = attr.name
+                    msData[name] = value
                     if (ons[type]) {
                         param = type
                         type = "on"
+                    } else if (type === "enabled") {//吃掉ms-enabled绑定,用ms-disabled代替
+                        type = "disabled"
+                        value = "!(" + value + ")"
+                    }
+                    //吃掉以下几个绑定,用ms-attr-*绑定代替
+                    if (type === "checked" || type === "selected" || type === "disabled" || type === "readonly") {
+                        param = type
+                        type = "attr"
+                        elem.removeAttribute(name)
+                        name = "ms-attr-" + param
+                        elem.setAttribute(name, value)
+                        match = [name]
+                        msData[name] = value
                     }
                     if (typeof bindingHandlers[type] === "function") {
                         var binding = {
@@ -1941,7 +1956,7 @@
                             param: param,
                             element: elem,
                             name: match[0],
-                            value: attr.value,
+                            value: value,
                             priority: type in priorityMap ? priorityMap[type] : type.charCodeAt(0) * 10 + (Number(param) || 0)
                         }
                         if (type === "if" && param.indexOf("loop") > -1) {
@@ -2531,15 +2546,6 @@
                 elem.setAttribute(key, String(val))
             }
         },
-        "checked": function(val, elem, data) {
-            var name = data.type;
-            if (name === "enabled") {
-                elem.disabled = !val
-            } else {
-                var propName = name === "readonly" ? "readOnly" : name
-                elem[propName] = !!val
-            }
-        },
         "repeat": function(method, pos, el) {
             if (method) {
                 var data = this
@@ -2780,10 +2786,6 @@
             }
             data.handlerName = "attr" //handleName用于处理多种绑定共用同一种bindingExecutor的情况
             parseExprProxy(text, vmodels, data, (simple ? null : scanExpr(data.value)))
-        },
-        "checked": function(data, vmodels) {
-            data.handlerName = "checked"
-            parseExprProxy(data.value, vmodels, data)
         },
         //根据VM的属性值或表达式的值切换类名，ms-class="xxx yyy zzz:flag" 
         //http://www.cnblogs.com/rubylouvre/archive/2012/12/17/2818540.html
@@ -3039,7 +3041,7 @@
                         elem.addEventListener("DOMNodeRemoved", function(e) {
                             if (e.target === this && !this.msRetain &&
                                     //#441 chrome浏览器对文本域进行Ctrl+V操作，会触发DOMNodeRemoved事件
-                                            (window.chrome ? this.tagName === "INPUT" && this.relatedNode.nodeType === 1 : 1)) {
+                                            (window.chrome ? this.tagName === "INPUT" && e.relatedNode.nodeType === 1 : 1)) {
                                 offTree()
                             }
                         })
@@ -3062,10 +3064,6 @@
     })
     "with,each".replace(rword, function(name) {
         bindingHandlers[name] = bindingHandlers.repeat
-    })
-    //============================= boolean preperty binding =======================
-    "disabled,enabled,readonly,selected".replace(rword, function(name) {
-        bindingHandlers[name] = bindingHandlers.checked
     })
     bindingHandlers.data = bindingHandlers.text = bindingHandlers.html
     //============================= string preperty binding =======================
@@ -3641,6 +3639,8 @@
             span.appendChild(tview)
         }
         span.setAttribute("ms-controller", id)
+        span.removeAttribute(data.callbackName)
+        span.removeAttribute("data-with-sorted")
         spans.push(span)
         transation.appendChild(span)
         proxy.$outer = data.$outer
