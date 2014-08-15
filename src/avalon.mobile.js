@@ -1,5 +1,5 @@
 //==================================================
-// avalon.mobile 1.3.2 2014.7.25，mobile 注意： 只能用于IE10及高版本的标准浏览器
+// avalon.mobile 1.3.2 2014.8.11，mobile 注意： 只能用于IE10及高版本的标准浏览器
 //==================================================
 (function(DOC) {
     var prefix = "ms-"
@@ -888,7 +888,7 @@
     function getWindow(node) {
         return node.window && node.document ? node : node.nodeType === 9 ? node.defaultView : false
     }
-    
+
     //=============================css相关==================================
     var cssHooks = avalon.cssHooks = {}
     var prefixes = ["", "-webkit-", "-o-", "-moz-", "-ms-"]
@@ -1210,11 +1210,10 @@
             return this
         },
         $fire: function(type) {
-            var bubbling = false, broadcast = false
-            if (type.match(/^bubble!(\w+)$/)) {
-                bubbling = type = RegExp.$1
-            } else if (type.match(/^capture!(\w+)$/)) {
-                broadcast = type = RegExp.$1
+            var special
+            if (/^(\w+)!(\w+)$/.test(type)) {
+                special = RegExp.$1
+                type = RegExp.$2
             }
             var events = this.$events
             var callbacks = events[type] || []
@@ -1229,15 +1228,15 @@
             var element = events.element
             if (element) {
                 var detail = [type].concat(args)
-                if (bubbling) {
+                if (special === "up") {//向上冒泡
                     W3CFire(element, "dataavailable", detail)
-                } else if (broadcast) {
+                } else if (special === "down") {//向下捕获
                     var alls = []
                     for (var i in avalon.vmodels) {
                         var v = avalon.vmodels[i]
                         if (v && v.$events && v.$events.element) {
                             var node = v.$events.element;
-                            if (avalon.contains(element, node) && element !== node) {
+                            if (element.contains(node) && element != node) {
                                 alls.push(v)
                             }
                         }
@@ -1245,6 +1244,13 @@
                     alls.forEach(function(v) {
                         v.$fire.apply(v, detail)
                     })
+                } else if (special === "all") {//全局广播
+                    for (var i in avalon.vmodels) {
+                        var v = avalon.vmodels[i]
+                        if (v !== this) {
+                            v.$fire.apply(v, detail)
+                        }
+                    }
                 }
             }
         }
@@ -1263,7 +1269,8 @@
                 data.handler()
             } else {
                 try {
-                    data.handler(fn.apply(0, data.args), data.element, data)
+                    var c = data.type === "on" ? data: fn.apply(0, data.args)
+                    data.handler(c, data.element, data)
                 } catch (e) {
                     delete data.evaluator
                     if (data.nodeType === 3) {
@@ -1441,7 +1448,8 @@
     var ons = oneObject("animationend,blur,change,input,click,dblclick,focus,keydown,keypress,keyup,mousedown,mouseenter,mouseleave,mousemove,mouseout,mouseover,mouseup,scroll,submit")
 
     function scanAttr(elem, vmodels) {
-        var attributes = elem.attributes
+        //防止setAttribute, removeAttribute时 attributes自动被同步,导致for循环出错
+        var attributes = avalon.slice(elem.attributes)
         var bindings = [],
                 msData = {},
                 match
@@ -1451,10 +1459,25 @@
                     //如果是以指定前缀命名的
                     var type = match[1]
                     var param = match[2] || ""
-                    msData[attr.name] = attr.value
+                    var value = attr.value
+                    var name = attr.name
+                    msData[name] = value
                     if (ons[type]) {
                         param = type
                         type = "on"
+                    } else if (type === "enabled") {//吃掉ms-enabled绑定,用ms-disabled代替
+                        type = "disabled"
+                        value = "!(" + value + ")"
+                    }
+                    //吃掉以下几个绑定,用ms-attr-*绑定代替
+                    if (type === "checked" || type === "selected" || type === "disabled" || type === "readonly") {
+                        param = type
+                        type = "attr"
+                        elem.removeAttribute(name)
+                        name = "ms-attr-" + param
+                        elem.setAttribute(name, value)
+                        match = [name]
+                        msData[name] = value
                     }
                     if (typeof bindingHandlers[type] === "function") {
                         var binding = {
@@ -1462,7 +1485,7 @@
                             param: param,
                             element: elem,
                             name: match[0],
-                            value: attr.value,
+                            value: value,
                             priority: type in priorityMap ? priorityMap[type] : type.charCodeAt(0) * 10 + (Number(param) || 0)
                         }
                         if (type === "if" && param === "loop") {
@@ -1500,7 +1523,8 @@
         }
         if (elem.patchRepeat) {
             elem.patchRepeat()
-            elem.patchRepeat = null
+            elem.patchRepeat = ""
+            elem.removeAttribute("patchRepeat")
         }
     }
 
@@ -1745,7 +1769,7 @@
             var lastIndex = code.lastIndexOf("\nreturn")
             var header = code.slice(0, lastIndex)
             var footer = code.slice(lastIndex)
-            code = header + "\nif(avalon.openComputedCollect) return ;" + footer
+            code = header + "\n" + footer
         } else { //其他绑定
             code = "\nreturn " + code + ";" //IE全家 Function("return ")出错，需要Function("return ;")
         }
@@ -1935,15 +1959,6 @@
                 elem[key] = val
             } else {
                 elem.setAttribute(key, String(val))
-            }
-        },
-        "checked": function(val, elem, data) {
-            var name = data.type;
-            if (name === "enabled") {
-                elem.disabled = !val
-            } else {
-                var propName = name === "readonly" ? "readOnly" : name
-                elem[propName] = !!val
             }
         },
         "repeat": function(method, pos, el) {
@@ -2215,10 +2230,6 @@
                 parseExprProxy(text, vmodels, data)
             }
         },
-        "checked": function(data, vmodels) {
-            data.handlerName = "checked"
-            parseExprProxy(data.value, vmodels, data)
-        },
         "duplex": function(data, vmodels) {
             var elem = data.element,
                     tagName = elem.tagName
@@ -2431,7 +2442,7 @@
                         elem.addEventListener("DOMNodeRemoved", function(e) {
                             if (e.target === this && !this.msRetain &&
                                     //#441 chrome浏览器对文本域进行Ctrl+V操作，会触发DOMNodeRemoved事件
-                                            (window.chrome ? this.tagName === "INPUT" && this.relatedNode.nodeType === 1 : 1)) {
+                                            (window.chrome ? this.tagName === "INPUT" && e.relatedNode.nodeType === 1 : 1)) {
                                 offTree()
                             }
                         })
@@ -2454,10 +2465,6 @@
     })
     "with,each".replace(rword, function(name) {
         bindingHandlers[name] = bindingHandlers.repeat
-    })
-    //============================= boolean preperty binding =======================
-    "disabled,enabled,readonly,selected".replace(rword, function(name) {
-        bindingHandlers[name] = bindingHandlers.checked
     })
     bindingHandlers.data = bindingHandlers.text = bindingHandlers.html
     //============================= string preperty binding =======================
@@ -2958,6 +2965,8 @@
             span.appendChild(tview)
         }
         span.setAttribute("ms-controller", id)
+        span.removeAttribute(data.callbackName)
+        span.removeAttribute("data-with-sorted")
         spans.push(span)
         transation.appendChild(span)
         proxy.$outer = data.$outer

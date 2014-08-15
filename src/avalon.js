@@ -777,18 +777,16 @@
             dontEnumsLength = dontEnums.length;
     if (!Object.keys) {
         Object.keys = function(object) { //ecma262v5 15.2.3.14
-
-            var isFn = typeof object === "function"
             var theKeys = [];
-            var skipProto = hasProtoEnumBug && isFn;
+            var skipProto = hasProtoEnumBug && typeof object === "function"
             if (typeof object === "string" || (object && object.callee)) {
                 for (var i = 0; i < object.length; ++i) {
-                    theKeys.push(String(i));
+                    theKeys.push(String(i))
                 }
             } else {
                 for (var name in object) {
-                    if (!(skipProto && name === 'prototype') && ohasOwn.call(object, name)) {
-                        theKeys.push(String(name));
+                    if (!(skipProto && name === "prototype") && ohasOwn.call(object, name)) {
+                        theKeys.push(String(name))
                     }
                 }
             }
@@ -797,13 +795,13 @@
                 var ctor = object.constructor,
                         skipConstructor = ctor && ctor.prototype === object;
                 for (var j = 0; j < dontEnumsLength; j++) {
-                    var dontEnum = dontEnums[j];
-                    if (!(skipConstructor && dontEnum === 'constructor') && ohasOwn.call(object, dontEnum)) {
-                        theKeys.push(dontEnum);
+                    var dontEnum = dontEnums[j]
+                    if (!(skipConstructor && dontEnum === "constructor") && ohasOwn.call(object, dontEnum)) {
+                        theKeys.push(dontEnum)
                     }
                 }
             }
-            return theKeys;
+            return theKeys
         }
     }
     if (!Array.isArray) {
@@ -1046,7 +1044,9 @@
     var ClassListMethods = {
         toString: function() {
             var node = this.node//IE6,7元素节点不存在hasAttribute方法
-            return (node.hasAttribute ? node.getAttribute("class") || "" : node.className).split(/\s+/).join(" ")
+            var cls = node.className
+            var str = typeof cls === "string" ? cls : cls.baseVal
+            return str.split(/\s+/).join(" ")
         },
         contains: function(cls) {
             return (" " + this + " ").indexOf(" " + cls + " ") > -1
@@ -1073,6 +1073,7 @@
             avalon.mix(node.classList = {
                 node: node
             }, ClassListMethods)
+            node.classList.toString = ClassListMethods.toString //fix IE
         }
         return node.classList
     }
@@ -1082,7 +1083,7 @@
             var el = this[0]
             //https://developer.mozilla.org/zh-CN/docs/Mozilla/Firefox/Releases/26
             if (cls && typeof cls === "string" && el && el.nodeType == 1) {
-                cls.replace(/\S+/, function(c) {
+                cls.replace(/\S+/g, function(c) {
                     ClassList(el)[method](c)
                 })
             }
@@ -1672,11 +1673,10 @@
             return this
         },
         $fire: function(type) {
-            var bubbling = false, broadcast = false
-            if (type.match(/^bubble!(\w+)$/)) {
-                bubbling = type = RegExp.$1
-            } else if (type.match(/^capture!(\w+)$/)) {
-                broadcast = type = RegExp.$1
+            var special
+            if (/^(\w+)!(\w+)$/.test(type)) {
+                special = RegExp.$1
+                type = RegExp.$2
             }
             var events = this.$events
             var callbacks = events[type] || []
@@ -1691,7 +1691,7 @@
             var element = events.element
             if (element) {
                 var detail = [type].concat(args)
-                if (bubbling) {
+                if (special === "up") {
                     if (W3C) {
                         W3CFire(element, "dataavailable", detail)
                     } else {
@@ -1699,7 +1699,7 @@
                         event.detail = detail
                         element.fireEvent("ondataavailable", event)
                     }
-                } else if (broadcast) {
+                } else if (special === "down") {
                     var alls = []
                     for (var i in avalon.vmodels) {
                         var v = avalon.vmodels[i]
@@ -1713,6 +1713,13 @@
                     alls.forEach(function(v) {
                         v.$fire.apply(v, detail)
                     })
+                } else if (special === "all") {
+                    for (var i in avalon.vmodels) {
+                        var v = avalon.vmodels[i]
+                        if (v !== this) {
+                            v.$fire.apply(v, detail)
+                        }
+                    }
                 }
             }
         }
@@ -1730,7 +1737,8 @@
                 data.handler()
             } else {
                 try {
-                    data.handler(fn.apply(0, data.args), data.element, data)
+                    var c = data.type === "on" ? data :fn.apply(0, data.args)
+                    data.handler(c, data.element, data)
                 } catch (e) {
                     delete data.evaluator
                     if (data.nodeType === 3) {
@@ -1833,6 +1841,7 @@
             }
             //ms-important不包含父VM，ms-controller相反
             vmodels = node === b ? [newVmodel] : [newVmodel].concat(vmodels)
+
             elem.removeAttribute(node.name) //removeAttributeNode不会刷新[ms-controller]样式规则
             newVmodel.$events.element = elem
             avalon.bind(elem, "dataavailable", function(e) {
@@ -1842,6 +1851,7 @@
             })
             avalon(elem).removeClass(node.name)
         }
+
         scanAttr(elem, vmodels) //扫描特性节点
     }
 
@@ -1920,7 +1930,8 @@
     var ons = oneObject("animationend,blur,change,input,click,dblclick,focus,keydown,keypress,keyup,mousedown,mouseenter,mouseleave,mousemove,mouseout,mouseover,mouseup,scroll,submit")
 
     function scanAttr(elem, vmodels) {
-        var attributes = getAttributes ? getAttributes(elem) : elem.attributes
+        //防止setAttribute, removeAttribute时 attributes自动被同步,导致for循环出错
+        var attributes = getAttributes ? getAttributes(elem) : avalon.slice(elem.attributes)
         var bindings = [],
                 msData = {},
                 match
@@ -1995,7 +2006,11 @@
 
         if (elem.patchRepeat) {
             elem.patchRepeat()
-            elem.patchRepeat = null
+            try {
+                elem.patchRepeat = ""
+                elem.removeAttribute("patchRepeat")
+            } catch (e) {
+            }
         }
 
     }
@@ -2289,7 +2304,7 @@
             var lastIndex = code.lastIndexOf("\nreturn")
             var header = code.slice(0, lastIndex)
             var footer = code.slice(lastIndex)
-            code = header + "\nif(avalon.openComputedCollect) return ;" + footer
+            code = header +"\n"+ footer
         } else { //其他绑定
             code = "\nreturn " + code + ";" //IE全家 Function("return ")出错，需要Function("return ;")
         }
@@ -3627,10 +3642,79 @@
             })
         }
     }
-    //为ms-each, ms-with, ms-repeat要循环的元素外包一个msloop临时节点，ms-controller的值为代理VM的$id
+    function getAll(elem) {//VML的getElementsByTagName("*")不能取得所有元素节点
+        var ret = []
+        function get(parent, array) {
+            var nodes = parent.childNodes
+            for (var i = 0, el; el = nodes[i++]; ) {
+                if (el.nodeType === 1) {
+                    array.push(el)
+                    get(el, array)
+                }
+            }
+            return array
+        }
+        return get(elem, ret)
+    }
+    function fixCloneNode(src) {
+        var target = src.cloneNode(true)
+        if (window.VBArray) {//只处理IE
+            var srcAll = getAll(src)
+            var destAll = getAll(target)
+            for (var k = 0, src; src = srcAll[k]; k++) {
+                if (src.nodeType === 1) {
+                    var nodeName = src.nodeName
+                    var dest = destAll[k]
+                    if (nodeName === "INPUT" && /radio|checkbox/.test(src.type)) {
+                        dest.defaultChecked = dest.checked = src.checked
+                        if (dest.value !== src.value) {
+                            dest.value = src.value//IE67复制后，value从on变成""
+                        }
+                    } else if (nodeName === "OBJECT") {
+                        if (dest.parentNode) {//IE6-10拷贝子孙元素失败了
+                            dest.outerHTML = src.outerHTML
+                        }
+                    } else if (nodeName === "OPTION") {
+                        dest.defaultSelected = dest.selected = src.defaultSelected
+                    } else if (nodeName === "INPUT" || nodeName === "TEXTAREA") {
+                        dest.defaultValue = src.defaultValue
+                    } else if (nodeName.toLowerCase() === nodeName && src.scopeName && src.outerText === "") {
+                        //src.tagUrn === "urn:schemas-microsoft-com:vml"//判定是否为VML元素
+                        var props = {}//处理VML元素
+                        src.outerHTML.replace(/\s*=\s*/g, "=").replace(/(\w+)="([^"]+)"/g, function(a, prop, val) {
+                            props[prop] = val
+                        }).replace(/(\w+)='([^']+)'/g, function(a, prop, val) {
+                            props[prop] = val
+                        })
+                        dest.outerHTML.replace(/\s*=\s*/g, "=").replace(/(\w+)="/g, function(a, prop) {
+                            delete props[prop]
+                        }).replace(/(\w+)='/g, function(a, prop) {
+                            delete props[prop]
+                        })
+                        delete props.urn
+                        delete props.implementation
+                        for (var i in props) {
+                            dest.setAttribute(i, props[i])
+                        }
+                        fixVML(dest)
+                    }
+                }
+            }
+        }
+        return target
+    }
 
+    function fixVML(node) {
+        if (node.currentStyle.behavior !== "url(#default#VML)") {
+            node.style.behavior = "url(#default#VML)"
+            node.style.display = "inline-block"
+            node.style.zoom = 1 //hasLayout
+        }
+    }
+
+    //为ms-each, ms-with, ms-repeat要循环的元素外包一个msloop临时节点，ms-controller的值为代理VM的$id
     function shimController(data, transation, spans, proxy) {
-        var tview = data.template.cloneNode(true)
+        var tview = fixCloneNode(data.template)
         var id = proxy.$id
         var span = tview.firstChild
         if (!data.fastRepeat) {
