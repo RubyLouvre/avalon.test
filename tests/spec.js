@@ -156,6 +156,21 @@ define([], function() {
 
     })
 
+    describe('addClass,removeClass', function() {
+
+        it("async", function(done) {
+            avalon.ready(function() {
+                var body = avalon(document.body)
+                body.addClass("aaaa bbbb cccc dddd bbbb")
+                expect(body[0].className).to.be("aaaa bbbb cccc dddd")
+                body.removeClass("aaaa bbbb cccc dddd bbbb")
+                expect(body[0].className).to.be("")
+                done()
+            })
+        })
+
+    })
+
     describe("重写一个对象", function() {
         it("async", function(done) {
             var vmodel = avalon.define("override1", function(vm) {
@@ -474,8 +489,8 @@ define([], function() {
             setTimeout(function() {//必须等扫描后才能开始测试，400ms是一个合理的数字
                 var ps = div.getElementsByTagName("input")
                 var input = ps[2]
-               input.click()
-                if(input.fireEvent){
+                input.click()
+                if (input.fireEvent) {
                     input.fireEvent("onchange")
                 }
             }, 100)
