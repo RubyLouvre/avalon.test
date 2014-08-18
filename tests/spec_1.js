@@ -354,9 +354,9 @@ define([], function() {
                     body.removeChild(div)
                     div.innerHTML = ""
                     done()
-                }, 300)
+                }, 50)
 
-            }, 300)
+            }, 50)
         })
     })
 
