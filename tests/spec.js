@@ -1,5 +1,11 @@
 define([], function() {
-
+    function fixCallback(calllback) {
+        if (avalon.version.indexOf("observe") > 0) {
+            setTimeout(calllback, 3000)
+        } else {
+            callback()
+        }
+    }
     describe('isWindow', function() {
 
         it("sync", function() {
@@ -274,7 +280,7 @@ define([], function() {
                         expect(lis[1][prop].trim()).to.be("4")
                         expect(lis[2][prop].trim()).to.be("4")
                         vmodel.array[2].a = 5
-                        setTimeout(function() {
+                        fixCallback(function() {
                             expect(lis[2][prop].trim()).to.be("5")
                             body.removeChild(div)
                             div.innerHTML = ""
@@ -341,7 +347,7 @@ define([], function() {
                         orange: "橙子"
                     }
                 }
-                setTimeout(function() {
+                fixCallback(function() {
                     var lis = div.getElementsByTagName("li")
                     expect(lis[0].innerHTML).to.be("@@@")
                     expect(lis[1].innerHTML).to.be("###")
@@ -354,7 +360,7 @@ define([], function() {
                     body.removeChild(div)
                     div.innerHTML = ""
                     done()
-                }, 300)
+                })
 
             }, 300)
         })
@@ -405,7 +411,7 @@ define([], function() {
             body.appendChild(div)
             avalon.scan(div, model)
 
-            setTimeout(function() {
+            fixCallback(function() {
                 var test = div.getElementsByTagName("div")[0]
                 var pp = div.getElementsByTagName("p")
                 expect(test.innerHTML).to.be("我的名字叫短笛,他的名字叫{{no}},100")
@@ -413,7 +419,7 @@ define([], function() {
                 expect(pp[1].getAttribute("ms-text")).to.be("no")
                 body.removeChild(div)
                 done()
-            }, 100)
+            })
         })
 
     })
@@ -531,15 +537,17 @@ define([], function() {
             body.appendChild(div)
             avalon.scan(div, model)
 
-            setTimeout(function() {//必须等扫描后才能开始测试，400ms是一个合理的数字
+            setTimeout(function() {//必须等扫描后才能开始测试，100-400ms是一个合理的数字
                 var ps = div.getElementsByTagName("p")
                 expect(ps[0].innerHTML).to.be("text")
                 expect(ps[1].innerHTML).to.be("444")
                 expect(ps[2].innerHTML).to.be("555")
                 model.ccc = "change"
-                expect(ps[0].innerHTML).to.be("change")
-                body.removeChild(div)
-                done()
+                fixCallback(function() {
+                    expect(ps[0].innerHTML).to.be("change")
+                    body.removeChild(div)
+                    done()
+                })
             }, 100)
 
         })
