@@ -1,10 +1,8 @@
 define([], function() {
     function fixCallback(calllback) {
-        if (avalon.version.indexOf("observe") > 0) {
+       // if (avalon.version.indexOf("observe") > 0) {
             setTimeout(calllback, 3000)
-        } else {
-            callback()
-        }
+     
     }
     describe('isWindow', function() {
 
