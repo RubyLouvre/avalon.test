@@ -1,8 +1,7 @@
 define([], function() {
     function fixCallback(calllback) {
-       // if (avalon.version.indexOf("observe") > 0) {
-            setTimeout(calllback, 3000)
-     
+        // if (avalon.version.indexOf("observe") > 0) {
+        setTimeout(calllback, 300)
     }
     describe('isWindow', function() {
 
@@ -195,6 +194,7 @@ define([], function() {
             avalon.scan(div, vmodel)
             setTimeout(function() {
                 var lis = div.getElementsByTagName("li")
+             
                 expect(lis[0].innerHTML).to.be("aaa")
                 expect(lis[1].innerHTML).to.be("bbb")
                 expect(lis[2].innerHTML).to.be("ccc")
@@ -225,9 +225,9 @@ define([], function() {
                     body.removeChild(div)
                     div.innerHTML = ""
                     done()
-                }, 50)
+                }, 300)
 
-            }, 50)
+            }, 300)
         })
     })
 
@@ -359,7 +359,7 @@ define([], function() {
                     body.removeChild(div)
                     div.innerHTML = ""
                     done()
-                })
+                }, 300)
 
             }, 300)
         })

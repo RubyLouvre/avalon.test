@@ -3783,6 +3783,7 @@
     avalon.ready = function(fn) {
         innerRequire("ready!", fn)
     }
+    console.log("000000000000000000000000000")
     avalon.config({
         loader: true
     })
