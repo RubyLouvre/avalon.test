@@ -278,13 +278,13 @@ define([], function() {
                         expect(lis[1][prop].trim()).to.be("4")
                         expect(lis[2][prop].trim()).to.be("4")
                         vmodel.array[2].a = 5
-                        fixCallback(function() {
-                            expect(lis[2][prop].trim()).to.be("5")
-                            body.removeChild(div)
-                            div.innerHTML = ""
-                            delete avalon.vmodels["recycleEachProxy"]
-                            done()
-                        })
+                        //  fixCallback(function() {
+                        expect(lis[2][prop].trim()).to.be("5")
+                        body.removeChild(div)
+                        div.innerHTML = ""
+                        delete avalon.vmodels["recycleEachProxy"]
+                        done()
+                        //   })
 
                     }, 300)
 
@@ -345,8 +345,9 @@ define([], function() {
                         orange: "橙子"
                     }
                 }
-                fixCallback(function() {
+                setTimeout(function() {
                     var lis = div.getElementsByTagName("li")
+                    console.log("重写一个空对象 lis.length = " + lis.length)
                     expect(lis[0].innerHTML).to.be("@@@")
                     expect(lis[1].innerHTML).to.be("###")
                     expect(lis[2].innerHTML).to.be("$$$")
@@ -409,7 +410,7 @@ define([], function() {
             body.appendChild(div)
             avalon.scan(div, model)
 
-            fixCallback(function() {
+            setTimeout(function() {
                 var test = div.getElementsByTagName("div")[0]
                 var pp = div.getElementsByTagName("p")
                 expect(test.innerHTML).to.be("我的名字叫短笛,他的名字叫{{no}},100")
@@ -541,12 +542,12 @@ define([], function() {
                 expect(ps[1].innerHTML).to.be("444")
                 expect(ps[2].innerHTML).to.be("555")
                 model.ccc = "change"
-                fixCallback(function() {
+                setTimeout(function() {
                     expect(ps[0].innerHTML).to.be("change")
                     body.removeChild(div)
                     done()
                 })
-            }, 100)
+            })
 
         })
 
