@@ -2359,30 +2359,6 @@
     /*********************************************************************
      *                     绑定处理系统                                    *
      **********************************************************************/
-    var cacheDisplay = oneObject("a,abbr,b,span,strong,em,font,i,kbd", "inline")
-    avalon.mix(cacheDisplay, oneObject("div,h1,h2,h3,h4,h5,h6,section,p", "block"))
-
-    function parseDisplay(nodeName, val) {
-        //用于取得此类标签的默认display值
-        nodeName = nodeName.toLowerCase()
-        if (!cacheDisplay[nodeName]) {
-            var node = DOC.createElement(nodeName)
-            root.appendChild(node)
-            if (W3C) {
-                val = getComputedStyle(node, null).display
-            } else {
-                val = node.currentStyle.display
-            }
-            root.removeChild(node)
-            cacheDisplay[nodeName] = val
-        }
-        return cacheDisplay[nodeName]
-    }
-    avalon.parseDisplay = parseDisplay
-    var supportDisplay = (function(td) {
-        return W3C ? getComputedStyle(td, null).display === "table-cell" : true
-    })(DOC.createElement("td"))
-
     var propMap = {//属性名映射
         "accept-charset": "acceptCharset",
         "char": "ch",
@@ -2397,7 +2373,7 @@
     anomaly.replace(rword, function(name) {
         propMap[name.toLowerCase()] = name
     })
-    var rdash = /\(([^)]*)\)/
+
     var cssText = "<style id='avalonStyle'>.avalonHide{ display: none!important }</style>"
     head.insertBefore(avalon.parseHTML(cssText), head.firstChild) //避免IE6 base标签BUG
     var rnoscripts = /<noscript.*?>(?:[\s\S]+?)<\/noscript>/img
@@ -2719,10 +2695,8 @@
             if (val) { //插回DOM树
                 if (!data.msInDocument) {
                     data.msInDocument = true
-                    try {
+                    if (placehoder.parentNode) {
                         placehoder.parentNode.replaceChild(elem, placehoder)
-                    } catch (e) {
-                        log("debug: ms-if  " + e.message)
                     }
                 }
                 if (rbind.test(elem.outerHTML.replace(rlt, "<").replace(rgt, ">"))) {
@@ -2731,10 +2705,8 @@
             } else { //移出DOM树，放进ifSanctuary DIV中，并用注释节点占据原位置
                 if (data.msInDocument) {
                     data.msInDocument = false
-                    try {
+                    if (elem.parentNode) {
                         elem.parentNode.replaceChild(placehoder, elem)
-                    } catch (e) {
-                        log("debug: ms-if: elem.parentNode= " + elem.parentNode)
                     }
                     placehoder.elem = elem
                     ifSanctuary.appendChild(elem)
@@ -2797,6 +2769,8 @@
         },
         "widget": noop
     }
+
+    var rdash = /\(([^)]*)\)/
     var rwhitespace = /^\s+$/
     //这里的函数只会在第一次被扫描后被执行一次，并放进行对应VM属性的subscribers数组内（操作方为registerSubscriber）
     var bindingHandlers = avalon.bindingHandlers = {
@@ -3004,7 +2978,7 @@
                     four = "$event"
             var eventType = data.param.replace(/-\d+$/, "") // ms-on-mousemove-10
             if (typeof bindingHandlers.on[eventType + "Hook"] === "function") {
-               bindingHandlers.on[eventType + "Hook"](data)
+                bindingHandlers.on[eventType + "Hook"](data)
             }
             if (value.indexOf("(") > 0 && value.indexOf(")") > -1) {
                 var matched = (value.match(rdash) || ["", ""])[1].trim()
@@ -3019,12 +2993,18 @@
             parseExprProxy(value, vmodels, data, four)
         },
         "visible": function(data, vmodels) {
-            var elem = data.element
-            if (!supportDisplay && !root.contains(elem)) { //fuck firfox 全家！
-                var display = parseDisplay(elem.tagName)
+            var elem = avalon(data.element)
+            var display = elem.css("display")
+            if (display === "none") {
+                var style = elem[0].style
+                var visibility = elem.css("visibility")
+                style.display = ""
+                style.visibility = "visible"
+                data.display = elem.css("display")
+                style.visibility = visibility === "visible" ? "" : visibility
+            } else {
+                data.display = display
             }
-            display = display || avalon(elem).css("display")
-            data.display = display === "none" ? parseDisplay(elem.tagName) : display
             parseExprProxy(data.value, vmodels, data)
         },
         "widget": function(data, vmodels) {
@@ -3346,6 +3326,8 @@
             var box = doc.compatMode === "BackCompat" ? doc.body : doc.documentElement
             ret.pageX = event.clientX + (box.scrollLeft >> 0) - (box.clientLeft >> 0)
             ret.pageY = event.clientY + (box.scrollTop >> 0) - (box.clientTop >> 0)
+            ret.wheelDeltaY = ret.wheelDelta
+            ret.wheelDeltaX = 0
         }
         ret.timeStamp = new Date - 0
         ret.originalEvent = event
@@ -3411,11 +3393,14 @@
          firefox wheel detlaY 下3 上-3
          IE9-11 wheel deltaY 下40 上-40
          chrome wheel deltaY 下100 上-100 */
+        var fixWheelType = document.onwheel !== void 0 ? "wheel" : "DOMMouseScroll"
+        var fixWheelDelta = fixWheelType === "wheel" ? "deltaY" : "detail"
         eventHooks.mousewheel = {
-            type: "DOMMouseScroll",
+            type: fixWheelType,
             deel: function(elem, fn) {
                 return function(e) {
-                    e.wheelDelta = e.detail > 0 ? -120 : 120
+                    e.wheelDeltaY = e.wheelDelta = e[fixWheelDelta] > 0 ? -120 : 120
+                    e.wheelDeltaX = 0
                     if (Object.defineProperty) {
                         Object.defineProperty(e, "type", {
                             value: "mousewheel"
@@ -4164,6 +4149,8 @@
         locate.SHORTMONTH = locate.MONTH
         filters.date.locate = locate
     }
+
+
     /*********************************************************************
      *                      AMD加载器                                   *
      **********************************************************************/
@@ -4528,12 +4515,18 @@
     /*********************************************************************
      *                           DOMReady                               *
      **********************************************************************/
-    var ready = W3C ? "DOMContentLoaded" : "readystatechange"
 
+    var readyList = []
     function fireReady() {
         if (DOC.body) { //  在IE8 iframe中doScrollCheck可能不正确
-            modules["ready!"].state = 2
-            innerRequire.checkDeps()
+            if (innerRequire) {
+                modules["ready!"].state = 2
+                innerRequire.checkDeps()
+            } else {
+                readyList.forEach(function(a) {
+                    a(avalon)
+                })
+            }
             fireReady = noop //隋性函数，防止IE9二次调用_checkDeps
         }
     }
@@ -4550,25 +4543,32 @@
     if (DOC.readyState === "complete") {
         setTimeout(fireReady) //如果在domReady之外加载
     } else if (W3C) {
-        DOC.addEventListener(ready, fireReady)
-        window.addEventListener("load", fireReady)
+        DOC.addEventListener("DOMContentLoaded", fireReady)
     } else {
         DOC.attachEvent("onreadystatechange", function() {
             if (DOC.readyState === "complete") {
                 fireReady()
             }
         })
-        window.attachEvent("onload", fireReady)
         if (root.doScroll) {
             doScrollCheck()
         }
     }
+    avalon.bind(window, "load", fireReady)
+
+    avalon.ready = function(fn) {
+        if (innerRequire) {
+            innerRequire("ready!", fn)
+        } else if (fireReady === noop) {
+            fn(avalon)
+        } else {
+            readyList.push(fn)
+        }
+    }
+
     avalon.config({
         loader: true
     })
-    avalon.ready = function(fn) {
-        innerRequire("ready!", fn)
-    }
 
     avalon.ready(function() {
         //IE6-9下这个通常只要1ms,而且没有副作用，不会发出请求，setImmediate如果只执行一次，与setTimeout一样要140ms上下
