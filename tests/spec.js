@@ -194,7 +194,7 @@ define([], function() {
             avalon.scan(div, vmodel)
             setTimeout(function() {
                 var lis = div.getElementsByTagName("li")
-             
+
                 expect(lis[0].innerHTML).to.be("aaa")
                 expect(lis[1].innerHTML).to.be("bbb")
                 expect(lis[2].innerHTML).to.be("ccc")
@@ -783,6 +783,31 @@ define([], function() {
                 buttons[1].click()
                 buttons = div.getElementsByTagName("button")
                 expect(buttons[1].innerHTML).to.be("d")
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+
+    })
+
+    describe('ms-attr-*', function() {
+
+        it("async", function(done) {
+            var model = avalon.define("ms-attr-*", function(vm) {
+                vm.aaa = "new"
+                vm.active = "ok"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<div ms-controller=\"ms-attr-*\"><input ms-attr-value='aaa' ms-attr-class='active' value='old'></div>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var input = div.getElementsByTagName("input")[0]
+
+                expect(input.value).to.be("new")
+                expect(input.className).to.be("ok")
+
                 body.removeChild(div)
                 done()
             }, 100)
