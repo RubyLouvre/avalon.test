@@ -433,8 +433,8 @@
         vmodel.$id = generateID()
         vmodel.$accessors = accessingProperties
         vmodel[subscribers] = []
-        for (var i in Observable) {
-            vmodel[i] = Observable[i]
+        for (var i in EventManager) {
+            vmodel[i] = EventManager[i]
         }
         Object.defineProperty(vmodel, "hasOwnProperty", {
             value: function(name) {
@@ -466,7 +466,7 @@
 
     function safeFire(a, b, c, d) {
         if (a.$events) {
-            Observable.$fire.call(a, b, c, d)
+            EventManager.$fire.call(a, b, c, d)
         }
     }
 
@@ -1182,9 +1182,9 @@
         }
     }
     /*********************************************************************
-     *                        自定义事件系统                                *
+     *                        事件管理器                                *
      **********************************************************************/
-    var Observable = {
+    var EventManager = {
         $watch: function(type, callback) {
             if (typeof callback === "function") {
                 var callbacks = this.$events[type]
@@ -1807,26 +1807,8 @@
     /*********************************************************************
      *绑定模块（实现“操作数据即操作DOM”的关键，将DOM操作放逐出前端开发人员的视野，让它交由框架自行处理，开发人员专致于业务本身） *                                 *
      **********************************************************************/
-    var cacheDisplay = oneObject("a,abbr,b,span,strong,em,font,i,kbd", "inline")
-    avalon.mix(cacheDisplay, oneObject("div,h1,h2,h3,h4,h5,h6,section,p", "block"))
 
-    /*用于取得此类标签的默认display值*/
-    function parseDisplay(nodeName, val) {
-        nodeName = nodeName.toLowerCase()
-        if (!cacheDisplay[nodeName]) {
-            var node = DOC.createElement(nodeName)
-            root.appendChild(node)
-            val = getComputedStyle(node, null).display
-            root.removeChild(node)
-            cacheDisplay[nodeName] = val
-        }
-        return cacheDisplay[nodeName]
-    }
-    avalon.parseDisplay = parseDisplay
-    var supportDisplay = (function(td) {
-        return getComputedStyle(td, null).display == "table-cell"
-    })(DOC.createElement("td"))
-    var rdash = /\(([^)]*)\)/
+
     head.insertAdjacentHTML("afterBegin", '<style id="avalonStyle">.avalonHide{ display: none!important }</style>')
     var getBindingCallback = function(elem, name, vmodels) {
         var callback = elem.getAttribute(name)
@@ -1840,7 +1822,7 @@
     }
     var cacheTmpls = avalon.templateCache = {}
     var ifSanctuary = DOC.createElement("div")
-    var rwhitespace = /^\s+$/
+
     //这里的函数每当VM发生改变后，都会被执行（操作方为notifySubscribers）
     var bindingExecutors = avalon.bindingExecutors = {
         "attr": function(val, elem, data) {
@@ -1866,10 +1848,19 @@
                 // ms-attr-name="yyy"  vm.yyy="ooo" 为元素设置name属性
                 var toRemove = (val === false) || (val === null) || (val === void 0)
                 if (toRemove) {
-                    elem.removeAttribute(attrName)
+                    return elem.removeAttribute(attrName)
+                }
+                if (window.VBArray) {//IE下需要区分固有属性与自定义属性
+                    var attrs = elem.attributes || {}
+                    var attr = attrs[attrName]
+                    var isInnate = attr && attr.expando === false
+                }
+                if (isInnate) {
+                    elem[attrName] = val
                 } else {
                     elem.setAttribute(attrName, val)
                 }
+
             } else if (method === "include" && val) {
                 var vmodels = data.vmodels
                 var rendered = getBindingCallback(elem, "data-include-rendered", vmodels)
@@ -2100,10 +2091,8 @@
             if (val) { //插回DOM树
                 if (!data.msInDocument) {
                     data.msInDocument = true
-                    try {
+                    if (placehoder.parentNode) {
                         placehoder.parentNode.replaceChild(elem, placehoder)
-                    } catch (e) {
-                        log("debug: ms-if " + e.message)
                     }
                 }
                 if (rbind.test(elem.outerHTML.replace(rlt, "<").replace(rgt, ">"))) {
@@ -2112,10 +2101,8 @@
             } else { //移出DOM树，放进ifSanctuary DIV中，并用注释节点占据原位置
                 if (data.msInDocument) {
                     data.msInDocument = false
-                    try {
+                    if (elem.parentNode) {
                         elem.parentNode.replaceChild(placehoder, elem)
-                    } catch (e) {
-                        log("debug: ms-if: elem.parentNode= " + elem.parentNode)
                     }
                     placehoder.elem = elem
                     ifSanctuary.appendChild(elem)
@@ -2174,6 +2161,9 @@
         },
         "widget": noop
     }
+
+    var rdash = /\(([^)]*)\)/
+    var rwhitespace = /^\s+$/
     //这里的函数只会在第一次被扫描后被执行一次，并放进行对应VM属性的subscribers数组内（操作方为registerSubscriber）
     var bindingHandlers = avalon.bindingHandlers = {
         //这是一个字符串属性绑定的范本, 方便你在title, alt,  src, href, include, css添加插值表达式
@@ -2389,12 +2379,18 @@
             parseExprProxy(value, vmodels, data)
         },
         "visible": function(data, vmodels) {
-            var elem = data.element
-            if (!supportDisplay && !root.contains(elem)) { //fuck firfox 全家！
-                var display = parseDisplay(elem.tagName)
+            var elem = avalon(data.element)
+            var display = elem.css("display")
+            if (display === "none") {
+                var style = elem[0].style
+                var visibility = elem.css("visibility")
+                style.display = ""
+                style.visibility = "visible"
+                data.display = elem.css("display")
+                style.visibility = visibility === "visible" ? "" : visibility
+            } else {
+                data.display = display
             }
-            display = display || avalon(elem).css("display")
-            data.display = display === "none" ? parseDisplay(elem.tagName) : display
             parseExprProxy(data.value, vmodels, data)
         },
         "widget": function(data, vmodels) {
@@ -2709,10 +2705,11 @@
          IE9-11 wheel deltaY 下40 上-40
          chrome wheel deltaY 下100 上-100 */
         eventHooks.mousewheel = {
-            type: "DOMMouseScroll",
+            type: "wheel",
             deel: function(elem, fn) {
                 return function(e) {
-                    e.wheelDelta = e.detail > 0 ? -120 : 120
+                    e.wheelDeltaY = e.wheelDelta = e.deltaY > 0 ? -120 : 120
+                    e.wheelDeltaX = 0
                     Object.defineProperty(e, "type", {
                         value: "mousewheel"
                     })
@@ -2737,8 +2734,8 @@
         array._.$watch("length", function(a, b) {
             array.$fire("length", a, b)
         })
-        for (var i in Observable) {
-            array[i] = Observable[i]
+        for (var i in EventManager) {
+            array[i] = EventManager[i]
         }
         avalon.mix(array, CollectionPrototype)
         return array
@@ -3392,7 +3389,7 @@
         filters.date.locate = locate
     }
     /*********************************************************************
-     *                      AMD Loader                                   *
+     *                     AMD加载器                                  *
      **********************************************************************/
 
     var innerRequire
@@ -3763,14 +3760,20 @@
         innerRequire.config = kernel
         innerRequire.checkDeps = checkDeps
     }
-    
+
     /*********************************************************************
      *                    DOMReady                                         *
      **********************************************************************/
-
+    var readyList = []
     function fireReady() {
-        modules["ready!"].state = 2
-        innerRequire.checkDeps()
+        if (innerRequire) {
+            modules["ready!"].state = 2
+            innerRequire.checkDeps()//隋性函数，防止IE9二次调用_checkDeps
+        } else {
+            readyList.forEach(function(a) {
+                a(avalon)
+            })
+        }
         fireReady = noop //隋性函数，防止IE9二次调用_checkDeps
     }
 
@@ -3781,9 +3784,14 @@
         window.addEventListener("load", fireReady)
     }
     avalon.ready = function(fn) {
-        innerRequire("ready!", fn)
+        if (innerRequire) {
+            innerRequire("ready!", fn)
+        } else if (fireReady === noop) {
+            fn(avalon)
+        } else {
+            readyList.push(fn)
+        }
     }
-    console.log("000000000000000000000000000")
     avalon.config({
         loader: true
     })
