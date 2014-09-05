@@ -4,6 +4,7 @@
 // 之前的avalon通过劫持内部set,get函数实现对视图的同步，VM与M是分开的，次世代avalon是直接在原对象上修改，
 // 通过Object.observe(chrome36可以直接使用)监听用户行为进行视图同步
 // 通过Promise实现avalon.nextTick
+// Element.prototype.remove 、  Comment.prototype.remove 
 //==================================================
 (function(DOC) {
     var prefix = "ms-"
@@ -315,7 +316,7 @@
         }
         var scope = {
             $events: {},
-            $watch: Observable.$watch
+            $watch: EventManager.$watch
         }
         factory(scope) //得到所有定义
         scope.$id = id
@@ -408,8 +409,8 @@
         scope.$id = generateID()
         scope.$accessors = {}
         scope[subscribers] = []
-        for (var i in Observable) {
-            scope[i] = Observable[i]
+        for (var i in EventManager) {
+            scope[i] = EventManager[i]
         }
 
         Object.defineProperties(scope, {
@@ -1022,9 +1023,9 @@
         }
     }
     /*********************************************************************
-     *                           Observable                                 *
+     *                           事件管理器                                 *
      **********************************************************************/
-    var Observable = {
+    var EventManager = {
         $watch: function(type, callback) {
             if (typeof callback === "function") {
                 var callbacks = this.$events[type]
@@ -1058,7 +1059,7 @@
         },
         $fire: function(type) {
             var special
-            if (/^(\w+)!(\w+)$/.test(type)) {
+            if (/^(\w+)!(\S+)$/.test(type)) {
                 special = RegExp.$1
                 type = RegExp.$2
             }
@@ -1106,10 +1107,10 @@
     /*********************************************************************
      *                         依赖收集与触发                             *
      **********************************************************************/
-
+    var ronduplex = /^(duplex|on)$/
     function registerSubscriber(data) {
         try {
-            var c = data.type === "on" ? data : data.evaluator.apply(0, data.args)
+            var c = ronduplex.test(data.type) ? data : data.evaluator.apply(0, data.args)
             data.handler(c, data.element, data)
         } catch (e) {
             delete data.evaluator
@@ -1473,7 +1474,7 @@
                 .split(rcommaInMiddle)
         return cacheVars(key, uniqSet(vars))
     }
-    
+
     function uniqSet(array) {
         var ret = [], unique = {}
         for (var i = 0; i < array.length; i++) {
@@ -1485,7 +1486,7 @@
         }
         return ret
     }
-    
+
     void function() {
         var test = [1, 2, 3, 1]
         if (typeof Set == "function" && (new Set(test)).size == 3) {
@@ -1641,10 +1642,12 @@
             }
             return
         } else if (dataType === "on") { //事件绑定
-            code = code.replace("(", ".call(this,")
-            if (data.hasArgs === "$event") {
-                names.push(data.hasArgs)
+            if (code.indexOf("(") === -1) {
+                code += ".call(this, $event)"
+            } else {
+                code = code.replace("(", ".call(this,")
             }
+            names.push("$event")
             code = "\nreturn " + code + ";" //IE全家 Function("return ")出错，需要Function("return ;")
             var lastIndex = code.lastIndexOf("\nreturn")
             var header = code.slice(0, lastIndex)
@@ -1688,26 +1691,7 @@
     /*********************************************************************
      *绑定模块（实现“操作数据即操作DOM”的关键，将DOM操作放逐出前端开发人员的视野，让它交由框架自行处理，开发人员专致于业务本身） *                                 *
      **********************************************************************/
-    var cacheDisplay = oneObject("a,abbr,b,span,strong,em,font,i,kbd", "inline")
-    avalon.mix(cacheDisplay, oneObject("div,h1,h2,h3,h4,h5,h6,section,p", "block"))
 
-    /*用于取得此类标签的默认display值*/
-    function parseDisplay(nodeName, val) {
-        nodeName = nodeName.toLowerCase()
-        if (!cacheDisplay[nodeName]) {
-            var node = DOC.createElement(nodeName)
-            root.appendChild(node)
-            val = getComputedStyle(node, null).display
-            root.removeChild(node)
-            cacheDisplay[nodeName] = val
-        }
-        return cacheDisplay[nodeName]
-    }
-    avalon.parseDisplay = parseDisplay
-    var supportDisplay = (function(td) {
-        return getComputedStyle(td, null).display == "table-cell"
-    })(DOC.createElement("td"))
-    var rdash = /\(([^)]*)\)/
     head.insertAdjacentHTML("afterBegin", '<style id="avalonStyle">.avalonHide{ display: none!important }</style>')
     var getBindingCallback = function(elem, name, vmodels) {
         var callback = elem.getAttribute(name)
@@ -1721,7 +1705,6 @@
     }
     var cacheTmpls = avalon.templateCache = {}
     var ifSanctuary = DOC.createElement("div")
-    var rwhitespace = /^\s+$/
     //这里的函数每当VM发生改变后，都会被执行（操作方为notifySubscribers）
     var bindingExecutors = avalon.bindingExecutors = {
         "attr": function(val, elem, data) {
@@ -1966,7 +1949,7 @@
                 var replaceNodes = avalon.slice(fragment.childNodes)
                 elem.insertBefore(fragment, data.replaceNodes[0] || null)
                 for (var i = 0, node; node = data.replaceNodes[i++]; ) {
-                    elem.removeChild(node)
+                    node.remove()//☆
                 }
                 data.replaceNodes = replaceNodes
             } else {
@@ -1981,10 +1964,8 @@
             if (val) { //插回DOM树
                 if (!data.msInDocument) {
                     data.msInDocument = true
-                    try {
+                    if (placehoder.parentNode) {
                         placehoder.parentNode.replaceChild(elem, placehoder)
-                    } catch (e) {
-                        log("debug: ms-if " + e.message)
                     }
                 }
                 if (rbind.test(elem.outerHTML.replace(rlt, "<").replace(rgt, ">"))) {
@@ -1993,24 +1974,19 @@
             } else { //移出DOM树，放进ifSanctuary DIV中，并用注释节点占据原位置
                 if (data.msInDocument) {
                     data.msInDocument = false
-                    elem.parentNode.replaceChild(placehoder, elem)
+                    if (elem.parentNode) {
+                        elem.parentNode.replaceChild(placehoder, elem)
+                    }
                     placehoder.elem = elem
                     ifSanctuary.appendChild(elem)
                 }
             }
         },
         "on": function(callback, elem, data) {
-            var fn = data.evaluator
-            var args = data.args
             var vmodels = data.vmodels
-            if (!data.hasArgs) {
-                callback = function(e) {
-                    return fn.apply(0, args).call(this, e)
-                }
-            } else {
-                callback = function(e) {
-                    return fn.apply(this, args.concat(e))
-                }
+            var fn = data.evaluator
+            callback = function(e) {
+                return fn.apply(this, data.args.concat(e))
             }
             elem.$vmodel = vmodels[0]
             elem.$vmodels = vmodels
@@ -2048,6 +2024,21 @@
             elem.style.display = val ? data.display : "none"
         },
         "widget": noop
+    }
+
+    var rdash = /\(([^)]*)\)/
+    var rwhitespace = /^\s+$/
+    function parseDisplay(nodeName, val) {
+        //用于取得此类标签的默认display值
+        var key = "_" + nodeName
+        if (!parseDisplay[key]) {
+            var node = DOC.createElement(nodeName)
+            root.appendChild(node)
+            val = getComputedStyle(node, null).display
+            root.removeChild(node)
+            parseDisplay[key] = val
+        }
+        return parseDisplay[key]
     }
     //这里的函数只会在第一次被扫描后被执行一次，并放进行对应VM属性的subscribers数组内（操作方为registerSubscriber）
     var bindingHandlers = avalon.bindingHandlers = {
@@ -2165,7 +2156,7 @@
                 var node
                 while (node = elem.firstChild) {
                     if (node.nodeType === 3 && rwhitespace.test(node.data)) {
-                        elem.removeChild(node)
+                        node.remove()//☆
                     } else {
                         template.appendChild(node)
                     }
@@ -2178,8 +2169,8 @@
                 var parent = data.parent
                 parent.insertBefore(data.template, endRepeat || null)
                 if (endRepeat) {
-                    parent.removeChild(endRepeat)
-                    parent.removeChild(data.startRepeat)
+                    endRepeat.remove()//☆
+                    data.startRepeat.remove()//☆
                     data.element = data.callbackElement
                 }
             }
@@ -2249,27 +2240,31 @@
             parseExprProxy(data.value, vmodels, data)
         },
         "on": function(data, vmodels) {
-            var value = data.value,
-                    four = "$event"
+            var value = data.value
             if (value.indexOf("(") > 0 && value.indexOf(")") > -1) {
                 var matched = (value.match(rdash) || ["", ""])[1].trim()
                 if (matched === "" || matched === "$event") { // aaa() aaa($event)当成aaa处理
-                    four = void 0
                     value = value.replace(rdash, "")
                 }
-            } else {
-                four = void 0
-            }
-            data.hasArgs = four
-            parseExprProxy(value, vmodels, data, four)
+            } 
+            parseExprProxy(value, vmodels, data)
         },
         "visible": function(data, vmodels) {
-            var elem = data.element
-            if (!supportDisplay && !root.contains(elem)) { //fuck firfox 全家！
-                var display = parseDisplay(elem.tagName)
+            var elem = avalon(data.element)
+            var display = elem.css("display")
+            if (display === "none") {
+                var style = elem[0].style
+                var has = /visibility/i.test(style.cssText)
+                var visible = elem.css("visibility")
+                style.display = ""
+                style.visibility = "hidden"
+                display = elem.css("display")
+                if (display === "none") {
+                    display = parseDisplay(elem[0].nodeName)
+                }
+                style.visibility = has ? visible : ""
             }
-            display = display || avalon(elem).css("display")
-            data.display = display === "none" ? parseDisplay(elem.tagName) : display
+            data.display = display
             parseExprProxy(data.value, vmodels, data)
         },
         "widget": function(data, vmodels) {
@@ -2581,8 +2576,8 @@
         array._.$watch("length", function(a, b) {
             array.$fire("length", a, b)
         })
-        for (var i in Observable) {
-            array[i] = Observable[i]
+        for (var i in EventManager) {
+            array[i] = EventManager[i]
         }
         avalon.mix(array, CollectionPrototype)
         return array
@@ -2821,7 +2816,7 @@
             data.group = 1
             if (!data.fastRepeat) {
                 data.group = span.childNodes.length
-                span.parentNode.removeChild(span)
+                span.remove()//☆
                 while (span.firstChild) {
                     transation.appendChild(span.firstChild)
                 }
@@ -3331,7 +3326,7 @@
                 function onerror(a, b) {
                     b && avalon.error(url + "对应资源不存在或没有开启 CORS")
                     setTimeout(function() {
-                        head.removeChild(link)
+                        link.remove()//☆
                     })
                 }
                 link.onerror = onerror
@@ -3413,7 +3408,7 @@
             node.onload = node.onerror = null
             if (onError) {
                 setTimeout(function() {
-                    head.removeChild(node)
+                    node.remove()//☆
                 })
                 log("debug: 加载 " + id + " 失败" + onError + " " + (!modules[id].state))
             } else {
