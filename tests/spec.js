@@ -697,6 +697,12 @@ define([], function() {
         })
 
     });
+    
+     describe("avalon.parseDisplay", function() {
+        it("sync", function() {
+            expect(typeof avalon.parseDisplay).to.be("function")
+        })
+     })
     describe("iteratorCallback", function() {
         //ms-with, ms-each, ms-repeat的各种回调
         it("async", function(done) {
