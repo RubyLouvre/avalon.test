@@ -427,7 +427,7 @@ define([], function() {
     describe('onclick', function() {
         //移除操作分别在parseExprProxy与executeBindings里
         it("async", function(done) {
-            var  val = false
+            var val = false
             var model = avalon.define('onclick', function(vm) {
                 vm.f1 = function() {
                     val = true
@@ -450,6 +450,26 @@ define([], function() {
             })
         })
 
+    })
+
+    describe('checkedx', function() {
+        it("async", function(done) {
+            var model = avalon.define('checkedx', function(vm) {
+                vm.x = 0
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<input type='radio' ms-checked='x'/>checkedx"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var test = div.getElementsByTagName("input")[0]
+                expect(test.checked).to.be(false)
+                body.removeChild(div)
+                done()
+
+            }, 300)
+        })
     })
     describe('oneObject', function() {
 
