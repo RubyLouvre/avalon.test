@@ -422,6 +422,35 @@ define([], function() {
         })
 
     })
+
+
+    describe('onclick', function() {
+        //移除操作分别在parseExprProxy与executeBindings里
+        it("async", function(done) {
+            var  val = false
+            var model = avalon.define('onclick', function(vm) {
+                vm.f1 = function() {
+                    val = true
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<button type='button' ms-click='f1'>click me</button>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+
+            setTimeout(function() {
+                var test = div.getElementsByTagName("button")[0]
+                test.click()
+                setTimeout(function() {
+                    expect(val).to.be(true)
+                    body.removeChild(div)
+                    done()
+                }, 300)
+            })
+        })
+
+    })
     describe('oneObject', function() {
 
         it("sync", function() {
@@ -697,12 +726,12 @@ define([], function() {
         })
 
     });
-    
-     describe("avalon.parseDisplay", function() {
+
+    describe("avalon.parseDisplay", function() {
         it("sync", function() {
             expect(typeof avalon.parseDisplay).to.be("function")
         })
-     })
+    })
     describe("iteratorCallback", function() {
         //ms-with, ms-each, ms-repeat的各种回调
         it("async", function(done) {
