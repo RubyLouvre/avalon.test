@@ -300,69 +300,71 @@
             return !!(this.compareDocumentPosition(arg) & 16)
         }
     }
-    function outerHTML() {
-        return new XMLSerializer().serializeToString(this)
-    }
-    function enumerateNode(node, targetNode) {
-        if (node && node.childNodes) {
-            var nodes = node.childNodes
-            for (var i = 0, el; el = nodes[i++]; ) {
-                if (el.tagName) {
-                    var svg = document.createElementNS(svgns,
-                            el.tagName.toLowerCase())
-                    // copy attrs
-                    ap.forEach.call(el.attributes, function(attr) {
-                        svg.setAttribute(attr.name, attr.value)
-                    })
-                    // 递归处理子节点
-                    enumerateNode(el, svg)
-                    targetNode.appendChild(svg)
-                }
-            }
-        }
-    }
-    var svgns = "http://www.w3.org/2000/svg"
-    var svg = document.createElementNS(svgns, "svg")
-    svg.innerHTML = '<Rect width="300" height="100"/>'
-    var supportSVGHTML = svg.firstChild && svg.firstChild.tagName === "rect"
-    if (window.SVGElement && !supportSVGHTML) {
-        Object.defineProperties(SVGElement.prototype, {
-            "outerHTML": {//IE9-11,firefox不支持SVG元素的innerHTML,outerHTML属性
-                enumerable: true,
-                configurable: true,
-                get: outerHTML,
-                set: function(html) {
-                    var tagName = this.tagName.toLowerCase(),
-                            par = this.parentNode,
-                            frag = avalon.parseHTML(html)
-                    // 操作的svg，直接插入
-                    if (tagName === "svg") {
-                        par.insertBefore(frag, this)
-                        // svg节点的子节点类似
-                    } else {
-                        var newFrag = document.createDocumentFragment()
-                        enumerateNode(frag, newFrag)
-                        par.insertBefore(newFrag, this)
+    if (window.SVGElement) {
+        var svgns = "http://www.w3.org/2000/svg"
+        var svg = document.createElementNS(svgns, "svg")
+        svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="yellow" />'
+        if (svg.firstChild !== "[object SVGCircleElement]") {// #409
+            function enumerateNode(node, targetNode) {
+                if (node && node.childNodes) {
+                    var nodes = node.childNodes
+                    for (var i = 0, el; el = nodes[i++]; ) {
+                        if (el.tagName) {
+                            var svg = document.createElementNS(svgns,
+                                    el.tagName.toLowerCase())
+                            // copy attrs
+                            ap.forEach.call(el.attributes, function(attr) {
+                                svg.setAttribute(attr.name, attr.value)
+                            })
+                            // 递归处理子节点
+                            enumerateNode(el, svg)
+                            targetNode.appendChild(svg)
+                        }
                     }
-                    par.removeChild(this)
-                }
-            },
-            "innerHTML": {
-                enumerable: true,
-                configurable: true,
-                get: function() {
-                    var s = this.outerHTML
-                    var ropen = new RegExp("<" + this.nodeName + '\\b(?:(["\'])[^"]*?(\\1)|[^>])*>', "i")
-                    var rclose = new RegExp("<\/" + this.nodeName + ">$", "i")
-                    return  s.replace(ropen, "").replace(rclose, "")
-                },
-                set: function(html) {
-                    avalon.clearHTML(this)
-                    var frag = avalon.parseHTML(html)
-                    enumerateNode(frag, this)
                 }
             }
-        })
+            Object.defineProperties(SVGElement.prototype, {
+                "outerHTML": {//IE9-11,firefox不支持SVG元素的innerHTML,outerHTML属性
+                    enumerable: true,
+                    configurable: true,
+                    get: function() {
+                        return new XMLSerializer().serializeToString(this)
+                    },
+                    set: function(html) {
+                        var tagName = this.tagName.toLowerCase(),
+                                par = this.parentNode,
+                                frag = avalon.parseHTML(html)
+                        // 操作的svg，直接插入
+                        if (tagName === "svg") {
+                            par.insertBefore(frag, this)
+                            // svg节点的子节点类似
+                        } else {
+                            var newFrag = document.createDocumentFragment()
+                            enumerateNode(frag, newFrag)
+                            par.insertBefore(newFrag, this)
+                        }
+                        par.removeChild(this)
+                    }
+                },
+                "innerHTML": {
+                    enumerable: true,
+                    configurable: true,
+                    get: function() {
+                        var s = this.outerHTML
+                        var ropen = new RegExp("<" + this.nodeName + '\\b(?:(["\'])[^"]*?(\\1)|[^>])*>', "i")
+                        var rclose = new RegExp("<\/" + this.nodeName + ">$", "i")
+                        return  s.replace(ropen, "").replace(rclose, "")
+                    },
+                    set: function(html) {
+                        if (avalon.clearHTML) {
+                            avalon.clearHTML(this)
+                            var frag = avalon.parseHTML(html)
+                            enumerateNode(frag, this)
+                        }
+                    }
+                }
+            })
+        }
     }
     /*********************************************************************
      *                           modelFactory                              *
@@ -377,7 +379,7 @@
         if (VMODELS[id]) {
             log("warning: " + $id + " 已经存在于avalon.vmodels中")
         }
-        if (typeof id == "object") {
+        if (typeof id === "object") {
             var model = modelFactory(id)
         } else {
             var scope = {
@@ -709,7 +711,7 @@
         avalon.fn[method + "Class"] = function(cls) {
             var el = this[0]
             //https://developer.mozilla.org/zh-CN/docs/Mozilla/Firefox/Releases/26
-            if (cls && typeof cls === "string" && el && el.nodeType == 1) {
+            if (cls && typeof cls === "string" && el && el.nodeType === 1) {
                 cls.replace(/\S+/g, function(c) {
                     el.classList[method](c)
                 })
@@ -969,7 +971,7 @@
                 array.push(obj)
             }
             var parent = node.parentNode
-            if (parent && parent.nodeType == 1) {
+            if (parent && parent.nodeType === 1) {
                 showHidden(parent, array)
             }
         }
@@ -1328,13 +1330,30 @@
             var args = aslice.call(arguments, 1)
             for (var i = list.length, fn; fn = list[--i]; ) {
                 var el = fn.element
-                if (el && !ifSanctuary.contains(el) && (!root.contains(el))) {
+                if (el) {
+                    var inTree = root.contains(el)
+                    var remove = !ifSanctuary.contains(el) && !inTree
+                    var comment = fn.placehoder
+                    if (fn.type === "if") {
+                        var recycle = fn.msInDocument ? !inTree : !avalon.contains(root, comment)
+                        if (recycle) {
+                            if (!fn.msInDocument && comment.elem) {
+                                ifSanctuary.removeChild(comment.elem)
+                            }
+                            fn.placehoder = fn.msInDocument = comment.elem = null
+                            remove = true
+                        }
+                    }
+                } else if (fn.type === "if") {
+                    remove = true
+                }
+                if (remove) {
                     list.splice(i, 1)
                     if (fn.proxies) {
                         recycleEachProxies(fn.proxies)
                         fn.proxies = fn.callbackElement = fn.template = fn.startRepeat = fn.endRepeat = null
                     }
-                    log("debug: remove " + fn.name)
+                    log("debug: remove " + fn.type)
                     fn = fn.element = fn.node = fn.evaluator = null
                 } else if (nofire === true) {
                     //nothing
@@ -1846,7 +1865,12 @@
     }
     var cacheTmpls = avalon.templateCache = {}
     var ifSanctuary = DOC.createElement("div")
-
+    var bools = "autofocus,autoplay,async,checked,controls,declare,disabled,defer,defaultChecked,defaultSelected" +
+            "contentEditable,isMap,loop,multiple,noHref,noResize,noShade,open,readOnly,selected"
+    var boolMap = {}
+    bools.replace(rword, function(name) {
+        boolMap[name.toLowerCase()] = name
+    })
     //这里的函数每当VM发生改变后，都会被执行（操作方为notifySubscribers）
     var bindingExecutors = avalon.bindingExecutors = {
         "attr": function(val, elem, data) {
@@ -1870,6 +1894,12 @@
                 // ms-attr-class="xxx" vm.xxx="aaa bbb ccc"将元素的className设置为aaa bbb ccc
                 // ms-attr-class="xxx" vm.xxx=false  清空元素的所有类名
                 // ms-attr-name="yyy"  vm.yyy="ooo" 为元素设置name属性
+                if (boolMap[attrName]) {
+                    var bool = boolMap[attrName]
+                    if (typeof elem[bool] === "boolean") {
+                        return elem[bool] = !!val
+                    }
+                }
                 var toRemove = (val === false) || (val === null) || (val === void 0)
                 if (toRemove) {
                     return elem.removeAttribute(attrName)
@@ -1956,7 +1986,7 @@
                             $elem.bind(abandon, function() {
                                 data.toggleClass && $elem.removeClass(data.newClass)
                             })
-                            data.hasBindEvent = 1
+                            data.hasBindEvent = true
                         }
                         break;
                 }
@@ -2136,7 +2166,7 @@
             callback = function(e) {
                 return fn.apply(this, data.args.concat(e))
             }
-            if (!avalon.configs.dettachVModels) {
+            if (!avalon.config.dettachVModels) {
                 elem.$vmodel = vmodels[0]
                 elem.$vmodels = vmodels
             }
@@ -2529,9 +2559,10 @@
 
         //当model变化时,它就会改变value的值
         data.handler = function() {
-            var curValue = evaluator()
-            if (curValue !== element.value) {
-                element.value = curValue
+            var val = evaluator()
+            val = val == null ? "" : val + ""
+            if (val !== element.value) {
+                element.value = val
             }
         }
         if (type === "checkbox" && fixType === "radio") {
@@ -2959,7 +2990,7 @@
     function expelFromSanctuary(parent) {
         var comments = queryComments(parent)
         for (var i = 0, comment; comment = comments[i++]; ) {
-            if (comment.nodeValue == "ms-if") {
+            if (comment.nodeValue === "ms-if") {
                 cinerator.appendChild(comment.elem)
             }
         }
@@ -3024,7 +3055,7 @@
             pos += 1
             for (var i = 0; i < pos; i++) {
                 ret = ret.nextSibling
-                if (ret == end)
+                if (ret === end)
                     return end
             }
             return ret
