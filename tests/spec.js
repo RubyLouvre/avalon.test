@@ -59,6 +59,15 @@ define([], function() {
 
     })
 
+
+//isFunction(eval,'eval'); 
+//isFunction(confirm, 'confirm'); 
+//isFunction(window.open, 'window.open'); 
+//isFunction(alert, 'alert'); 
+//isFunction(window.alert, 'window.alert'); 
+//isFunction(document.getElementById, 'document.getElementById'); 
+//isFunction(document.createElement, 'document.createElement'); 
+//isFunction(isFunction, 'isFunction'); 
     describe('slice', function() {
 
         it("sync", function() {
