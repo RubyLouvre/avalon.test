@@ -816,29 +816,34 @@
         }
     }
 
-    "Width,Height".replace(rword, function(name) {
+    "Width,Height".replace(rword, function(name) {//fix 481
         var method = name.toLowerCase(),
                 clientProp = "client" + name,
                 scrollProp = "scroll" + name,
                 offsetProp = "offset" + name
         cssHooks[method + ":get"] = function(node, which, override) {
-            var boxSizing = "content-box"
-            if (typeof override === "string") {
+            var boxSizing = -4
+            if (typeof override === "number") {
                 boxSizing = override
             }
             which = name === "Width" ? ["Left", "Right"] : ["Top", "Bottom"]
-            switch (boxSizing) {
-                case "content-box":
-                    return node["client" + name] - avalon.css(node, "padding" + which[0], true) -
-                            avalon.css(node, "padding" + which[1], true)
-                case "padding-box":
-                    return node["client" + name]
-                case "border-box":
-                    return node["offset" + name]
-                case "margin-box":
-                    return node["offset" + name] + avalon.css(node, "margin" + which[0], true) +
-                            avalon.css(node, "margin" + which[1], true)
+            var ret = node[offsetProp]   // border-box 0
+            if (boxSizing === 2) {       // margin-box 2
+                return ret
+                        + avalon.css(node, "margin" + which[0], true)
+                        + avalon.css(node, "margin" + which[1], true)
             }
+            if (boxSizing < 0) {        // padding-box  -2
+                ret = ret
+                        - avalon.css(node, "border" + which[0] + "Width", true)
+                        - avalon.css(node, "border" + which[1] + "Width", true)
+            }
+            if (boxSizing === -4) {     // content-box -4
+                ret = ret
+                        - avalon.css(node, "padding" + which[0], true)
+                        - avalon.css(node, "padding" + which[1], true)
+            }
+            return ret
         }
         cssHooks[method + "&get"] = function(node) {
             var hidden = [];
@@ -854,11 +859,10 @@
             }
             return val;
         }
-        avalon.fn[method] = function(value) {
+        avalon.fn[method] = function(value) { //会忽视其display
             var node = this[0]
             if (arguments.length === 0) {
-                if (node.setTimeout) { //取得窗口尺寸,IE9后可以用node.innerWidth /innerHeight代替
-                    //https://developer.mozilla.org/en-US/docs/Web/API/window.innerHeight
+                if (node.setTimeout) { //取得窗口尺寸,IE9后可以用window.innerWidth /innerHeight代替
                     return node["inner" + name]
                 }
                 if (node.nodeType === 9) { //取得页面尺寸
@@ -874,10 +878,10 @@
             }
         }
         avalon.fn["inner" + name] = function() {
-            return cssHooks[method + ":get"](this[0], void 0, "padding-box")
+            return cssHooks[method + ":get"](this[0], void 0, -2)
         }
         avalon.fn["outer" + name] = function(includeMargin) {
-            return cssHooks[method + ":get"](this[0], void 0, includeMargin === true ? "margin-box" : "border-box")
+            return cssHooks[method + ":get"](this[0], void 0, includeMargin === true ? 2 : 0)
         }
     })
     avalon.fn.offset = function() { //取得距离页面左右角的坐标
@@ -1084,7 +1088,7 @@
                         var v = avalon.vmodels[i]
                         if (v && v.$events && v.$events.element) {
                             var node = v.$events.element;
-                            if (avalon.contains(element, node) && element != node) {
+                            if (avalon.contains(element, node) && element !== node) {
                                 alls.push(v)
                             }
                         }
@@ -1134,6 +1138,11 @@
                 var el = fn.element
                 if (el && !ifSanctuary.contains(el) && (!root.contains(el))) {
                     list.splice(i, 1)
+                    if (fn.proxies) {
+                        recycleEachProxies(fn.proxies)
+                        fn.proxies = fn.callbackElement = fn.template = fn.startRepeat = fn.endRepeat = null
+                    }
+                    fn.element = fn.node = null
                     log("debug: remove " + fn.name)
                 } else if (fn.getter) {
                     fn.handler.apply(fn, args) //强制重新计算自身
@@ -1489,7 +1498,7 @@
 
     void function() {
         var test = [1, 2, 3, 1]
-        if (typeof Set == "function" && (new Set(test)).size == 3) {
+        if (typeof Set === "function" && (new Set(test)).size === 3) {
             var uniqSet = function(arr) {//重写uniqSet
                 var set = new Set(arr), ret = []
                 set.forEach(function(el) {
@@ -1758,7 +1767,7 @@
                 } else {
                     //IE系列与够新的标准浏览器支持通过ID取得元素（firefox14+）
                     //http://tjvantoll.com/2012/07/19/dom-element-references-as-global-variables/
-                    var el = val && val.nodeType == 1 ? val : DOC.getElementById(val)
+                    var el = val && val.nodeType === 1 ? val : DOC.getElementById(val)
                     avalon.nextTick(function() {
                         scanTemplate(el.innerText || el.innerHTML)
                     })
@@ -1820,11 +1829,7 @@
             if (method) {
                 var data = this
                 var group = data.group
-                var pp = data.startRepeat && data.startRepeat.parentNode
-                if (pp) { //fix  #300 #307
-                    data.parent = pp
-                }
-                var parent = data.parent
+                var parent = data.startRepeat ? data.startRepeat.parentNode : data.callbackElement// //fix  #300 #307
                 var proxies = data.proxies
                 var transation = hyperspace.cloneNode(false)
                 var spans = []
@@ -1854,9 +1859,7 @@
                         break
                     case "del": //将pos后的el个元素删掉(pos, el都是数字)
                         var removed = proxies.splice(pos, el)
-                        for (var i = 0, proxy; proxy = removed[i++]; ) {
-                            recycleEachProxy(proxy)
-                        }
+                        recycleEachProxies(removed)
                         expelFromSanctuary(removeView(locatedNode, group, el))
                         break
                     case "index": //将proxies中的第pos个起的所有元素重新索引（pos为数字，el用作循环变量）
@@ -1880,8 +1883,8 @@
                         } else {
                             transation = parent
                         }
+                        recycleEachProxies(proxies)
                         expelFromSanctuary(transation)
-                        proxies.length = 0
                         break
                     case "move": //将proxies中的第pos个元素移动el位置上(pos, el都是数字)
                         var t = proxies.splice(pos, 1)[0]
@@ -1925,7 +1928,7 @@
                         spans = null
                         break
                 }
-                iteratorCallback.call(data, arguments)
+                iteratorCallback.call(data, arguments, parent)
             }
         },
         "html": function(val, elem, data) {
@@ -2125,7 +2128,7 @@
             if (type !== "repeat") {
                 log("warning:建议使用ms-repeat代替ms-each, ms-with, ms-repeat只占用一个标签并且性能更好")
             }
-            var elem = data.callbackElement = data.parent = data.element //用于判定当前元素是否位于DOM树
+            var elem = data.callbackElement = data.element //用于判定当前元素是否位于DOM树
             data.getter = function() {
                 return this.evaluator.apply(0, this.args || [])
             }
@@ -2145,12 +2148,12 @@
             if (type === "repeat") {
                 var startRepeat = DOC.createComment("ms-repeat-start")
                 var endRepeat = DOC.createComment("ms-repeat-end")
-                data.element = data.parent = elem.parentNode
                 data.startRepeat = startRepeat
                 data.endRepeat = endRepeat
                 elem.removeAttribute(data.name)
-                data.parent.replaceChild(endRepeat, elem)
-                data.parent.insertBefore(startRepeat, endRepeat)
+                var parent = data.element = elem.parentNode
+                parent.replaceChild(endRepeat, elem)
+                parent.insertBefore(startRepeat, endRepeat)
                 template.appendChild(elem)
             } else {
                 var node
@@ -2166,11 +2169,11 @@
             data.rollback = function() {
                 bindingExecutors.repeat.call(data, "clear")
                 var endRepeat = data.endRepeat
-                var parent = data.parent
+                var parent = data.element
                 parent.insertBefore(data.template, endRepeat || null)
                 if (endRepeat) {
-                    endRepeat.remove()//☆
-                    data.startRepeat.remove()//☆
+                    parent.removeChild(endRepeat)
+                    parent.removeChild(data.startRepeat)
                     data.element = data.callbackElement
                 }
             }
@@ -2246,7 +2249,7 @@
                 if (matched === "" || matched === "$event") { // aaa() aaa($event)当成aaa处理
                     value = value.replace(rdash, "")
                 }
-            } 
+            }
             parseExprProxy(value, vmodels, data)
         },
         "visible": function(data, vmodels) {
@@ -2760,12 +2763,20 @@
 
     //============ each/repeat/with binding 用到的辅助函数与对象 ======================
     /*得到某一元素节点或文档碎片对象下的所有注释节点*/
-    var queryComments = function(parent) {
-        var tw = DOC.createTreeWalker(parent, NodeFilter.SHOW_COMMENT, null, null),
-                comment, ret = []
-        while (comment = tw.nextNode()) {
-            ret.push(comment)
+    //得到某一元素节点或文档碎片对象下的所有注释节点
+    var getComments = function(parent, array) {
+        var nodes = parent.childNodes
+        for (var i = 0, el; el = nodes[i++]; ) {
+            if (el.nodeType === 8) {
+                array.push(el)
+            } else if (el.nodeType === 1) {
+                getComments(el, array)
+            }
         }
+    }
+    var queryComments = function(parent) {
+        var ret = []
+        getComments(parent, ret)
         return ret
     }
     var deleteRange = DOC.createRange()
@@ -2775,7 +2786,7 @@
     function expelFromSanctuary(parent) {
         var comments = queryComments(parent)
         for (var i = 0, comment; comment = comments[i++]; ) {
-            if (comment.nodeValue == "ms-if") {
+            if (comment.nodeValue === "ms-if") {
                 cinerator.appendChild(comment.elem)
             }
         }
@@ -2785,10 +2796,9 @@
         cinerator.innerHTML = ""
     }
 
-    function iteratorCallback(args) {
+    function iteratorCallback(args, parent) {
         var callback = getBindingCallback(this.callbackElement, this.callbackName, this.vmodels)
         if (callback) {
-            var parent = this.parent
             checkScan(parent, function() {
                 callback.apply(parent, args)
             })
@@ -2839,7 +2849,7 @@
             pos += 1
             for (var i = 0; i < pos; i++) {
                 ret = ret.nextSibling
-                if (ret == end)
+                if (ret === end)
                     return end
             }
             return ret
@@ -2908,16 +2918,30 @@
         proxy.$id = "$proxy$" + data.type + Math.random()
         return proxy
     }
+    function recycleEachProxies(array) {
+        for (var i = 0, el; el = array[i++]; ) {
+            recycleEachProxy(el)
+        }
+        array.length = 0
+    }
+     function breakCircularReference(prop, arr) {
+        if (prop && Array.isArray(arr = prop[subscribers])) {
+            arr.forEach(function(el) {
+                if (el.evaluator) {
+                    el.evaluator = el.element = el.node = null
+                }
+            })
+            arr.length = 0
+        }
+    }
     function recycleEachProxy(proxy) {
         var obj = proxy.$accessors, name = proxy.$itemName;
-        ["$index", "$last", "$first"].forEach(function(prop) {
-            if (obj[prop]) {
-                obj[prop].length = 0
-            }
-        })
-        if (proxy[name]) {
-            proxy[name].length = 0;
-        }
+        breakCircularReference(obj.$index)
+        breakCircularReference(obj.$last)
+        breakCircularReference(obj.$first)
+        breakCircularReference(obj[name])
+        breakCircularReference(proxy[name])
+        proxy.$events = {}
         if (eachProxyPool.unshift(proxy) > kernel.maxRepeatSize) {
             eachProxyPool.pop()
         }

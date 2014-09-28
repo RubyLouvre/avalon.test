@@ -1,11 +1,11 @@
 /*==================================================
- Copyright 20013-2014 司徒正美 and other contributors
+ Copyright 2013-2014 司徒正美 and other contributors
  http://www.cnblogs.com/rubylouvre/
  https://github.com/RubyLouvre
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.4 2014.8.26
+ avalon 1.3.5 2014.9.15
  ==================================================*/
 (function(DOC) {
     /*********************************************************************
@@ -22,7 +22,8 @@
     var rword = /[^, ]+/g //切割字符串为一个个小块，以空格或豆号分开它们，结合replace实现字符串的forEach
     var rnative = /\[native code\]/  //判定是否原生函数
     var rcomplexType = /^(?:object|array)$/
-    var rwindow = /^\[object (Window|DOMWindow|global)\]$/
+    var rsvg = /^\[object SVG\w*Element\]$/
+    var rwindow = /^\[object (?:Window|DOMWindow|global)\]$/
     var oproto = Object.prototype
     var ohasOwn = oproto.hasOwnProperty
     var serialize = oproto.toString
@@ -188,7 +189,7 @@
     avalon.mix({
         rword: rword,
         subscribers: subscribers,
-        version: 1.34,
+        version: 1.35,
         ui: {},
         log: log,
         slice: W3C ? function(nodes, start, end) {
@@ -380,7 +381,7 @@
     avalon.define = function(id, factory) {
         var $id = id.$id || id
         if (!$id) {
-            log("warning: 必须指定$id")
+            log("warning: vm必须指定$id")
         }
         if (VMODELS[id]) {
             log("warning: " + $id + " 已经存在于avalon.vmodels中")
@@ -417,17 +418,18 @@
         var accessingProperties = {} //监控属性
         var normalProperties = {} //普通属性
         var computedProperties = [] //计算属性
-        var watchProperties = arguments[2] || {} //强制要监听的属性
+        var watchProperties = avalon.mix({}, arguments[2] || {}) //强制要监听的属性
+
         var skipArray = scope.$skipArray //要忽略监控的属性
         for (var i = 0, name; name = skipProperties[i++]; ) {
-            if (typeof name !== "string") {
-                log("warning:$skipArray[" + name + "] must be a string")
-            }
             delete scope[name]
             normalProperties[name] = true
         }
         if (Array.isArray(skipArray)) {
             for (var i = 0, name; name = skipArray[i++]; ) {
+                if (typeof name !== "string") {
+                    log("warning:$skipArray[" + name + "] must be a string")
+                }
                 normalProperties[name] = true
             }
         }
@@ -904,11 +906,13 @@
     function outerHTML() {
         return new XMLSerializer().serializeToString(this)
     }
+
+
     if (window.SVGElement) {
         var svgns = "http://www.w3.org/2000/svg"
         var svg = document.createElementNS(svgns, "svg")
         svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="yellow" />'
-        if (svg.firstChild !== "[object SVGCircleElement]") {// #409
+        if (!rsvg.test(svg.firstChild)) {// #409
             function enumerateNode(node, targetNode) {
                 if (node && node.childNodes) {
                     var nodes = node.childNodes
@@ -1746,7 +1750,7 @@
             }
         }
     }
-    var ravalon = /(\w+)\[(avalonctrl)="(\d+)"\]/
+    var ravalon = /(\w+)\[(avalonctrl)="(\S+)"\]/
     var findNode = document.querySelector ? function(str) {
         return  document.querySelector(str)
     } : function(str) {
@@ -1820,7 +1824,7 @@
                             remove = true
                         }
                     }
-                } else if (fn.type === "if") {
+                } else if (fn.type === "if" || fn.node === null) {
                     remove = true
                 }
                 if (remove) { //如果它没有在DOM树
@@ -1837,7 +1841,7 @@
                     fn.apply(0, args) //强制重新计算自身
                 } else if (fn.getter) {
                     fn.handler.apply(fn, args) //处理监控数组的方法
-                } else {
+                } else if (fn.node || fn.element) {
                     var fun = fn.evaluator || noop
                     fn.handler(fun.apply(0, fn.args || []), el, fn)
                 }
@@ -1893,12 +1897,12 @@
             }
             //ms-important不包含父VM，ms-controller相反
             vmodels = node === b ? [newVmodel] : [newVmodel].concat(vmodels)
-            elem.removeAttribute(node.name) //removeAttributeNode不会刷新[ms-controller]样式规则
-            var id = setTimeout("1")
+            var name = node.name
+            elem.removeAttribute(name) //removeAttributeNode不会刷新[ms-controller]样式规则
 
-            elem.setAttribute("avalonctrl", id + "")
-            newVmodel.$events.expr = elem.tagName + '[avalonctrl="' + id + '"]'
-            avalon(elem).removeClass(node.name)
+            elem.setAttribute("avalonctrl", node.value)
+            newVmodel.$events.expr = elem.tagName + '[avalonctrl="' + node.value + '"]'
+            avalon(elem).removeClass(name)
 
         }
         scanAttr(elem, vmodels) //扫描特性节点
@@ -1970,6 +1974,7 @@
     var priorityMap = {
         "if": 10,
         "repeat": 90,
+        "data": 100,
         "widget": 110,
         "each": 1400,
         "with": 1500,
@@ -1977,7 +1982,9 @@
         "on": 3000
     }
     var events = oneObject("animationend,blur,change,input,click,dblclick,focus,keydown,keypress,keyup,mousedown,mouseenter,mouseleave,mousemove,mouseout,mouseover,mouseup,scan,scroll,submit")
-
+    function bindingSorter(a, b) {
+        return a.priority - b.priority
+    }
     function scanAttr(elem, vmodels) {
         //防止setAttribute, removeAttribute时 attributes自动被同步,导致for循环出错
         var attributes = getAttributes ? getAttributes(elem) : avalon.slice(elem.attributes)
@@ -2032,9 +2039,7 @@
                 }
             }
         }
-        bindings.sort(function(a, b) {
-            return a.priority - b.priority
-        })
+        bindings.sort(bindingSorter)
         if (msData["ms-checked"] && msData["ms-duplex"]) {
             log("warning!一个元素上不能同时定义ms-checked与ms-duplex")
         }
@@ -2058,6 +2063,7 @@
             try {
                 elem.patchRepeat = ""
                 elem.removeAttribute("patchRepeat")
+                elem.removeAttribute("avalonctrl")
             } catch (e) {
             }
         }
@@ -2190,9 +2196,14 @@
 
     var keywords =
             // 关键字
-            "break,case,catch,continue,debugger,default,delete,do,else,false" + ",finally,for,function,if,in,instanceof,new,null,return,switch,this" + ",throw,true,try,typeof,var,void,while,with"
+            "break,case,catch,continue,debugger,default,delete,do,else,false" +
+            ",finally,for,function,if,in,instanceof,new,null,return,switch,this" +
+            ",throw,true,try,typeof,var,void,while,with"
             // 保留字
-            + ",abstract,boolean,byte,char,class,const,double,enum,export,extends" + ",final,float,goto,implements,import,int,interface,long,native" + ",package,private,protected,public,short,static,super,synchronized" + ",throws,transient,volatile"
+            + ",abstract,boolean,byte,char,class,const,double,enum,export,extends" +
+            ",final,float,goto,implements,import,int,interface,long,native" +
+            ",package,private,protected,public,short,static,super,synchronized" +
+            ",throws,transient,volatile"
 
             // ECMA 5 - use strict
             + ",arguments,let,yield"
@@ -2260,7 +2271,7 @@
         return cache;
     }
     //缓存求值函数，以便多次利用
-    var cacheExprs = createCache(256)
+    var cacheExprs = createCache(128)
     //取得求值函数及其传参
     var rduplex = /\w\[.*\]|\w\.\w/
     var rproxy = /(\$proxy\$[a-z]+)\d+$/
@@ -2482,7 +2493,7 @@
                 if (window.VBArray && !isInnate) {//IE下需要区分固有属性与自定义属性
                     if (isVML(elem)) {
                         isInnate = true
-                    } else {
+                    } else if (!rsvg.test(elem)) {
                         var attrs = elem.attributes || {}
                         var attr = attrs[attrName]
                         isInnate = attr ? attr.expando === false : attr === null
@@ -3685,15 +3696,21 @@
 
     //============ each/repeat/with binding 用到的辅助函数与对象 ======================
     //得到某一元素节点或文档碎片对象下的所有注释节点
-    var queryComments = DOC.createTreeWalker ? function(parent) {
-        var tw = DOC.createTreeWalker(parent, NodeFilter.SHOW_COMMENT, null, null),
-                comment, ret = []
-        while (comment = tw.nextNode()) {
-            ret.push(comment)
+    //得到某一元素节点或文档碎片对象下的所有注释节点
+    var getComments = function(parent, array) {
+        var nodes = parent.childNodes
+        for (var i = 0, el; el = nodes[i++]; ) {
+            if (el.nodeType === 8) {
+                array.push(el)
+            } else if (el.nodeType === 1) {
+                getComments(el, array)
+            }
         }
+    }
+    var queryComments = function(parent) {
+        var ret = []
+        getComments(parent, ret)
         return ret
-    } : function(parent) {
-        return parent.getElementsByTagName("!")
     }
     //将通过ms-if移出DOM树放进ifSanctuary的元素节点移出来，以便垃圾回收
 
@@ -3903,6 +3920,9 @@
             source.$skipArray = [param]
         }
         proxy = modelFactory(source, 0, watchEachOne)
+        proxy.$watch(param, function(val) {
+            data.getter().set(proxy.$index, val)
+        })
         proxy.$id = "$proxy$" + data.type + Math.random()
         return proxy
     }
@@ -3912,14 +3932,24 @@
         }
         array.length = 0
     }
+    function breakCircularReference(prop, arr) {
+        if (prop && Array.isArray(arr = prop[subscribers])) {
+            arr.forEach(function(el) {
+                if (el.evaluator) {
+                    el.evaluator = el.element = el.node = null
+                }
+            })
+            arr.length = 0
+        }
+    }
     function recycleEachProxy(proxy) {
         var obj = proxy.$accessors, name = proxy.$itemName;
-        ["$index", "$last", "$first"].forEach(function(prop) {
-            obj[prop][subscribers].length = 0
-        })
-        if (proxy[name][subscribers]) {
-            proxy[name][subscribers].length = 0;
-        }
+        breakCircularReference(obj.$index)
+        breakCircularReference(obj.$last)
+        breakCircularReference(obj.$first)
+        breakCircularReference(obj[name])
+        breakCircularReference(proxy[name])
+        proxy.$events = {}
         if (eachProxyPool.unshift(proxy) > kernel.maxRepeatSize) {
             eachProxyPool.pop()
         }
