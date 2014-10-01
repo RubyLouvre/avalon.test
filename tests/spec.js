@@ -154,15 +154,15 @@ define([], function() {
     describe('xss', function() {
 
         it("sync", function() {
-            var str = "<a href='javascript:void0'>sss</a><img onclick=333 src=http://tp2.sinaimg.cn/1823438905/180/40054009869/1/><p onfocus='aaa' ontap=\"ddd\" title=eee onkeypress=eee>onmousewheel=eee<span onmouseup='ddd'>ddd</span></p><script>alert(1)<\/script>"
+            var str = "<a href='javascript:fix'>sss</a><img onclick=333 src=http://tp2.sinaimg.cn/1823438905/180/40054009869/1/><p onfocus='aaa' ontap=\"ddd\" title=eee onkeypress=eee>onmousewheel=eee<span onmouseup='ddd'>ddd</span></p><script>alert(1)<\/script>"
             var ret = avalon.filters.sanitize(str)
-            expect(ret.indexOf("javascript")).to.be(-1)
+            expect(ret.indexOf("fix")).to.be(-1)
             expect(ret.indexOf("onclick")).to.be(-1)
             expect(ret.indexOf("ontap")).to.be(-1)
             expect(ret.indexOf("onkeypress")).to.be(-1)
             expect(ret.indexOf("onfocus")).to.be(-1)
             expect(ret.indexOf("onmouseup")).to.be(-1)
-            expect(ret.indexOf("script")).to.be(-1)
+            expect(ret.indexOf("<script")).to.be(-1)
             expect(ret.indexOf("onmousewheel")).not.to.be(-1)
         })
 
