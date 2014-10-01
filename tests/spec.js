@@ -198,7 +198,7 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<ul><li ms-repeat="first.array">{{el}}</li></ul><ol><li ms-repeat="first.object">{{$key}}:{{$val}}</li></ol>'
+            div.innerHTML = '<h2>重写一个对象</h2><ul><li ms-repeat="first.array">{{el}}</li></ul><ol><li ms-repeat="first.object">{{$key}}:{{$val}}</li></ol>'
             body.appendChild(div)
             avalon.scan(div, vmodel)
             setTimeout(function() {
@@ -312,7 +312,7 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<ul  ms-each-el="data.list"><li ms-if="$index ==  0">Name: {{el}}</li><li ms-if="$index !==  0" class="test">Name:{{el}}</li></ul>'
+            div.innerHTML = '<h2>ms-each同时循环两行</h2><ul  ms-each-el="data.list"><li ms-if="$index ==  0">Name: {{el}}</li><li ms-if="$index !==  0" class="test">Name:{{el}}</li></ul>'
             body.appendChild(div)
             avalon.scan(div, vmodel)
             setTimeout(function() {
