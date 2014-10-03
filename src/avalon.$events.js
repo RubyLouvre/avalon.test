@@ -496,6 +496,7 @@
                     var data = {
                         evaluator: accessor,
                         element: head,
+                        type: "computed::" + name,
                         handler: noop,
                         args: []
                     }
@@ -584,16 +585,26 @@
             collect()
         })
         functionProperties.forEach(function(fn) {
+            var name = fn.avalonName
+            if (name === "hasOwnProperty" || $$skipArray.indexOf(name) > -1)
+                return
             var data = {
                 evaluator: function() {
                     notifySubscribers($vmodel.$events[fn.avalonName])
                 },
+                type: "function::" + name,
                 element: head,
                 handler: noop,
                 args: []
             }
             var vars = getVariables(fn.toString().replace(rvariable, "")).concat()
             if (vars.length) {//计算依赖
+                vars = vars.filter(function(name) {
+                    var test = name.split(".")[0]
+                    if ($vmodel.hasOwnProperty(test)) {
+                        return  (typeof $vmodel[test] != "object") && (typeof $vmodel[test] != "function")
+                    }
+                })
                 addAssign(vars, $vmodel, name, data)
             }
         })
@@ -1350,9 +1361,9 @@
             if (!node || !node.style) {
                 throw new Error("getComputedStyle要求传入一个节点 " + node)
             }
-            var ret, styles = getComputedStyle(node, null)
-            if (styles) {
-                ret = name === "filter" ? styles.getPropertyValue(name) : styles[name]
+            var ret, computed = getComputedStyle(node, null)
+            if (computed) {
+                ret = name === "filter" ? computed.getPropertyValue(name) : computed[name]
                 if (ret === "") {
                     ret = node.style[name] //其他浏览器需要我们手动取内联样式
                 }
@@ -1627,13 +1638,15 @@
         thead: [1, "<table>", "</table>"],
         tr: [2, "<table><tbody>"],
         td: [3, "<table><tbody><tr>"],
+        text: [1, '<svg xmlns="http://www.w3.org/2000/svg" version="1.1">', '</svg>'],
         //IE6-8在用innerHTML生成节点时，不能直接创建no-scope元素与HTML5的新标签
         _default: W3C ? [0, ""] : [1, "X<div>"] //div可以不用闭合
     }
     tagHooks.optgroup = tagHooks.option
     tagHooks.tbody = tagHooks.tfoot = tagHooks.colgroup = tagHooks.caption = tagHooks.thead
     tagHooks.th = tagHooks.td
-
+    tagHooks.circle = tagHooks.ellipse = tagHooks.line = tagHooks.path = //处理SVG
+            tagHooks.polygon = tagHooks.polyline = tagHooks.rect = tagHooks.text
     var script = DOC.createElement("script")
     avalon.parseHTML = function(html) {
         if (typeof html !== "string") {
@@ -1841,10 +1854,8 @@
             var args = aslice.call(arguments, 1)
             for (var i = list.length, fn; fn = list[--i]; ) {
                 var el = fn.element
-                if (el) {
-                    var remove = typeof el.sourceIndex === "number" ?
-                            el.sourceIndex == 0 : !avalon.contains(root, el)
-                }
+                var remove = el ? (typeof el.sourceIndex === "number" ?
+                        el.sourceIndex == 0 : !avalon.contains(root, el)) : false
                 if (remove) { //如果它没有在DOM树
                     var removed = list.splice(i, 1)
                     log("debug: remove " + fn.type)
@@ -2310,6 +2321,8 @@
                         prop = arr.shift()
                         if (prop === void 0 && Array.isArray(subscope)) {
                             var sonEvents = subscope.$events
+                            if (!sonEvents)
+                                continue
                             var sonList = sonEvents[subscribers]
                             if (sonList !== parentList) {
                                 if (sonList && sonList.length) {
@@ -2941,7 +2954,7 @@
             } else {
                 elem.removeAttribute(data.name)
                 data.template = elem.outerHTML.trim()
-                data.group = 1
+                comment.group = 1
                 elem.parentNode.replaceChild(comment, elem)
             }
 
@@ -3653,7 +3666,7 @@
             if (method === "del" || method === "move") {
                 var locatedNode = locateFragment(data, pos)
             }
-            var group = data.group
+            var group = data.element.group
             switch (method) {
                 case "add": //在pos位置后添加el数组（pos为数字，el为数组）
                     var arr = el
@@ -3690,7 +3703,7 @@
                     }
                     break
                 case "clear":
-                    var n = ("proxySize" in data ? data.proxySize : proxies.length) * data.group, k = 0
+                    var n = ("proxySize" in data ? data.proxySize : proxies.length) * group, k = 0
                     while (true) {
                         var nextNode = data.element.nextSibling
                         if (nextNode && k < n) {
@@ -3774,15 +3787,16 @@
         }
         fragments.push(fragment)
     }
-    // 取得用于定位的节点。比如data.group = 3,  结构为
+    // 取得用于定位的节点。比如group = 3,  结构为
     // <div><!--ms-repeat--><br id="first"><br/><br/><br id="second"><br/><br/></div>
     // 当pos为0时,返回 br#first
     // 当pos为1时,返回 br#second
     // 当pos为2时,返回 null
     function locateFragment(data, pos) {
-        if (data.type == "repeat") {//ms-repeat，data.group为1
-            var node = data.element.nextSibling
-            for (var i = 0, n = pos ; i < n; i++) {
+        var comment = data.element
+        if (data.type == "repeat") {//ms-repeat，group为1
+            var node = comment.nextSibling
+            for (var i = 0, n = pos; i < n; i++) {
                 if (node) {
                     node = node.nextSibling
                 } else {
@@ -3790,8 +3804,8 @@
                 }
             }
         } else {
-            var nodes = avalon.slice(data.element.parentNode.childNodes, 1)
-            var group = data.group || nodes.length / data.proxies.length
+            var nodes = avalon.slice(comment.parentNode.childNodes, 1)
+            var group = comment.group || nodes.length / data.proxies.length
             node = nodes[group * pos]
         }
         return node || null
@@ -3813,10 +3827,10 @@
         return view
     }
     function calculateFragmentGroup(data) {
-        if (typeof data.group !== "number") {
+        if (typeof data.element.group !== "number") {
             var nodes = avalon.slice(data.element.parentNode.childNodes, 1)
             var n = "proxySize" in data ? data.proxySize : data.proxies.length
-            data.group = nodes.length / n
+            data.element.group = nodes.length / n
         }
     }
     // 为ms-each, ms-repeat创建一个代理对象，通过它们能使用一些额外的属性与功能（$index,$first,$last,$remove,$key,$val,$outer）

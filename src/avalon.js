@@ -1591,13 +1591,17 @@
         thead: [1, "<table>", "</table>"],
         tr: [2, "<table><tbody>"],
         td: [3, "<table><tbody><tr>"],
+        text: [1, '<svg xmlns="http://www.w3.org/2000/svg" version="1.1">', '</svg>'],
         //IE6-8在用innerHTML生成节点时，不能直接创建no-scope元素与HTML5的新标签
         _default: W3C ? [0, ""] : [1, "X<div>"] //div可以不用闭合
     }
+
     tagHooks.optgroup = tagHooks.option
     tagHooks.tbody = tagHooks.tfoot = tagHooks.colgroup = tagHooks.caption = tagHooks.thead
     tagHooks.th = tagHooks.td
-
+//处理SVG
+    tagHooks.circle = tagHooks.ellipse = tagHooks.line = tagHooks.path =
+            tagHooks.polygon = tagHooks.polyline = tagHooks.rect = tagHooks.text
     var script = DOC.createElement("script")
     avalon.parseHTML = function(html) {
         if (typeof html !== "string") {
@@ -1816,9 +1820,7 @@
             var args = aslice.call(arguments, 1)
             for (var i = list.length, fn; fn = list[--i]; ) {
                 var el = fn.element
-                if (el) {
-                    var remove = !avalon.contains(root, el)
-                }
+                var remove = fn.element ? !avalon.contains(root, el) : false
                 if (remove) { //如果它没有在DOM树
                     list.splice(i, 1)
                     if (fn.proxies) {
@@ -2632,7 +2634,7 @@
                 if (method === "del" || method === "move") {
                     var locatedNode = locateFragment(data, pos)
                 }
-                var group = data.group
+                var group = data.element.group
 
                 switch (method) {
                     case "add": //在pos位置后添加el数组（pos为数字，el为数组）
@@ -2669,7 +2671,7 @@
                         }
                         break
                     case "clear":
-                        var n = ("proxySize" in data ? data.proxySize : proxies.length) * data.group, k = 0
+                        var n = ("proxySize" in data ? data.proxySize : proxies.length) * group, k = 0
                         while (true) {
                             var nextNode = data.element.nextSibling
                             if (nextNode && k < n) {
@@ -2779,14 +2781,14 @@
         "if": function(val, elem, data) {
             if (val) { //插回DOM树
                 if (elem.nodeType === 8) {
-                    var node = avalon.parseHTML(data.template).firstChild
-                    elem.parentNode.replaceChild(node, elem)
-                    data.element = node
+                    var content = avalon.parseHTML(data.template).firstChild
+                    elem.parentNode.replaceChild(content, elem)
+                    data.element = content
                     if (rbind.test(data.template.replace(rlt, "<").replace(rgt, ">"))) {
                         try {
-                            scanAttr(node, data.vmodels)
+                            scanAttr(content, data.vmodels)
                         } catch (e) {
-                            avalon.log(e)
+                            avalon.log(e + "!")
                         }
                     }
                 }
@@ -2979,7 +2981,7 @@
             } else {
                 elem.removeAttribute(data.name)
                 data.template = elem.outerHTML.trim()
-                data.group = 1
+                comment.group = 1
                 elem.parentNode.replaceChild(comment, elem)
             }
 
@@ -3712,14 +3714,15 @@
         }
         fragments.push(fragment)
     }
-    // 取得用于定位的节点。比如data.group = 3,  结构为
+    // 取得用于定位的节点。比如group = 3,  结构为
     // <div><!--ms-repeat--><br id="first"><br/><br/><br id="second"><br/><br/></div>
     // 当pos为0时,返回 br#first
     // 当pos为1时,返回 br#second
     // 当pos为2时,返回 null
     function locateFragment(data, pos) {
-        if (data.type == "repeat") {//ms-repeat，data.group为1
-            var node = data.element.nextSibling
+        var comment = data.element
+        if (data.type == "repeat") {//ms-repeat，group为1
+            var node = comment.nextSibling
             for (var i = 0, n = pos; i < n; i++) {
                 if (node) {
                     node = node.nextSibling
@@ -3728,8 +3731,8 @@
                 }
             }
         } else {
-            var nodes = avalon.slice(data.element.parentNode.childNodes, 1)
-            var group = data.group || nodes.length / data.proxies.length
+            var nodes = avalon.slice(comment.parentNode.childNodes, 1)
+            var group = comment.group || nodes.length / data.proxies.length
             node = nodes[group * pos]
         }
         return node || null
@@ -3755,7 +3758,7 @@
         if (typeof data.group !== "number") {
             var nodes = avalon.slice(data.element.parentNode.childNodes, 1)
             var n = "proxySize" in data ? data.proxySize : data.proxies.length
-            data.group = nodes.length / n
+            data.element.group = nodes.length / n
         }
     }
     // 为ms-each, ms-repeat创建一个代理对象，通过它们能使用一些额外的属性与功能（$index,$first,$last,$remove,$key,$val,$outer）
