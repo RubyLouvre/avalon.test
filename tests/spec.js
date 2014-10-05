@@ -286,14 +286,16 @@ define([], function() {
                         expect(lis[0][prop].trim()).to.be("4")
                         expect(lis[1][prop].trim()).to.be("4")
                         expect(lis[2][prop].trim()).to.be("4")
-                        vmodel.array[2].a = 5
-                        //  fixCallback(function() {
-                        expect(lis[2][prop].trim()).to.be("5")
-                        body.removeChild(div)
-                        div.innerHTML = ""
-                        delete avalon.vmodels["recycleEachProxy"]
-                        done()
-                        //   })
+                      
+                        setTimeout(function() {
+                              vmodel.array[2].a = 5
+                            expect(lis[2][prop].trim()).to.be("5")
+                            body.removeChild(div)
+                            div.innerHTML = ""
+                            delete avalon.vmodels["recycleEachProxy"]
+                            done()
+                        }, 300)
+
 
                     }, 300)
 

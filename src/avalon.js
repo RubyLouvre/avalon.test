@@ -413,6 +413,9 @@
         if (typeof scope.nodeType === "number") {
             return scope
         }
+        if (scope.$id && scope.$model && scope.$events) {//fix IE6-8 createWithProxy $val: val引发的BUG
+            return scope
+        }
         var vmodel = {} //要返回的对象
         model = model || {} //放置$model上的属性
         var accessingProperties = {} //监控属性
@@ -889,7 +892,7 @@
                 }
             }
         }
-        return false;
+        return false
     }
     //safari5+是把contains方法放在Element.prototype上而不是Node.prototype
     if (!root.contains) {
@@ -900,7 +903,7 @@
     //IE6-11的文档对象没有contains
     if (!DOC.contains) {
         DOC.contains = function(b) {
-            return fixContains(this, b)
+            return fixContains(DOC, b)
         }
     }
     function outerHTML() {
@@ -1813,7 +1816,6 @@
         }
     }
 
-
     function notifySubscribers(accessor, nofire) { //通知依赖于这个访问器的订阅者更新自身
         var list = accessor[subscribers]
         if (list && list.length) {
@@ -1821,6 +1823,7 @@
             for (var i = list.length, fn; fn = list[--i]; ) {
                 var el = fn.element
                 var remove = fn.element ? !avalon.contains(root, el) : false
+                //  console.log(avalon.contains+"!!"+remove+el)
                 if (remove) { //如果它没有在DOM树
                     list.splice(i, 1)
                     if (fn.proxies) {
@@ -2400,9 +2403,9 @@
         parseExpr(code, scopes, data)
         if (data.evaluator) {
             data.handler = bindingExecutors[data.handlerName || data.type]
-            data.evaluator.toString = function() {
-                return data.type + " binding to eval(" + code + ")"
-            }
+//            data.evaluator.toString = function() {
+//                return data.type + " binding to eval(" + code + ")"
+//            }
             //方便调试
             //这里非常重要,我们通过判定视图刷新函数的element是否在DOM树决定
             //将它移出订阅者列表
@@ -2448,16 +2451,9 @@
         }
     }
     var cacheTmpls = avalon.templateCache = {}
-    var ifSanctuary = DOC.createElement("div")
-    ifSanctuary.innerHTML = "a"
-    try {
-        ifSanctuary.contains(ifSanctuary.firstChild)
-        avalon.contains = function(a, b) {
-            return a.contains(b)
-        }
-    } catch (e) {
-        avalon.contains = fixContains
-    }
+
+    avalon.contains = fixContains
+
     var bools = "autofocus,autoplay,async,allowTransparency,checked,controls,declare,disabled,defer,defaultChecked,defaultSelected" +
             "contentEditable,isMap,loop,multiple,noHref,noResize,noShade,open,readOnly,selected"
     var boolMap = {}
@@ -2634,7 +2630,7 @@
                 if (method === "del" || method === "move") {
                     var locatedNode = locateFragment(data, pos)
                 }
-                var group = data.element.group
+                var group = data.group
 
                 switch (method) {
                     case "add": //在pos位置后添加el数组（pos为数字，el为数组）
@@ -3822,7 +3818,7 @@
         if (prop && Array.isArray(arr = prop[subscribers])) {
             arr.forEach(function(el) {
                 if (el.evaluator) {
-                    el.evaluator = el.element = el.node = null
+                    el.evaluator = el.element =  null
                 }
             })
             arr.length = 0
