@@ -1074,7 +1074,7 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<div> ms-controller="repeaton"><div ms-each="arr">' +
+            div.innerHTML = '<div ms-controller="repeaton"><div ms-each="arr">' +
                     '<button ms-click="f1" type="button">测试</button></div>{{arr|html}}</div>'
             body.appendChild(div)
             avalon.scan(div, model)
@@ -1089,7 +1089,38 @@ define([], function() {
             }, 100)
         })
     })
-
+    describe("ms-repeat-clear", function() {
+        //https://github.com/RubyLouvre/avalon/issues/512
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "repeatclear",
+                arr: [],
+                f1: function() {
+                    model.arr = [1, 2]
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<div ms-controller="repeatclear"><p ms-each="arr">123</p></div>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                model.f1()
+                setTimeout(function() {
+                    model.f1()
+                    setTimeout(function() {
+                        model.f1()
+                        setTimeout(function() {
+                            var test = div.getElementsByTagName("p")[0].innerHTML.trim()
+                            expect(test).to.be("123123")
+                            body.removeChild(div)
+                            done()
+                        }, 100)
+                    }, 100)
+                }, 100)
+            }, 100)
+        })
+    })
     describe('newparser', function() {
         //确保位置没有错乱
         it("sync", function() {
