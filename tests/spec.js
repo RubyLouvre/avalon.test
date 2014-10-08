@@ -286,9 +286,9 @@ define([], function() {
                         expect(lis[0][prop].trim()).to.be("4")
                         expect(lis[1][prop].trim()).to.be("4")
                         expect(lis[2][prop].trim()).to.be("4")
-                      
+
                         setTimeout(function() {
-                              vmodel.array[2].a = 5
+                            vmodel.array[2].a = 5
                             expect(lis[2][prop].trim()).to.be("5")
                             body.removeChild(div)
                             div.innerHTML = ""
@@ -1058,6 +1058,35 @@ define([], function() {
 
             body.removeChild(div)
 
+        })
+    })
+
+    describe("循环绑定中的事件绑定", function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            var test = false
+            var model = avalon.define({
+                $id: "repeaton",
+                arr: [1],
+                f1: function() {
+                    test = true
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<div> ms-controller="repeaton"><div ms-each="arr">' +
+                    '<button ms-click="f1" type="button">测试</button></div>{{arr|html}}</div>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var button = div.getElementsByTagName("button")[0]
+                button.click()
+                setTimeout(function() {
+                    expect(test).to.be(true)
+                    body.removeChild(div)
+                    done()
+                }, 300)
+            }, 100)
         })
     })
 
