@@ -1111,14 +1111,15 @@ define([], function() {
                     setTimeout(function() {
                         model.f1()
                         setTimeout(function() {
-                            var test = div.getElementsByTagName("p")[0].innerHTML.trim()
+                            var p = div.getElementsByTagName("p")[0]
+                            var test =  (p.textContent|| p.innerText).trim()
                             expect(test).to.be("123123")
                             body.removeChild(div)
                             done()
                         }, 100)
-                    }, 100)
-                }, 100)
-            }, 100)
+                    }, 60)
+                }, 60)
+            }, 60)
         })
     })
     describe('newparser', function() {

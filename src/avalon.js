@@ -5,13 +5,12 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.6 2014.10.8
+ avalon 1.3.6 2014.10.10
  ==================================================*/
 (function(DOC) {
     /*********************************************************************
      *                    全局变量及方法                                  *
      **********************************************************************/
-    var prefix = "ms-"
     var expose = new Date - 0
     var subscribers = "$" + expose
     //http://addyosmani.com/blog/understanding-mvvm-a-guide-for-javascript-developers/
@@ -451,7 +450,7 @@
         }
         $scope.$skipArray.$special = $special || {}//强制要监听的属性
         var $vmodel = {} //要返回的对象, 它在IE6-8下可能被偷龙转凤
-        var $model = $scope.$events || {}  //vmodels.$model属性
+        var $model = {}  //vmodels.$model属性
         var $events = {} //vmodel.$events属性
         var watchedProperties = {} //监控属性
         var computedProperties = []  //计算属性
@@ -464,7 +463,7 @@
                 //总共产生三种accessor
                 var accessor
                 var valueType = avalon.type(val)
-                $events[name] = $events[name] || []
+                $events[name] = []
                 //总共产生三种accessor
                 if (valueType === "object" && isFunction(val.get) && Object.keys(val).length <= 2) {
                     var setter = val.set
@@ -532,7 +531,6 @@
                     var childVmodel = accessor.child = modelFactory(val)
                     childVmodel.$events[subscribers] = $events[name]
                     $model[name] = childVmodel.$model
-
                 } else {
                     //第3种对应简单的数据类型，自变量，监控属性
                     accessor = function(newValue) {
@@ -644,9 +642,7 @@
                 withProxyCount--
                 delete withProxyPool[son.$id]
             }
-            value.$events = parent.$events
-            //avalon.mix()
-            var ret = modelFactory(value, parent)
+            var ret = modelFactory(value)
             rebindings[ret.$id] = function(data) {
                 while (data = iterators.shift()) {
                     (function(el) {
@@ -1855,7 +1851,7 @@
             })
         }
     }
-    var $$subscribers = [], $startIndex = 0, $maxIndex = 300
+    var $$subscribers = [], $startIndex = 0, $maxIndex = 200
     function removeSubscribers() {
         for (var i = $startIndex, n = $startIndex + $maxIndex; i < n; i++) {
             var obj = $$subscribers[i]
@@ -1869,7 +1865,7 @@
             if (remove) { //如果它没有在DOM树
                 $$subscribers.splice(i, 1)
                 avalon.Array.remove(obj.list, data)
-                log("debug: remove " + data.type)
+                //log("debug: remove " + data.type)
                 if (data.type === "if" && data.template) {
                     head.removeChild(data.template)
                 }
@@ -1941,13 +1937,13 @@
     function scanTag(elem, vmodels, node) {
         //扫描顺序  ms-skip(0) --> ms-important(1) --> ms-controller(2) --> ms-if(10) --> ms-repeat(100) 
         //--> ms-if-loop(110) --> ms-attr(970) ...--> ms-each(1400)-->ms-with(1500)--〉ms-duplex(2000)垫后
-        var a = elem.getAttribute(prefix + "skip")
+        var a = elem.getAttribute("ms-skip")
         //#360 在旧式IE中 Object标签在引入Flash等资源时,可能出现没有getAttributeNode,innerHTML的情形
         if (!elem.getAttributeNode) {
             return log("warning " + elem.tagName + " no getAttributeNode method")
         }
-        var b = elem.getAttributeNode(prefix + "important")
-        var c = elem.getAttributeNode(prefix + "controller")
+        var b = elem.getAttributeNode("ms-important")
+        var c = elem.getAttributeNode("ms-controller")
         if (typeof a === "string") {
             return
         } else if (node = b || c) {
@@ -3039,8 +3035,10 @@
                 arr.pop()
                 var n = arr[0]
                 for (var i = 0, v; v = vmodels[i++]; ) {
-                    if (v && v.hasOwnProperty(n) && v[n][subscribers]) {
-                        v[n][subscribers].push(data)
+                    if (v && v.hasOwnProperty(n)) {
+                        var events = v[n].$events
+                        events[subscribers] = events[subscribers] || []
+                        events[subscribers].push(data)
                         break
                     }
                 }
@@ -3064,8 +3062,7 @@
                 }
             }
             var $list = ($repeat.$events || {})[subscribers]
-            if ($list) {
-                $list.push(data)
+            if ($list && avalon.Array.ensure($list, data)) {
                 $$subscribers.push({
                     data: data, list: $list
                 })
