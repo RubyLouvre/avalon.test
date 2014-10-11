@@ -1112,7 +1112,7 @@ define([], function() {
                         model.f1()
                         setTimeout(function() {
                             var p = div.getElementsByTagName("p")[0]
-                            var test =  (p.textContent|| p.innerText).trim()
+                            var test = (p.textContent || p.innerText).trim()
                             expect(test).to.be("123123")
                             body.removeChild(div)
                             done()
@@ -1120,6 +1120,26 @@ define([], function() {
                     }, 60)
                 }, 60)
             }, 60)
+        })
+    })
+
+    describe("设置透明度", function() {
+        //确保位置没有错乱
+        it("sync", function() {
+            var body = document.body
+            var div = document.createElement("div")
+            body.appendChild(div)
+            var el = avalon(div)
+            el.css("opacity", 0.1)
+            expect(el.css("opacity").toFixed(2)).to.be("0.10")
+
+            el.css("opacity", 0.6)
+            expect(el.css("opacity")).to.be(0.6)
+
+            el.css("opacity", 8)
+
+            expect(el.css("opacity")).to.be(1)
+            body.removeChild(div)
         })
     })
     describe('newparser', function() {
