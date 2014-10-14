@@ -2986,6 +2986,9 @@
                         data.msType = "string"
                         log("ms-duplex-text已经更名为ms-duplex-string")
                     }
+                    if (data.msType === "radio") {
+                        log("ms-duplex-radio将在2.0废掉，请尽量不要用")
+                    }
                     if (!/boolean|string|number/.test(data.msType)) {
                         data.msType = ""
                     }
@@ -3219,38 +3222,37 @@
     //如果一个input标签添加了model绑定。那么它对应的字段将与元素的value连结在一起
     //字段变，value就变；value变，字段也跟着变。默认是绑定input事件，
     duplexBinding.INPUT = function(element, evaluator, data) {
-        // var fixType = data.param,
         var type = element.type,
                 bound = data.bound,
                 $elem = avalon(element),
                 firstTigger = false,
-                composing = false,
-                callback = function(value) {
-                    firstTigger = true
-                    data.changed.call(this, value)
-                },
-                compositionStart = function() {
-                    composing = true
-                },
-                compositionEnd = function() {
-                    composing = false
-                },
-                //当value变化时改变model的值
-                updateVModel = function() {
-                    if (composing)//处理中文输入法在minlengh下引发的BUG
-                        return
-                    var val = element.oldValue = element.value //防止递归调用形成死循环
-                    var typedVal = getTypedValue(data, val)               //尝式转换为正确的格式
-                    if ($elem.data("duplex-observe") !== false) {
-                        evaluator(typedVal)
-                        callback.call(element, typedVal)
-                        if ($elem.data("duplex-focus")) {
-                            avalon.nextTick(function() {
-                                element.focus()
-                            })
-                        }
-                    }
+                composing = false
+        function callback(value) {
+            firstTigger = true
+            data.changed.call(this, value)
+        }
+        function compositionStart() {
+            composing = true
+        }
+        function compositionEnd() {
+            composing = false
+        }
+        //当value变化时改变model的值
+        function updateVModel() {
+            if (composing)//处理中文输入法在minlengh下引发的BUG
+                return
+            var val = element.oldValue = element.value //防止递归调用形成死循环
+            var typedVal = getTypedValue(data, val)               //尝式转换为正确的格式
+            if ($elem.data("duplex-observe") !== false) {
+                evaluator(typedVal)
+                callback.call(element, typedVal)
+                if ($elem.data("duplex-focus")) {
+                    avalon.nextTick(function() {
+                        element.focus()
+                    })
                 }
+            }
+        }
 
         //当model变化时,它就会改变value的值
         data.handler = function() {
@@ -3375,12 +3377,11 @@
             case "boolean":
                 return val === "true"
             case "number":
-                return isFinite(val) ? parseFloat(val) : val
+                return isFinite(val) || val === "" ? parseFloat(val) || 0 : val
             default:
                 return val
         }
     }
-
 
     var TimerID, ribbon = [],
             launch = noop
@@ -3460,6 +3461,15 @@
             var val = evaluator()
             val = val && val.$model || val
             //必须变成字符串后才能比较
+            if (Array.isArray(val)) {
+                if (!element.multiple) {
+                    log("ms-duplex在<select multiple=true>上要求对应一个数组")
+                }
+            } else {
+                if (element.multiple) {
+                    log("ms-duplex在<select multiple=false>不能对应一个数组")
+                }
+            }
             val = Array.isArray(val) ? val.map(String) : val + ""
             if (val + "" !== element.oldValue) {
                 $elem.val(val)
