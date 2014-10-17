@@ -210,7 +210,22 @@ define([], function() {
 
     })
 
+    describe("vm.array = vm.array", function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            var a = avalon.define("vm.array", function(vm) {
+                vm.array = [1, 2, 3]
+            });
 
+            setTimeout(function() {
+                a.array = a.array
+                setTimeout(function() {
+                    expect(avalon.type(a.array)).to.be("array")
+                    done()
+                }, 200)
+            }, 100)
+        })
+    })
     describe('range', function() {
 
         it("sync", function() {

@@ -561,7 +561,7 @@
         $vmodel.$id = generateID()
         $vmodel.$model = $model
         $vmodel.$events = $events
-      //  $vmodel.$parent = $parent || null
+        //  $vmodel.$parent = $parent || null
         for (var i in EventManager) {
             var fn = EventManager [i]
             if (!W3C) { //在IE6-8下，VB对象的方法里的this并不指向自身，需要用bind处理一下
@@ -1956,7 +1956,7 @@
                 if (data.type === "if" && data.template && data.template.parentNode === head) {
                     head.removeChild(data.template)
                 }
-                for(var key in data){
+                for (var key in data) {
                     data[key] = null
                 }
                 obj.data = obj.list = null
@@ -2466,7 +2466,7 @@
 //                                sonEvents[subscribers] = parentList
 //                                prop = subscribers
 //                            }
-                              prop = subscribers
+                            prop = subscribers
                         }
                         collectSubscribers(subscope, prop, data)
                     } else {
@@ -2884,7 +2884,7 @@
                     var node = data.element = DOC.createComment("ms-if")
                     elem.parentNode.replaceChild(node, elem)
                     data.template = elem
-                    head.appendChild(elem)        
+                    head.appendChild(elem)
                 }
             }
         },
@@ -3308,10 +3308,21 @@
             if (event === "change") {
                 bound("change", updateVModel)
             } else {
-                if (W3C && DOC.documentMode !== 9) { //IE10+, W3C
+                if (W3C) { //IE9+, W3C
                     bound("input", updateVModel)
                     bound("compositionstart", compositionStart)
                     bound("compositionend", compositionEnd)
+                    if (DOC.onselectionchange) {//fix IE9 http://www.matts411.com/post/internet-explorer-9-oninput/
+                        function selectionchange(e) {
+                            if (e.type === "focus") {
+                                DOC.addEventListener("selectionchange", updateVModel, false);
+                            } else {
+                                DOC.removeEventListener("selectionchange", updateVModel, false);
+                            }
+                        }
+                        bound("focus", selectionchange)
+                        bound("blur", selectionchange)
+                    }
                 } else {
                     var events = ["keyup", "paste", "cut", "change"]
 
@@ -3555,7 +3566,7 @@
     function Collection(model, parent) {
         var array = []
         array.$id = generateID() //它在父VM中的名字
-     //   array.$parent = parent //父VM
+        //   array.$parent = parent //父VM
         array.$model = model   //数据模型
         array.$events = {}
         array.$events[subscribers] = []
@@ -3782,7 +3793,7 @@
                     var removed = proxies.splice(pos, el)
                     var transation = removeFragment(locatedNode, group, el)
                     avalon.clearHTML(transation)
-                  recycleEachProxies(removed)
+                    recycleEachProxies(removed)
                     break
                 case "index": //将proxies中的第pos个起的所有元素重新索引（pos为数字，el用作循环变量）
                     var last = proxies.length - 1
@@ -3927,7 +3938,7 @@
             $key: key,
             $outer: $outer,
             $val: val
-        },{
+        }, {
             $val: 1,
             $key: 1
         })
