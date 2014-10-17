@@ -166,6 +166,7 @@ define([], function() {
     })
 
 
+
     describe('isArrayLike', function() {
 
         function isArrayLike(obj) {
@@ -753,7 +754,44 @@ define([], function() {
             }, 500)
         })
     })
+    describe("监控数组的$model应该等于其父VM.$model中的同名数组", function() {
 
+        it("async", function(done) {
+            var vmodel = avalon.define({
+                $id: 'observableArray$model',
+                x: 2,
+                arr: [
+                    {id: 1000, name: 'test1'},
+                    {id: 2000, name: 'test2'}
+                ]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = ' <div ms-repeat="arr"><input type="text" ms-duplex="el.name"/>{{el.name}}</div>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var inputs = div.getElementsByTagName("input")
+                inputs[0].value = "xxxx"
+                inputs[1].value = "yyyy"
+                setTimeout(function() {
+                    expect(vmodel.arr[0].$model.name).to.be("xxxx")
+                    expect(vmodel.$model.arr[0].name).to.be("xxxx")
+                    expect(vmodel.arr[1].$model.name).to.be("yyyy")
+                    expect(vmodel.$model.arr[1].name).to.be("yyyy")
+                    var data = vmodel.arr.$events[avalon.subscribers][0]
+                    expect(data.proxies[0].el).to.be(vmodel.arr[0])
+                    expect(data.proxies[0].el.$model).to.be(vmodel.arr[0].$model)
+                    expect(vmodel.$model.arr[0]).to.be(vmodel.arr[0].$model)
+                    body.removeChild(div)
+                    div.innerHTML = ""
+                    done()
+                }, 300)
+
+            }, 300)
+        })
+
+    })
     describe("对象数组全部删光再添加,确保ms-duplex还可以用#403", function() {
         it("async", function(done) {
             var vmodel = avalon.define("recycleEachProxy", function(vm) {

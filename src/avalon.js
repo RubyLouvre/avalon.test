@@ -431,7 +431,7 @@
         return true
     }
 
-    function modelFactory($scope, $special) {
+    function modelFactory($scope, $special, $model) {
         if (Array.isArray($scope)) {
             var arr = $scope.concat()
             $scope.length = 0
@@ -450,7 +450,7 @@
         }
         $scope.$skipArray.$special = $special || {}//强制要监听的属性
         var $vmodel = {} //要返回的对象, 它在IE6-8下可能被偷龙转凤
-        var $model = {}  //vmodels.$model属性
+        $model = $model || {}  //vmodels.$model属性
         var $events = {} //vmodel.$events属性
         var watchedProperties = {} //监控属性
         var computedProperties = []  //计算属性
@@ -528,9 +528,9 @@
                             return childVmodel
                         }
                     }
-                    var childVmodel = accessor.child = modelFactory(val)
+                    var childVmodel = accessor.child = modelFactory(val, 0, $model[name])
                     childVmodel.$events[subscribers] = $events[name]
-                    $model[name] = childVmodel.$model
+                    //   childVmodel.$model = $model[name] 
                 } else {
                     //第3种对应简单的数据类型，自变量，监控属性
                     accessor = function(newValue) {
@@ -551,8 +551,9 @@
                 watchedProperties[name] = accessor
             })(i, $scope[i])
         }
+
         $$skipArray.forEach(function(name) {
-            $scope[name] = true //为用户定义的对象再添加一些特殊属性
+            delete $scope[name]
             delete $model[name]  //这些特殊属性不应该在$model中出现
         })
 
@@ -630,8 +631,8 @@
         //a为原来的VM， b为新数组或新对象
         var son = parent[name]
         if (valueType === "array") {
-            if (!Array.isArray(value)) {
-                return parent //fix https://github.com/RubyLouvre/avalon/issues/261
+            if (!Array.isArray(value) || son === value) {
+                return son //fix https://github.com/RubyLouvre/avalon/issues/261
             }
             son.clear()
             son.pushArray(value.concat())
@@ -744,6 +745,11 @@
                     buffer.push("\tPublic [" + name + "]")
                 }
             }
+            $$skipArray.forEach(function(name) {
+                if (!accessors.hasOwnProperty(name)) {
+                    buffer.push("\tPublic [" + name + "]")
+                }
+            })
             buffer.push("\tPublic [" + 'hasOwnProperty' + "]")
             //添加访问器属性 
             for (name in accessors) {
@@ -2533,6 +2539,7 @@
                         return elem[bool] = !!val
                     }
                 }
+                console.log(attrName)
                 var toRemove = (val === false) || (val === null) || (val === void 0)
                 if (!W3C && propMap[attrName]) {//旧式IE下需要进行名字映射
                     attrName = propMap[attrName]
@@ -2623,6 +2630,12 @@
                     val = val.replace(/&amp;/g, "&") //处理IE67自动转义的问题
                 }
                 elem[method] = val
+                if (window.chrome && elem.tagName === "EMBED") {
+                    var parent = elem.parentNode//#525  chrome1-37下embed标签动态设置src不能发生请求
+                    var comment = document.createComment("ms-src")
+                    parent.replaceChild(comment, elem)
+                    parent.replaceChild(elem, comment)
+                }
             }
         },
         "class": function(val, elem, data) {
@@ -3324,10 +3337,21 @@
             if (event === "change") {
                 bound("change", updateVModel)
             } else {
-                if (W3C && DOC.documentMode !== 9) { //IE10+, W3C
+                if (W3C) { //IE9+, W3C
                     bound("input", updateVModel)
                     bound("compositionstart", compositionStart)
                     bound("compositionend", compositionEnd)
+                    if ("onselectionchange"in DOC) {//fix IE9 http://www.matts411.com/post/internet-explorer-9-oninput/
+                        function selectionchange(e) {
+                            if (e.type === "focus") {
+                                DOC.addEventListener("selectionchange", updateVModel, false);
+                            } else {
+                                DOC.removeEventListener("selectionchange", updateVModel, false);
+                            }
+                        }
+                        bound("focus", selectionchange)
+                        bound("blur", selectionchange)
+                    }
                 } else {
                     var events = ["keyup", "paste", "cut", "change"]
 
@@ -3626,7 +3650,7 @@
             pos = typeof pos === "number" ? pos : oldLength
             var added = []
             for (var i = 0, n = arr.length; i < n; i++) {
-                added[i] = convert(arr[i])
+                added[i] = convert(arr[i], this.$model[i])
             }
             _splice.apply(this, [pos, 0].concat(added))
             this._fire("add", pos, added)
@@ -3781,9 +3805,9 @@
         }
     })
 
-    function convert(val) {
+    function convert(val, $model) {
         if (rcomplexType.test(avalon.type(val))) {
-            val = val.$id ? val : modelFactory(val)
+            val = val.$id ? val : modelFactory(val, 0, $model)
         }
         return val
     }
