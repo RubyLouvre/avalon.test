@@ -52,6 +52,27 @@ define([], function() {
             expect(arr[0]).to.be("bbb")
         })
     })
+
+
+    describe("parseHTML", function() {
+        avalon.parseHTML.p = 1
+        it("async", function(done) {             //函数,正则,元素,节点,文档,window等对象为非
+            var node = avalon.parseHTML("<b><script> avalon.parseHTML.p  += 10<\/script>" +
+                    "<script> expect(avalon.parseHTML.p).to.be(11)<\/script>" +
+                    "<script>  avalon.parseHTML.p  += 12<\/script>" +
+                    +"</b>").firstChild
+            var body = document.body
+            body.appendChild(node)
+            setTimeout(function() {
+                expect(avalon.parseHTML.p).to.be(23)
+                delete avalon.parseHTML.p
+                body.removeChild(node)
+                done()
+            }, 300)
+
+        })
+    })
+
     describe('isWindow', function() {
 
         it("sync", function() {
@@ -340,7 +361,7 @@ define([], function() {
             expect(model.lastName).to.be("火羽")
         })
         it("async2", function(done) {
-            var model = avalon.define("test", function(vm) {
+            var model = avalon.define("test"+(new Date-0), function(vm) {
                 vm.test0 = false;
                 vm.test1 = {
                     set: function(val) {
@@ -363,7 +384,7 @@ define([], function() {
             });
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<div ms-controller=\"test\"> <button ms-click=\"one\" type=\"button\">\u6D4B\u8BD51</button> <button ms-click=\"two\" type=\"button\">\u6D4B\u8BD52</button> <br>test1: {{test1}} <br>test2: {{test2}}</div>"
+            div.innerHTML = "<div > <button ms-click=\"one\" type=\"button\">\u6D4B\u8BD51</button> <button ms-click=\"two\" type=\"button\">\u6D4B\u8BD52</button> <br>test1: {{test1}} <br>test2: {{test2}}</div>"
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function() {
@@ -520,7 +541,7 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<input type='radio' ms-checked='x'/>checkedx"
+            div.innerHTML = "<input type='radio' ms-attr-checked='x'/>checkedx"
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function() {
@@ -590,8 +611,8 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = ['<input ms-duplex-bool="aaa" type="radio" value="true">',
-                '<input ms-duplex-bool="aaa" type="radio" value="false">'
+            div.innerHTML = ['<input ms-duplex-boolean="aaa" type="radio" value="true">',
+                '<input ms-duplex-boolean="aaa" type="radio" value="false">'
             ].join("")
             body.appendChild(div)
             avalon.scan(div, model)
@@ -614,9 +635,9 @@ define([], function() {
         it("async", function(done) {
 
             var div = document.createElement("div")
-            div.innerHTML = '<input ms-duplex-text="xxx" type="radio"  value="aaa">aaa' +
-                    '<input ms-duplex-text="xxx" type="radio" value="bbb">bbb' +
-                    '<input ms-duplex-text="xxx" type="radio" value="ccc">ccc'
+            div.innerHTML = '<input ms-duplex-string="xxx" type="radio"  value="aaa">aaa' +
+                    '<input ms-duplex-string="xxx" type="radio" value="bbb">bbb' +
+                    '<input ms-duplex-string="xxx" type="radio" value="ccc">ccc'
             document.body.appendChild(div)
 
             var model = avalon.define("ms-click-ms-duplex", function(vm) {
@@ -632,7 +653,6 @@ define([], function() {
                     input.fireEvent("onchange")
                 }
                 setTimeout(function() {
-                    console.log("fire onchange successfully")
                     expect(model.xxx).to.be("aaa")
                     document.body.removeChild(div)
                     div.innerHTML = ""
@@ -962,7 +982,7 @@ define([], function() {
     describe("iteratorCallback", function() {
         //ms-with, ms-each, ms-repeat的各种回调
         it("async", function(done) {
-            var model = avalon.define("test", function(vm) {
+            var model = avalon.define("test"+Math.random(), function(vm) {
                 vm.array = [1, 2, 3, 4]
                 vm.object = {
                     a: 1,
@@ -994,7 +1014,7 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<div ms-controller=\"test\"><ul ms-each=\"array\" data-each-rendered=\"callback\"><li>{{el}}</li></ul><ol><li ms-repeat=\"array\" data-repeat-rendered=\"callback2\">{{el}}</li></ol>\n            <table border=\"1\"><tbody><tr ms-with=\"object\" data-with-sorted=\"sort\" data-with-rendered=\"callback3\"><td>{{$key}}:{{$val}}</td></tr></tbody></table></div>"
+            div.innerHTML = "<div><ul ms-each=\"array\" data-each-rendered=\"callback\"><li>{{el}}</li></ul><ol><li ms-repeat=\"array\" data-repeat-rendered=\"callback2\">{{el}}</li></ol>\n            <table border=\"1\"><tbody><tr ms-with=\"object\" data-with-sorted=\"sort\" data-with-rendered=\"callback3\"><td>{{$key}}:{{$val}}</td></tr></tbody></table></div>"
             body.appendChild(div)
             avalon.scan(div, model)
             var endIndex = 0
