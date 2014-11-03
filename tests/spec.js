@@ -55,8 +55,9 @@ define([], function() {
 
 
     describe("parseHTML", function() {
-        avalon.parseHTML.p = 1
+
         it("async", function(done) {             //函数,正则,元素,节点,文档,window等对象为非
+            avalon.parseHTML.p = 1
             var node = avalon.parseHTML("<b><script> avalon.parseHTML.p  += 10<\/script>" +
                     "<script> expect(avalon.parseHTML.p).to.be(11)<\/script>" +
                     "<script>  avalon.parseHTML.p  += 12<\/script>" +
@@ -361,7 +362,7 @@ define([], function() {
             expect(model.lastName).to.be("火羽")
         })
         it("async2", function(done) {
-            var model = avalon.define("test"+(new Date-0), function(vm) {
+            var model = avalon.define("test" + (new Date - 0), function(vm) {
                 vm.test0 = false;
                 vm.test1 = {
                     set: function(val) {
@@ -982,7 +983,7 @@ define([], function() {
     describe("iteratorCallback", function() {
         //ms-with, ms-each, ms-repeat的各种回调
         it("async", function(done) {
-            var model = avalon.define("test"+Math.random(), function(vm) {
+            var model = avalon.define("test" + Math.random(), function(vm) {
                 vm.array = [1, 2, 3, 4]
                 vm.object = {
                     a: 1,
@@ -1184,21 +1185,24 @@ define([], function() {
 
     describe("avalon.innerHTML", function() {
         //确保位置没有错乱
-        it("sync", function() {
+        it("async", function(done) {
 
             var body = document.body
             var div = document.createElement("div")
             var id = "ms" + (new Date - 0)
-            var str = "<span></span><script>avalon.XXXX = 'XXXX'<\/script>".replace(/XXXX/g, id)
+            var str = ("<span></span><script>avalon.XXXX = 'XXXX'<\/script>").replace(/XXXX/g, id)
             body.appendChild(div)
             avalon.innerHTML(div, str)
+            setTimeout(function() {
+                var spans = div.getElementsByTagName("span")
+                expect(spans.length).to.be(1)
+                expect(avalon[id]).to.be(id)
+                delete avalon[id]
 
-            var spans = div.getElementsByTagName("span")
-            expect(spans.length).to.be(1)
-            expect(avalon[id]).to.be(id)
-            delete avalon[id]
+                body.removeChild(div)
+                done()
+            },300)
 
-            body.removeChild(div)
 
         })
     })
