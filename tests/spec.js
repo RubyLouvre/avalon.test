@@ -631,10 +631,8 @@ define([], function() {
         })
     })
 
-    describe("ms-duplex-text", function() {
-
+    describe("ms-duplex-string", function() {
         it("async", function(done) {
-
             var div = document.createElement("div")
             div.innerHTML = '<input ms-duplex-string="xxx" type="radio"  value="aaa">aaa' +
                     '<input ms-duplex-string="xxx" type="radio" value="bbb">bbb' +
@@ -662,7 +660,36 @@ define([], function() {
             }, 300)
         })
     })
+    describe("ms-duplex-checked", function() {
+        it("async", function(done) {
+            var div = document.createElement("div")
+            div.innerHTML = '<input ms-duplex-checked="xxx" type="checkbox" id="ms-duplex-checked-c" >' +
+                    '<input ms-duplex-checked="yyy" type="radio" id="ms-duplex-checked-r" >'
+            document.body.appendChild(div)
 
+            var model = avalon.define("ms-duplex-checked", function(vm) {
+                vm.xxx = false
+                vm.yyy = false
+            })
+            avalon.scan(div, model)
+            setTimeout(function() {//必须等扫描后才能开始测试，400ms是一个合理的数字
+                var ps = div.getElementsByTagName("input")
+                expect(ps[0].checked).to.be(false)
+                expect(ps[1].checked).to.be(false)
+                ps[0].click()
+                ps[1].click()
+                setTimeout(function() {
+                    expect(model.xxx).to.be(true)
+                    expect(model.yyy).to.be(true)
+                    expect(ps[0].checked).to.be(true)
+                    expect(ps[1].checked).to.be(true)
+                    document.body.removeChild(div)
+                    div.innerHTML = ""
+                    done()
+                }, 300)
+            }, 300)
+        })
+    })
     describe('ms-duplex', function() {
         //检测值的同步
         it("async", function(done) {
@@ -1201,7 +1228,7 @@ define([], function() {
 
                 body.removeChild(div)
                 done()
-            },300)
+            }, 300)
 
 
         })
