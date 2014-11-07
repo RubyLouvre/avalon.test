@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.6 2014.10.30 support IE6+ and other browsers
+ avalon 1.3.6 2014.11.7 support IE6+ and other browsers
  ==================================================*/
 (function(DOC) {
     /*********************************************************************
@@ -13,8 +13,8 @@
      **********************************************************************/
     var expose = new Date - 0
     var subscribers = "$" + expose
-    //http://addyosmani.com/blog/understanding-mvvm-a-guide-for-javascript-developers/
-    var window = this || (0, eval)("this")
+    //http://stackoverflow.com/questions/7290086/javascript-use-strict-and-nicks-find-global-function
+    var window = this || Function("return this")()
     var otherRequire = window.require
     var otherDefine = window.define
     var stopRepeatAssign = false
@@ -1002,7 +1002,7 @@
                         return  s.replace(ropen, "").replace(rclose, "")
                     },
                     set: function(html) {
-                        if (avalon.clearHTM) {
+                        if (avalon.clearHTML) {
                             avalon.clearHTML(this)
                             var frag = avalon.parseHTML(html)
                             enumerateNode(frag, this)
@@ -1828,7 +1828,7 @@
                 if (special === "up") {
                     alls.reverse()
                 }
-                for (var i = 0, el; el = all[i++]; ) {
+                for (var i = 0, el; el = alls[i++]; ) {
                     if (el.$fire.apply(el, detail) === false) {
                         break
                     }
@@ -2009,12 +2009,17 @@
             vmodels = node === b ? [newVmodel] : [newVmodel].concat(vmodels)
             var name = node.name
             elem.removeAttribute(name) //removeAttributeNode不会刷新[ms-controller]样式规则
-            elem.setAttribute("avalonctrl", node.value)
-            newVmodel.$events.expr = elem.tagName + '[avalonctrl="' + node.value + '"]'
+            createSignalTower(elem, newVmodel)
             avalon(elem).removeClass(name)
 
         }
         scanAttr(elem, vmodels) //扫描特性节点
+    }
+
+    function createSignalTower(elem, vmodel) {
+        var id = elem.getAttribute("avalonctrl") || vmodel.$id
+        elem.setAttribute("avalonctrl", id)
+        vmodel.$events.expr = elem.tagName + '[avalonctrl="' + id + '"]'
     }
 
     function scanNodeList(parent, vmodels) {
@@ -3053,8 +3058,7 @@
                     var params = []
                     var casting = oneObject("string,number,boolean,checked")
                     var hasCast
-                    data.error = {}
-                    data.param.replace(rword, function(name) {
+                    data.param.replace(/\w+/g, function(name) {
                         if ((elem.type === "radio" && data.param === "") || (elem.type === "checkbox" && name === "radio")) {
                             log(elem.type + "控件如果想通过checked属性同步VM,请改用ms-duplex-checked，以后ms-duplex默认是使用value属性同步VM")
                             name = "checked"
@@ -3088,7 +3092,12 @@
                             old && old()
                         }
                     }
-                    pipe(null, data, "init")
+                    for (var i in avalon.vmodels) {
+                        var v = avalon.vmodels[i]
+                        v.$fire("init-ms-duplex", data)
+                    }
+                    var cpipe = data.pipe || (data.pipe = pipe)
+                    cpipe(null, data, "init")
                     duplexBinding[elem.tagName](elem, data.evaluator.apply(null, data.args), data)
                 }
             }
@@ -3262,8 +3271,12 @@
                 data[widget + "Options"] = avalon.mix({}, constructor.defaults, vmOptions || {}, widgetData)
                 elem.removeAttribute("ms-widget")
                 var vmodel = constructor(elem, data, vmodels) || {} //防止组件不返回VM
+                if (vmodel.$id) {
+                    avalon.vmodels[vmodel.$id] = vmodel
+                    createSignalTower(elem, vmodel)
+                    elem.msData["ms-widget-id"] = vmodel.$id
+                }
                 data.evaluator = noop
-                elem.msData["ms-widget-id"] = vmodel.$id || ""
                 if (vmodel.hasOwnProperty("$init")) {
                     vmodel.$init()
                 }
@@ -3310,7 +3323,6 @@
     function fixNull(val) {
         return val == null ? "" : val
     }
-
     avalon.duplexHooks = {
         checked: {
             get: function(val, data) {
@@ -3330,20 +3342,14 @@
             set: fixNull
         },
         number: {
-            get: function(val, data) {
-                delete data.error.number
-                if (isFinite(val)) {
-                    return parseFloat(val) || 0
-                } else {
-                    data.error.number = true
-                    return val
-                }
+            get: function(val) {
+                return isFinite(val) ? parseFloat(val) || 0 : val
             },
             set: fixNull
         }
     }
 
-    function pipe(val, data, action) {
+    function pipe(val, data, action, e) {
         data.param.replace(rword, function(name) {
             var hook = avalon.duplexHooks[name]
             if (hook && typeof hook[action] === "function") {
@@ -3371,11 +3377,11 @@
             composing = false
         }
         //当value变化时改变model的值
-        function updateVModel(event) {
+        function updateVModel() {
             if (composing)//处理中文输入法在minlengh下引发的BUG
                 return
             var val = element.oldValue = element.value //防止递归调用形成死循环
-            var lastValue = pipe(val, data, "get")
+            var lastValue = data.pipe(val, data, "get")
             if ($elem.data("duplex-observe") !== false) {
                 evaluator(lastValue)
                 callback.call(element, lastValue)
@@ -3389,7 +3395,7 @@
 
         //当model变化时,它就会改变value的值
         data.handler = function() {
-            var val = pipe(evaluator(), data, "set")
+            var val = data.pipe(evaluator(), data, "set")
             if (val !== element.value) {
                 element.value = val
             }
@@ -3399,7 +3405,7 @@
             var IE6 = !window.XMLHttpRequest
             updateVModel = function() {
                 if ($elem.data("duplex-observe") !== false) {
-                    var lastValue = pipe(element.value, data, "get")
+                    var lastValue = data.pipe(element.value, data, "get")
                     evaluator(lastValue)
                     callback.call(element, lastValue)
                 }
@@ -3430,48 +3436,51 @@
                         log("ms-duplex应用于checkbox上要对应一个数组")
                         array = [array]
                     }
-                    avalon.Array[method](array, pipe(element.value, data, "get"))
+                    avalon.Array[method](array, data.pipe(element.value, data, "get"))
                     callback.call(element, array)
                 }
             }
 
             data.handler = function() {
                 var array = [].concat(evaluator()) //强制转换为数组
-                element.checked = array.indexOf(pipe(element.value, data, "get")) >= 0
+                element.checked = array.indexOf(data.pipe(element.value, data, "get")) >= 0
             }
             bound(W3C ? "change" : "click", updateVModel)
         } else {
-            var event = element.attributes["data-duplex-event"] || element.attributes["data-event"] || {}
+            var events = element.getAttribute("data-duplex-event") || element.getAttribute("data-event") || "input"
             if (element.attributes["data-event"]) {
                 log("data-event指令已经废弃，请改用data-duplex-event")
             }
-            event = event.value
-            if (event === "change") {
-                bound("change", updateVModel)
-            } else {
-                if (W3C) { //IE9+, W3C
-                    bound("input", updateVModel)
-                    bound("compositionstart", compositionStart)
-                    bound("compositionend", compositionEnd)
-                    //http://www.cnblogs.com/rubylouvre/archive/2013/02/17/2914604.html
-                    //http://www.matts411.com/post/internet-explorer-9-oninput/
-                    if (DOC.documentMode === 9) {
-                        function delay(e) {
-                            setTimeout(function() {
-                                updateVModel(e)
+            function delay(e) {
+                setTimeout(function() {
+                    updateVModel(e)
+                })
+            }
+            events.replace(rword, function(name) {
+                switch (name) {
+                    case "input":
+                        if (W3C) { //IE9+, W3C
+                            bound("input", updateVModel)
+                            bound("compositionstart", compositionStart)
+                            bound("compositionend", compositionEnd)
+                            //http://www.cnblogs.com/rubylouvre/archive/2013/02/17/2914604.html
+                            //http://www.matts411.com/post/internet-explorer-9-oninput/
+                            if (DOC.documentMode === 9) {
+                                bound("paste", delay)
+                                bound("cut", delay)
+                            }
+                        } else {//onpropertychange事件无法区分是程序触发还是用户触发
+                            bound("propertychange", function(e) {
+                                if (e.propertyName === "value")
+                                    updateVModel()
                             })
                         }
-                        bound("paste", delay)
-                        bound("cut", delay)
-                    }
-                } else {
-                    bound("propertychange", function(e) {
-                        if (e.properyName === "value") {
-                            updateVModel(e)
-                        }
-                    })
+                        break
+                    default:
+                        bound(name, updateVModel)
+                        break
                 }
-            }
+            })
         }
         element.oldValue = element.value
         launch(function() {
@@ -3490,18 +3499,22 @@
     function W3CFire(el, name, detail) {
         var event = DOC.createEvent("Events")
         event.initEvent(name, true, true)
+        event.isTrusted = false
         if (detail) {
             event.detail = detail
         }
         el.dispatchEvent(event)
     }
 
-    function onTree() { //disabled状态下改动不触发input事件
-        if (!this.disabled && this.oldValue !== this.value) {
+    function onTree(value) { //disabled状态下改动不触发input事件
+        var newValue = arguments.length ? value : this.value
+        if (!this.disabled && this.oldValue !== newValue) {
+            var type = this.getAttribute("data-duplex-event") || "input"
+            type = type.match(rword).shift()
             if (W3C) {
-                W3CFire(this, "input")
+                W3CFire(this, type)
             } else {
-                this.fireEvent("onchange")
+                this.fireEvent("on" + type)
             }
         }
     }
@@ -3524,16 +3537,14 @@
         }
     }
 
-    function newSetter(newValue) {
-        oldSetter.call(this, newValue)
-        if (newValue !== this.oldValue) {
-            W3CFire(this, "input")
-        }
+    function newSetter(value) {
+        onSetter.call(this, value)
+        onTree.call(this, value)
     }
     try {
         var inputProto = HTMLInputElement.prototype
         Object.getOwnPropertyNames(inputProto)//故意引发IE6-8等浏览器报错
-        var oldSetter = Object.getOwnPropertyDescriptor(inputProto, "value").set //屏蔽chrome, safari,opera
+        var onSetter = Object.getOwnPropertyDescriptor(inputProto, "value").set //屏蔽chrome, safari,opera
         Object.defineProperty(inputProto, "value", {
             set: newSetter
         })
@@ -3548,10 +3559,10 @@
                 var val = $elem.val() //字符串或字符串数组
                 if (Array.isArray(val)) {
                     val = val.map(function(v) {
-                        return pipe(v, data, "get")
+                        return data.pipe(v, data, "get")
                     })
                 } else {
-                    val = pipe(val, data, "get")
+                    val = data.pipe(val, data, "get")
                 }
                 if (val + "" !== element.oldValue) {
                     evaluator(val)
