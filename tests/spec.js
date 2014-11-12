@@ -935,6 +935,44 @@ define([], function() {
             }, 300)
         })
     })
+    describe("1.3.6 监控数组部分数组在一定情况下出现监听丢失", function() {
+        it("async", function(done) {
+            var m1 = avalon.define({
+                $id: "getEachProxyBUG1",
+                fruits: [{a: "苹果", b: "apple"}, {a: "香蕉", b: "banana"}]
+            })
+            var m2 = avalon.define({
+                $id: "getEachProxyBUG2",
+                fighters: []
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<div ms-controller="getEachProxyBUG1"><h1 ms-repeat="fruits" >{{el.a}}</h1> </div>' +
+                    '<div ms-controller="getEachProxyBUG2" id="getEachProxyBUG2"> <h1 ms-repeat="fighters" >{{el}}</h1></div>'
+            body.appendChild(div)
+            avalon.scan(div)
+            setTimeout(function() {
+                m1.fruits = [];
+            }, 300);
+            setTimeout(function() {
+                m2.fighters = ['su-35', 'su-22'];
+            }, 500);
+            setTimeout(function() {
+                m2.fighters.set(0, 'j-31')
+                m2.fighters.set(1, 'j-10')
+            }, 700);
+            setTimeout(function() {
+                var els = div.getElementsByTagName("h1")
+                var prop = "textContent" in div ? "textContent" : "innerText"
+                expect(els.length).to.be(2)
+                expect(els[0][prop]).to.be("j-31")
+                expect(els[1][prop]).to.be("j-10")
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+            }, 900);
+        })
+    })
     describe("重写一个空对象", function() {
         it("async", function(done) {
             var vmodel = avalon.define("overrideEmptyObject", function(vm) {
