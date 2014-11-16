@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.6 2014.11.7 support IE6+ and other browsers
+ avalon 1.3.7 2014.11.15 support IE6+ and other browsers
  ==================================================*/
 (function(DOC) {
     /*********************************************************************
@@ -308,6 +308,9 @@
             name = avalon.cssName(prop) || prop
             if (value === void 0 || typeof value === "boolean") { //获取样式
                 var fn = cssHooks[prop + ":get"] || cssHooks["@:get"]
+                if (name === "background") {
+                    name = "backgroundColor"
+                }
                 var val = fn(node, name)
                 return value === true ? parseFloat(val) || 0 : val
             } else if (value === "") { //请除样式
@@ -1334,8 +1337,7 @@
     var cssHooks = avalon.cssHooks = {}
     var prefixes = ["", "-webkit-", "-o-", "-moz-", "-ms-"]
     var cssMap = {
-        "float": "cssFloat",
-        background: "backgroundColor"
+        "float": "cssFloat"
     }
     avalon.cssNumber = oneObject("columnCount,order,fillOpacity,fontWeight,lineHeight,opacity,orphans,widows,zIndex,zoom")
 
@@ -1628,13 +1630,7 @@
     /************************************************************************
      *            HTML处理(parseHTML, innerHTML, clearHTML)                  *
      ************************************************************************/
-    var rtagName = /<([\w:]+)/,
-            //取得其tagName
-            rxhtml = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/ig,
-            rcreate = W3C ? /[^\d\D]/ : /(<(?:script|link|style|meta|noscript))/ig,
-            scriptTypes = oneObject(["", "text/javascript", "text/ecmascript", "application/ecmascript", "application/javascript"]),
-            //需要处理套嵌关系的标签
-            rnest = /<(?:tb|td|tf|th|tr|col|opt|leg|cap|area)/
+
     //parseHTML的辅助变量
     var tagHooks = {
         area: [1, "<map>"],
@@ -1656,6 +1652,11 @@
     String("circle,defs,ellipse,image,line,path,polygon,polyline,rect,symbol,text,use").replace(rword, function(tag) {
         tagHooks[tag] = tagHooks.g //处理SVG
     })
+    var rtagName = /<([\w:]+)/  //取得其tagName
+    var rxhtml = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/ig
+    var rcreate = W3C ? /[^\d\D]/ : /(<(?:script|link|style|meta|noscript))/ig
+    var scriptTypes = oneObject(["", "text/javascript", "text/ecmascript", "application/ecmascript", "application/javascript"])
+    var rnest = /<(?:tb|td|tf|th|tr|col|opt|leg|cap|area)/ //需要处理套嵌关系的标签
     var script = DOC.createElement("script")
     avalon.parseHTML = function(html) {
         if (typeof html !== "string") {
@@ -1743,6 +1744,7 @@
         }
         return node
     }
+
     /*********************************************************************
      *                            事件管理器                            *
      **********************************************************************/
@@ -1806,7 +1808,7 @@
                             if (!node) {
                                 continue
                             }
-                            var ok =  special === "down" ? element.contains(node) : //向下捕获
+                            var ok = special === "down" ? element.contains(node) : //向下捕获
                                     node.contains(element) //向上冒泡
                             if (ok) {
                                 node._avalon = v //符合条件的加一个标识
@@ -2017,22 +2019,6 @@
 
     //http://www.w3.org/TR/html5/syntax.html#void-elements
     var stopScan = oneObject("area,base,basefont,br,col,command,embed,hr,img,input,link,meta,param,source,track,wbr,noscript,script,style,textarea".toUpperCase())
-
-    //确保元素的内容被完全扫描渲染完毕才调用回调
-    var interval = W3C ? 30 : 50
-
-    function checkScan(elem, callback) {
-        var innerHTML = NaN,
-                id = setInterval(function() {
-                    var currHTML = elem.innerHTML
-                    if (currHTML === innerHTML) {
-                        clearInterval(id)
-                        callback()
-                    } else {
-                        innerHTML = currHTML
-                    }
-                }, interval)
-    }
 
 
     function scanTag(elem, vmodels, node) {
@@ -2673,7 +2659,12 @@
                     if (loaded) {
                         text = loaded.apply(target, [text].concat(vmodels))
                     }
-
+                    if (rendered) {
+                        avalon.scanCallback(function() {
+                            rendered.call(target)
+                        })
+                    }
+                    avalon.scan(target)
                     while (true) {
                         var node = data.startInclude.nextSibling
                         if (node && node !== data.endInclude) {
@@ -2686,10 +2677,7 @@
                     var nodes = avalon.slice(dom.childNodes)
                     target.insertBefore(dom, data.endInclude)
                     scanNodeArray(nodes, vmodels)
-                    rendered && checkScan(target, function() {
-                        rendered.call(target)
-                        vmodels.cb(-1)
-                    })
+                    vmodels.cb(-1)
                 }
                 if (data.param === "src") {
                     if (cacheTmpls[val]) {
@@ -2903,12 +2891,13 @@
                 }
                 var callback = data.renderedCallback || noop,
                         args = arguments
-                checkScan(parent, function() {
+                avalon.scanCallback(function() {
                     callback.apply(parent, args)
                     if (parent.oldValue && parent.tagName === "SELECT" && method === "index") { //fix #503
                         avalon(parent).val(parent.oldValue.split(","))
                     }
                 })
+                avalon.scan(parent)
             }
         },
         "html": function(val, elem, data) {
@@ -3346,7 +3335,7 @@
                     if (vmodel.hasOwnProperty("$init")) {
                         vmodel.$init(function() {
                             var nv = [vmodel].concat(vmodels)
-                            nv.cn = vmodels.cb
+                            nv.cb = vmodels.cb
                             avalon.scan(elem, nv)
                             if (typeof options.onInit === "function") {
                                 options.onInit.call(elem, vmodel, options, vmodels)
@@ -3371,7 +3360,7 @@
                         }
                     }
                 } else {
-                    avalon.scan(elem, vmodel)
+                    avalon.scan(elem, vmodels)
                 }
             } else if (vmodels.length) { //如果该组件还没有加载，那么保存当前的vmodels
                 elem.vmodels = vmodels
@@ -3676,18 +3665,12 @@
             }
         }
         data.bound("change", updateVModel)
-        var innerHTML = NaN
-        var id = setInterval(function() {
-            var currHTML = element.innerHTML
-            if (currHTML === innerHTML) {
-                clearInterval(id)
-                //先等到select里的option元素被扫描后，才根据model设置selected属性  
-                registerSubscriber(data)
-                data.changed.call(element, evaluator(), data)
-            } else {
-                innerHTML = currHTML
-            }
-        }, 20)
+        avalon.scanCallback(function() {
+            //先等到select里的option元素被扫描后，才根据model设置selected属性  
+            registerSubscriber(data)
+            data.changed.call(element, evaluator(), data)
+        })
+        avalon.scan(element)
     }
     duplexBinding.TEXTAREA = duplexBinding.INPUT
     //============================= event binding =======================
