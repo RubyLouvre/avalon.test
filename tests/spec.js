@@ -55,9 +55,9 @@ define([], function() {
 
 
     describe("parseHTML", function() {
-
+        avalon.parseHTML.p = 1
         it("async", function(done) {             //函数,正则,元素,节点,文档,window等对象为非
-            avalon.parseHTML.p = 1
+
             var node = avalon.parseHTML("<b><script> avalon.parseHTML.p  += 10<\/script></b>").firstChild
             var body = document.body
             body.appendChild(node)
@@ -554,7 +554,7 @@ define([], function() {
 
     })
 
-    describe("ms-checked", function() {
+    describe("ms-attr-checked", function() {
         it("async", function(done) {
             var model = avalon.define('checkedx', function(vm) {
                 vm.x = 0
@@ -572,8 +572,6 @@ define([], function() {
             }, 300)
         })
     })
-
-
 
     ////////////////////////////////////////////////////////////////////////
     //////////    下面是ms-duplex及ms-duplex-*相关        /////////////////////

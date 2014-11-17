@@ -1594,7 +1594,7 @@
     }
 
     var events = oneObject("animationend,blur,change,input,click,dblclick,focus,keydown,keypress,keyup,mousedown,mouseenter,mouseleave,mousemove,mouseout,mouseover,mouseup,scan,scroll,submit")
-
+    var obsoleteAttrs = oneObject("value,title,alt,checked,selected,disabled,readonly,enabled")
     function scanAttr(elem, vmodels) {
         //防止setAttribute, removeAttribute时 attributes自动被同步,导致for循环出错
         var attributes = elem.hasAttributes() ? avalon.slice(elem.attributes) : []
@@ -1613,7 +1613,7 @@
                     if (events[type]) {
                         param = type
                         type = "on"
-                    } else if (/^(checked|selected|disabled|readonly|enabled)$/.test(type)) {
+                    } else if (obsoleteAttrs[type]) {
                         log("ms-" + type + "已经被废弃,请使用ms-attr-*代替")
                         if (type === "enabled") {//吃掉ms-enabled绑定,用ms-disabled代替
                             type = "disabled"
@@ -1991,12 +1991,8 @@
                 if (toRemove) {
                     return elem.removeAttribute(attrName)
                 }
-                if (window.VBArray && !rsvg.test(elem)) {//IE下需要区分固有属性与自定义属性
-                    var attrs = elem.attributes || {}
-                    var attr = attrs[attrName]
-                    var isInnate = attr && attr.expando === false
-                }
-
+                //SVG只能使用setAttribute(xxx, yyy), VML只能使用elem.xxx = yyy ,HTML的固有属性必须elem.xxx = yyy
+                var isInnate = rsvg.test(elem) ? false : attrName in elem.cloneNode(false)
                 if (isInnate) {
                     elem[attrName] = val
                 } else {
