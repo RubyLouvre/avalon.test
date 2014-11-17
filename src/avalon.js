@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.7 2014.11.15 support IE6+ and other browsers
+ avalon 1.3.7 2014.11.17 support IE6+ and other browsers
  ==================================================*/
 (function(DOC) {
     /*********************************************************************
@@ -1694,7 +1694,7 @@
         for (i = wrap[0]; i--; wrapper = wrapper.lastChild) {
         }
         if (!W3C) { //fix IE
-            for (els = wrapper["getElementsByTagName"]("br"), i = 0; el = els[i++]; ) {
+            for (els = avalon.slice(wrapper["getElementsByTagName"]("br")), i = 0; el = els[i++]; ) {
                 if (el.className && el.className === "msNoScope") {
                     el.parentNode.removeChild(el)
                 }
@@ -1702,6 +1702,14 @@
             for (els = wrapper.all, i = 0; el = els[i++]; ) { //fix VML
                 if (isVML(el)) {
                     fixVML(el)
+                }
+            }
+            if (tag === "tr") {
+                for (els = avalon.slice(wrapper.children), i = 0; el = els[i++]; ) {
+                    // IE6-8,如果动态生成tr元素，必须会在后面添加早已废弃caption的标签，其nodeName,innerHTML都为""
+                    if (el.nodeName == "") {
+                        el.parentNode.removeChild(el)
+                    }
                 }
             }
         }

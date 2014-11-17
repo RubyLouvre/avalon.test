@@ -61,10 +61,23 @@ define([], function() {
             var node = avalon.parseHTML("<b><script> avalon.parseHTML.p  += 10<\/script></b>").firstChild
             var body = document.body
             body.appendChild(node)
+
+            //IE6-8下移除所有动态生成的BR元素
+            var node2 = avalon.parseHTML("<b></b><script><\/script><b></b><script><\/script><b></b>")
+            var div = document.createElement("div")
+            body.appendChild(div)
+            div.appendChild(node2)
+            expect(div.getElementsByTagName("br").length).to.be(2)
+            
+             //IE6-8下移除所有动态生成的caption元素
+            var tr = avalon.parseHTML("<tr><td>1</td></tr>").childNodes
+            expect(tr.length).to.be(1)
+            
             setTimeout(function() {
                 expect(avalon.parseHTML.p).to.be(11)
                 delete avalon.parseHTML.p
                 body.removeChild(node)
+                body.removeChild(div)
                 done()
             }, 300)
 
