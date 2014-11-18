@@ -68,11 +68,11 @@ define([], function() {
             body.appendChild(div)
             div.appendChild(node2)
             expect(div.getElementsByTagName("br").length).to.be(0)
-            
-             //IE6-8下移除所有动态生成的caption元素
+
+            //IE6-8下移除所有动态生成的caption元素
             var tr = avalon.parseHTML("<tr><td>1</td></tr>").childNodes
             expect(tr.length).to.be(1)
-            
+
             setTimeout(function() {
                 expect(avalon.parseHTML.p).to.be(11)
                 delete avalon.parseHTML.p
@@ -934,6 +934,67 @@ define([], function() {
 
             }, 300)
 
+        })
+    })
+
+    describe("ms-repeat + ms-duplex", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define("xxx" + (new Date - 0), function(vm) {
+                vm.data = {
+                    list: ["1"]
+                }
+                vm.click = function() {
+                    vm.data.list.push("3")
+                }
+
+                vm.clear = function() {
+                    vm.data.list = []
+                }
+
+                vm.serialize = function() {
+                    return vm.data.list.$model + ""
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<a href="#"  ms-on-click="click">add</a> <br>\
+            <a href="#"  ms-on-click="serialize">serialize</a> <br>\
+            <a href="#"  ms-on-click="clear">clear</a>\
+            <p  ms-repeat-el="data.list" >\
+                <input type="text"   ms-attr-hehe="$index"  ms-duplex="el">'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var input = div.getElementsByTagName("input")[0]
+                expect(vmodel.serialize()).to.be("1")
+                input.value = "2"
+                setTimeout(function() {
+                    expect(vmodel.serialize()).to.be("2")
+                })
+            }, 100)
+
+            setTimeout(function() {
+                var as = div.getElementsByTagName("a")
+                as[2].click()//请空
+                setTimeout(function() {
+                    as[0].click()//请空
+                    as[0].click()//请空
+                    as[0].click()//请空
+                })
+                setTimeout(function() {
+                    var input = div.getElementsByTagName("input")
+                    input[0].value = 8//请空
+                    input[2].value = 7//请空
+                }, 300)
+
+                setTimeout(function() {
+                    expect(vmodel.serialize()).to.be("8,3,7")
+                    body.removeChild(div)
+                    div.innerHTML = ""
+                    delete avalon.vmodels["ms-each-double"]
+                    done()
+                }, 600)
+            }, 300)
         })
     })
 
