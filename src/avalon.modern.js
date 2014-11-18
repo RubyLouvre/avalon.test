@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.7 2014.11.15 support IE10 and other latest browsers
+ avalon 1.3.7 2014.11.17 support IE10 and other latest browsers
  ==================================================*/
 (function(DOC) {
     var expose = Date.now()
@@ -1480,6 +1480,17 @@
     //http://www.w3.org/TR/html5/syntax.html#void-elements
     var stopScan = oneObject("area,base,basefont,br,col,command,embed,hr,img,input,link,meta,param,source,track,wbr,noscript,noscript,script,style,textarea".toUpperCase())
 
+    function checkScan(elem, callback, innerHTML) {
+        var id = setTimeout(function() {
+            var currHTML = elem.innerHTML
+            clearTimeout(id)
+            if (currHTML === innerHTML) {
+                callback()
+            } else {
+                checkScan(elem, callback, currHTML)
+            }
+        })
+    }
 
     function scanTag(elem, vmodels, node) {
         //扫描顺序  ms-skip(0) --> ms-important(1) --> ms-controller(2) --> ms-if(10) --> ms-repeat(100) 
@@ -2010,11 +2021,10 @@
                         text = loaded.apply(target, [text].concat(vmodels))
                     }
                     if (rendered) {
-                        avalon.scanCallback(function() {
+                        checkScan(target, function() {
                             rendered.call(target)
-                        })
+                        }, NaN)
                     }
-                    avalon.scan(target)
                     while (true) {
                         var node = data.startInclude.nextSibling
                         if (node && node !== data.endInclude) {
@@ -2213,13 +2223,12 @@
                         break
                 }
                 var callback = data.renderedCallback || noop, args = arguments
-                avalon.scanCallback(function() {
+                checkScan(parent, function() {
                     callback.apply(parent, args)
                     if (parent.oldValue && parent.tagName === "SELECT" && method === "index") {//fix #503
                         avalon(parent).val(parent.oldValue.split(","))
                     }
-                })
-                avalon.scan(parent)
+                }, NaN)
             }
         },
         "html": function(val, elem, data) {
@@ -2919,11 +2928,10 @@
             }
         }
         data.bound("change", updateVModel)
-        avalon.scanCallback(function() {
+        checkScan(element, function() {
             registerSubscriber(data)
             data.changed.call(element, evaluator(), data)
-        })
-        avalon.scan(element)
+        }, NaN)
     }
     duplexBinding.TEXTAREA = duplexBinding.INPUT
     //========================= event binding ====================

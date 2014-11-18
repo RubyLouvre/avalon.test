@@ -67,7 +67,7 @@ define([], function() {
             var div = document.createElement("div")
             body.appendChild(div)
             div.appendChild(node2)
-            expect(div.getElementsByTagName("br").length).to.be(2)
+            expect(div.getElementsByTagName("br").length).to.be(0)
             
              //IE6-8下移除所有动态生成的caption元素
             var tr = avalon.parseHTML("<tr><td>1</td></tr>").childNodes
