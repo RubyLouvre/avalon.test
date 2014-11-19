@@ -71,6 +71,7 @@ define([], function() {
 
             //IE6-8下移除所有动态生成的caption元素
             var tr = avalon.parseHTML("<tr><td>1</td></tr>").childNodes
+
             expect(tr.length).to.be(1)
 
             setTimeout(function() {
@@ -736,7 +737,7 @@ define([], function() {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<div><select ms-duplex=\"selected\"><option ms-repeat=\"array\" ms-value=\"el\">{{el}}</option></select></div>"
+            div.innerHTML = "<div><select ms-duplex=\"selected\"><option ms-repeat=\"array\" ms-attr-value=\"el\">{{el}}</option></select></div>"
             body.appendChild(div)
             avalon.scan(div, model)
             function fireEvent(element, type) {
@@ -968,11 +969,10 @@ define([], function() {
                 var input = div.getElementsByTagName("input")[0]
                 expect(vmodel.serialize()).to.be("1")
                 input.value = "2"
-                setTimeout(function() {
-                    expect(vmodel.serialize()).to.be("2")
-                })
             }, 100)
-
+            setTimeout(function() {
+                expect(vmodel.serialize()).to.be("2")
+            }, 200)
             setTimeout(function() {
                 var as = div.getElementsByTagName("a")
                 as[2].click()//请空
@@ -1064,6 +1064,55 @@ define([], function() {
             }, 900);
         })
     })
+
+    describe("短路与短路或", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define({
+                $id: "test" + String(Math.random()).split(/0\./, ""),
+                aa: {
+                    b: false,
+                    c: true
+                },
+                change1: function() {
+                    vmodel.aa.b = true
+                    vmodel.aa.c = true
+                },
+                change2: function() {
+                    vmodel.aa.b = true
+                    vmodel.aa.c = false
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<div ms-if="aa.b && aa.c">{{aa.b}}</div>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var nodes = div.getElementsByTagName("div")
+                expect(nodes.length).to.be(0)
+                vmodel.change1()
+            }, 100)
+            setTimeout(function() {
+                var nodes = div.getElementsByTagName("div")
+                expect(nodes.length).to.be(1)
+                vmodel.change2()
+            }, 200)
+            setTimeout(function() {
+                var nodes = div.getElementsByTagName("div")
+                expect(nodes.length).to.be(0)
+                vmodel.change1()
+            }, 300)
+            setTimeout(function() {
+                var nodes = div.getElementsByTagName("div")
+                expect(nodes.length).to.be(1)
+                body.removeChild(div)
+                div.innerHTML = ""
+                delete avalon.vmodels[vmodel.$id]
+                done()
+            }, 400)
+        })
+    })
+
     describe("重写一个空对象", function() {
         it("async", function(done) {
             var vmodel = avalon.define("overrideEmptyObject", function(vm) {
