@@ -70,9 +70,26 @@ define([], function() {
             expect(div.getElementsByTagName("br").length).to.be(0)
 
             //IE6-8下移除所有动态生成的caption元素
-            var tr = avalon.parseHTML("<tr><td>1</td></tr>").childNodes
+            var nodes = avalon.parseHTML("<tr><td>1</td></tr>").childNodes
 
-            expect(tr.length).to.be(1)
+            expect(nodes.length).to.be(1)
+
+            var nodes = avalon.parseHTML("<option>xxx</option>").childNodes
+
+            expect(nodes.length).to.be(1)
+
+            var nodes = avalon.parseHTML('<area shape="rect" coords="22,83,126,125" alt="HTML Tutorial"href="/html/index.htm"  target="_blank" />').childNodes
+            expect(nodes.length).to.be(1)
+
+            var nodes = avalon.parseHTML("<legend>legend</legend>").childNodes
+
+            expect(nodes.length).to.be(1)
+            
+            var nodes = avalon.parseHTML('<param name="audio" value="music.wav" /><param name="width" value="600" /><param name="height" value="400" />').childNodes
+            expect(nodes.length).to.be(3)
+
+
+
 
             setTimeout(function() {
                 expect(avalon.parseHTML.p).to.be(11)
