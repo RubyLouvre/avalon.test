@@ -84,7 +84,7 @@ define([], function() {
             var nodes = avalon.parseHTML("<legend>legend</legend>").childNodes
 
             expect(nodes.length).to.be(1)
-            
+
             var nodes = avalon.parseHTML('<param name="audio" value="music.wav" /><param name="width" value="600" /><param name="height" value="400" />').childNodes
             expect(nodes.length).to.be(3)
 
@@ -788,6 +788,28 @@ define([], function() {
             expect(model.array.remove(5)).to.eql([])
             expect(model.array.removeAt(-1)).to.eql([])
             delete avalon.vmodels["removeArray"]
+
+        })
+    })
+
+    describe("array.size()", function() {
+
+        it("async", function(done) {
+            var model = avalon.define("ArraySize", function(vm) {
+                vm.array = [1, 2, 3, 4]
+            })
+            var div = document.createElement("div")
+            div.innerHTML = '{{array.size()}}'
+            document.body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                expect(div.innerHTML).to.eql("4")
+                document.body.removeChild(div)
+                div.innerHTML = ""
+                done()
+                delete avalon.vmodels["ArraySize"]
+            })
+
 
         })
     })
