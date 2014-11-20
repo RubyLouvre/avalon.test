@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.7 2014.11.17 support IE10 and other latest browsers
+ avalon 1.3.7.2 2014.11.19 support IE10 and other latest browsers
  ==================================================*/
 (function(DOC) {
     var expose = Date.now()
@@ -1864,14 +1864,25 @@
         if (!assigns.length && isDuplex) {
             return
         }
-        if (!isDuplex) {
+        if (!isDuplex && (code.indexOf("||") > -1 || code.indexOf("&&") > -1)) {
             //https://github.com/RubyLouvre/avalon/issues/583
             data.vars.forEach(function(v) {
                 var reg = new RegExp("\\b" + v + "(?:\\.\\w+|\\[\\w+\\])+", "ig")
                 code = code.replace(reg, function(_) {
                     var c = _.charAt(v.length)
-                    if (c === "." || c === "[") {
+                    var method = /^\s*\(/.test(RegExp.rightContext)
+                    if (c === "." || c === "[" || method) {//比如v为aa,我们只匹配aa.bb,aa[cc],不匹配aaa.xxx
                         var name = "var" + String(Math.random()).replace(/^0\./, "")
+                        if (method) {//array.size()
+                            var array = _.split(".")
+                            if (array.length > 2) {
+                                var last = array.pop()
+                                assigns.push(name + " = " + array.join("."))
+                                return name + "." + last
+                            } else {
+                                return _
+                            }
+                        }
                         assigns.push(name + " = " + _)
                         return name
                     } else {
@@ -3024,6 +3035,7 @@
         for (var i in EventManager) {
             array[i] = EventManager[i]
         }
+
         avalon.mix(array, CollectionPrototype)
         return array
     }
@@ -3034,6 +3046,9 @@
         _splice: _splice,
         _fire: function(method, a, b) {
             notifySubscribers(this.$events[subscribers], method, a, b)
+        },
+        size: function() { //取得数组长度，这个函数可以同步视图，length不能
+            return this._.length
         },
         _add: function(arr, pos) {
             var oldLength = this.length
@@ -3109,9 +3124,6 @@
         },
         contains: function(el) { //判定是否包含
             return this.indexOf(el) !== -1
-        },
-        size: function() { //取得数组长度，这个函数可以同步视图，length不能
-            return this._.length
         },
         remove: function(el) { //移除第一个等于给定值的元素
             return this.removeAt(this.indexOf(el))

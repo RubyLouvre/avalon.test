@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.7 2014.11.17 support IE6+ and other browsers
+ avalon 1.3.7.2 2014.11.19 support IE6+ and other browsers
  ==================================================*/
 (function(DOC) {
     /*********************************************************************
@@ -1641,7 +1641,7 @@
         option: [1, "<select multiple='multiple'>"],
         thead: [1, "<table>", "</table>"],
         //如果这里不写</tbody></table>,在IE6-9会在多出一个奇怪的caption标签
-        tr: [2, "<table><tbody>","</tbody></table>"],
+        tr: [2, "<table><tbody>", "</tbody></table>"],
         td: [3, "<table><tbody><tr>"],
         g: [1, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">', '</svg>'],
         //IE6-8在用innerHTML生成节点时，不能直接创建no-scope元素与HTML5的新标签
@@ -1874,6 +1874,7 @@
                 var c = ronduplex.test(data.type) ? data : fn.apply(0, data.args)
                 data.handler(c, data.element, data)
             } catch (e) {
+                console.log(fn + "")
                 log("warning:exception throwed in [registerSubscriber] " + e)
                 delete data.evaluator
                 var node = data.element
@@ -2464,14 +2465,25 @@
         if (!assigns.length && dataType === "duplex") {
             return
         }
-        if (dataType !== "duplex") {
+        if (dataType !== "duplex" && (code.indexOf("||") > -1 || code.indexOf("&&") > -1)) {
             //https://github.com/RubyLouvre/avalon/issues/583
             data.vars.forEach(function(v) {
                 var reg = new RegExp("\\b" + v + "(?:\\.\\w+|\\[\\w+\\])+", "ig")
                 code = code.replace(reg, function(_) {
                     var c = _.charAt(v.length)
-                    if (c === "." || c === "[") {
+                    var method = /^\s*\(/.test(RegExp.rightContext)
+                    if (c === "." || c === "[" || method) {//比如v为aa,我们只匹配aa.bb,aa[cc],不匹配aaa.xxx
                         var name = "var" + String(Math.random()).replace(/^0\./, "")
+                        if (method) {//array.size()
+                            var array = _.split(".")
+                            if (array.length > 2) {
+                                var last = array.pop()
+                                assigns.push(name + " = " + array.join("."))
+                                return name + "." + last
+                            } else {
+                                return _
+                            }
+                        }
                         assigns.push(name + " = " + _)
                         return name
                     } else {
@@ -3848,6 +3860,9 @@
             this._fire("index", n > 2 ? n - 2 : 0)
             return n
         },
+        size: function() { //取得数组长度，这个函数可以同步视图，length不能
+            return this._.length
+        },
         pushArray: function(array) {
             return this.push.apply(this, array)
         },
@@ -3892,9 +3907,6 @@
         },
         contains: function(el) { //判定是否包含
             return this.indexOf(el) !== -1
-        },
-        size: function() { //取得数组长度，这个函数可以同步视图，length不能
-            return this._.length
         },
         remove: function(el) { //移除第一个等于给定值的元素
             return this.removeAt(this.indexOf(el))
