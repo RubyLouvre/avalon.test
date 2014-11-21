@@ -377,6 +377,7 @@ define([], function() {
             expect(avalon.filters.date("07 04,2000", format)).to.be("2000 07 04:00:00:00")
             expect(avalon.filters.date("3 14,2000", format)).to.be("2000 03 14:00:00:00")
             expect(avalon.filters.date("1373021259229", format)).to.be("2013 07 05:18:47:39")
+            expect(avalon.filters.date("2014-06-10T15:21:2", format)).to.be("2014 06 10:15:21:02")
             expect(avalon.filters.date(1373021259229, format)).to.be("2013 07 05:18:47:39")
         })
     })
