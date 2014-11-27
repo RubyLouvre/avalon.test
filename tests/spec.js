@@ -1,9 +1,68 @@
 define([], function() {
-    ////////////////////////////////////////////////////////////////////////
-    //////////    最前面的是与绑定没关的测试   /////////////////////////////
-    ////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//////////    最前面的是与绑定没关的测试   /////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
+    describe("扫描机制", function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "test",
+                array: [1, 2, 3, 4],
+                bbb: "xxx",
+                aaa: "yyy",
+                color: "green",
+                toggle: false,
+                s1: "组件第一行"
+            })
+            avalon.ui.scandal = function(element, data) {
+                return avalon.define(data.scandalId, function(vm) {
+                    avalon.mix(vm, data.scandalOptions)
+                    vm.s2 = "组件第二行"
+                    vm.$init = function(continueScan) {
+                        element.innerHTML = "<p>{{s1}}</p><p>{{s2}}</p>"
+                        continueScan()
+                    }
+                    vm.$remove = function() {
+                        element.innerHTML = ""
+                    }
+                })
+            }
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<div ms-data-aaa="bbb" ms-repeat="array" ms-css-background="color" id="scanIf1"><div>{{el}}</div></div>' +
+                    '<div ms-data-aaa="bbb" ms-each="array" ms-css-background="color" id="scanIf2"><div>{{el}}</div></div>' +
+                    '<div ms-if="toggle"  ms-data-xxx="aaa" id="scanIf3">{{bbb}}</div> {{color}}</div>' +
+                    '<div ms-if="!toggle" ms-data-xxx="aaa" id="scanIf4">{{color}}</div>' +
+                    '<div ms-widget="scandal" ms-data-scandal-s1="s1" id="scanIf5"></div>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                function get(id) {
+                    return document.getElementById(id)
+                }
+                expect(get("scanIf1").style.backgroundColor).to.be("green")
+                expect(get("scanIf2").style.backgroundColor).to.be("green")
+                var scanIf3 = get("scanIf3")
+                expect(scanIf3.parentNode.tagName.toUpperCase()).to.be("AVALON")
+                expect(scanIf3.getAttribute("ms-data-xxx")).to.be("aaa")
+                expect(scanIf3.getAttribute("ms-if")).to.be("toggle")
+                expect(get("scanIf4").getAttribute("data-xxx")).to.be("yyy")
+                expect(get("scanIf5").getAttribute("data-scandal-s1")).to.be("组件第一行")
+                var ps = get("scanIf5").getElementsByTagName("p")
+                expect(ps.length).to.be(2)
+                expect(ps[0].innerHTML).to.be("组件第一行")
+                expect(ps[1].innerHTML).to.be("组件第二行")
+                setTimeout(function() {
+
+                    body.removeChild(div)
+                    done()
+                })
+            }, 100)
+        })
+    })
+
     describe("设置透明度", function() {
-        //确保位置没有错乱
+//确保位置没有错乱
         it("sync", function() {
             var body = document.body
             var div = document.createElement("div")
@@ -289,7 +348,6 @@ define([], function() {
             var a = avalon.define("vm.array", function(vm) {
                 vm.array = [1, 2, 3]
             });
-
             setTimeout(function() {
                 a.array = a.array
                 setTimeout(function() {
@@ -503,7 +561,6 @@ define([], function() {
         })
 
     });
-
 
     describe('ms-attr-*', function() {
 
