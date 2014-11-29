@@ -1452,10 +1452,22 @@ define([], function() {
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function() {
-                var el = div.getElementsByTagName("li")[0]
-                expect(el.className).to.be("")
-                body.removeChild(div)
-                done()
+                var lis = div.getElementsByTagName("li")
+                expect(lis[0].className).to.be("")
+                expect(lis.length).to.be(5)
+                model.yyy = "<li>X</li><li>Y</li><li>Z</li><li>A</li><li>B</li><li>C</li>"
+                setTimeout(function() {
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis[0].innerHTML).to.be("X")
+                    expect(lis[1].innerHTML).to.be("Y")
+                    expect(lis[2].innerHTML).to.be("Z")
+                    expect((lis[6] || {}).innerHTML).to.be("last")
+                    expect(lis.length).to.be(7)
+                    body.removeChild(div)
+                    done()
+                }, 100)
+
+
             }, 100)
         })
     })
