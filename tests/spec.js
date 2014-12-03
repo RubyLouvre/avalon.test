@@ -80,6 +80,16 @@ define([], function() {
             body.removeChild(div)
         })
     })
+    describe("确保数组的$model与它的元素的$model是共通的", function() {
+        //确保位置没有错乱
+        it("sync", function() {
+            var test = avalon.define("array$model", function(vm) {
+                vm.array = [{id: 1}, {id: 2}, {id: 3}, {id: 4}]
+            })
+            expect(test.array.$model[0] ).to.be(test.array[0].$model)
+        })
+    })
+
     describe('newparser', function() {
         //确保位置没有错乱
         it("sync", function() {
