@@ -86,7 +86,7 @@ define([], function() {
             var test = avalon.define("array$model", function(vm) {
                 vm.array = [{id: 1}, {id: 2}, {id: 3}, {id: 4}]
             })
-            expect(test.array.$model[0] ).to.be(test.array[0].$model)
+            expect(test.array.$model[0]).to.be(test.array[0].$model)
         })
     })
 
@@ -1479,6 +1479,29 @@ define([], function() {
 
 
             }, 100)
+        })
+    })
+
+    describe('html-filter2:https://github.com/RubyLouvre/avalon/issues/598', function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: 'html-filter2',
+                x: '{{aaa}}',
+                x2: '{{y}}',
+                y: 'bbb'
+            });
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '正确{{x}}——{{x2}}——{{y|html}}'
+            body.appendChild(div)
+            avalon.scan(div, model)
+
+            setTimeout(function() {
+                expect(div.innerHTML.trim()).to.be("正确{{aaa}}——{{y}}——bbb")
+                body.removeChild(div)
+                done()
+            }, 100)
+
         })
     })
 
