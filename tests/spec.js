@@ -243,7 +243,7 @@ define([], function() {
                 bb: "bb",
                 cc: "cc"
             })).to.be(true)
-            expect(avalon.isPlainObject(new Object)).to.be(true)
+           expect(avalon.isPlainObject(new Object)).to.be(true)
         })
 
     })
