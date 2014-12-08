@@ -1575,9 +1575,7 @@ function scanAttr(elem, vmodels) {
     if (msData["ms-attr-checked"] && msData["ms-duplex"]) {
         log("warning!一个元素上不能同时定义ms-attr-checked与ms-duplex")
     }
-    bindings.sort(function(a, b) {
-        return a.priority - b.priority
-    })
+    bindings.sort(bindingSorter)
     var scanChild = true
     for (var i = 0, binding; binding = bindings[i]; i++) {
         var type = binding.type
@@ -2763,8 +2761,6 @@ bindingExecutors.visible = function(val, elem, data) {
     elem.style.display = val ? data.display : "none"
 }
 
-//根据VM的属性值或表达式的值切换类名，ms-class="xxx yyy zzz:flag" 
-//http://www.cnblogs.com/rubylouvre/archive/2012/12/17/2818540.html
 var rdash = /\(([^)]*)\)/
 bindingHandlers.on = function(data, vmodels) {
     var value = data.value
