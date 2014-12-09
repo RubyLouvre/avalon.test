@@ -5,8 +5,10 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon 1.3.7.3 support IE6+ and other browsers build in 2014.11.8 
-=================================*/
+avalon.modern.js 1.3.7.3 build in 2014.11.9 
+__________________________
+support IE6+ and other browsers
+ ==================================================*/
 (function() {
 
 /*********************************************************************
@@ -121,7 +123,7 @@ avalon.isWindow = function(obj) {
 
 avalon.isPlainObject = function(obj) {
     // 简单的 typeof obj === "object"检测，会致使用isPlainObject(window)在opera下通不过
-    return !!obj && serialize.call(obj) === "[object Object]" && Object.getPrototypeOf(obj) === oproto
+    return serialize.call(obj) === "[object Object]" && Object.getPrototypeOf(obj) === oproto
 }
 
 //与jQuery.extend方法，可用于浅拷贝，深拷贝
@@ -1180,7 +1182,7 @@ function registerSubscriber(data) {
             var c = ronduplex.test(data.type) ? data : fn.apply(0, data.args)
             data.handler(c, data.element, data)
         } catch (e) {
-            log("warning:exception throwed in [registerSubscriber] " + e)
+           // log("warning:exception throwed in [registerSubscriber] " + e)
             delete data.evaluator
             var node = data.element
             if (node.nodeType === 3) {
@@ -1461,11 +1463,11 @@ var priorityMap = {
     "on": 3000
 }
 var events = oneObject("animationend,blur,change,input,click,dblclick,focus,keydown,keypress,keyup,mousedown,mouseenter,mouseleave,mousemove,mouseout,mouseover,mouseup,scan,scroll,submit")
-
+var obsoleteAttrs = oneObject("value,title,alt,checked,selected,disabled,readonly,enabled")
 function bindingSorter(a, b) {
     return a.priority - b.priority
 }
-var obsoleteAttrs = oneObject("value,title,alt,checked,selected,disabled,readonly,enabled")
+
 function scanTag(elem, vmodels, node) {
     //扫描顺序  ms-skip(0) --> ms-important(1) --> ms-controller(2) --> ms-if(10) --> ms-repeat(100) 
     //--> ms-if-loop(110) --> ms-attr(970) ...--> ms-each(1400)-->ms-with(1500)--〉ms-duplex(2000)垫后
@@ -2680,7 +2682,8 @@ bindingExecutors.html = function(val, elem, data) {
         }
         var nodes = avalon.slice(fragment.childNodes)
         if (nodes[0]) {
-            parent.replaceChild(fragment, comment)
+            if (comment.parentNode)
+                comment.parentNode.replaceChild(fragment, comment)
             if (isHtmlFilter) {
                 data.element = nodes[0]
             }
