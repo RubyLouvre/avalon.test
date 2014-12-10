@@ -672,7 +672,33 @@ define([], function() {
             }, 300)
         })
     })
-
+    
+    describe("ms-class", function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "ms-class-test",
+                b: "xxx",
+                toggle: true
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "<p ms-class='aaa {{b}} ccc: toggle'></p><p ms-class='aaa bbb ccc: !toggle'></p>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var ps = div.getElementsByTagName("p")
+                expect(ps[0].className).to.be("aaa xxx ccc")
+                expect(ps[1].className).to.be("")
+                model.toggle = false
+                setTimeout(function() {
+                    expect(ps[0].className).to.be("")
+                    expect(ps[1].className).to.be("aaa bbb ccc")
+                    body.removeChild(div)
+                    done()
+                }, 300)
+            }, 300)
+        })
+    })
     ////////////////////////////////////////////////////////////////////////
     //////////    下面是ms-duplex及ms-duplex-*相关        /////////////////////
     ////////////////////////////////////////////////////////////////////////
@@ -977,7 +1003,7 @@ define([], function() {
                         expect($proxies[0].el).to.be(vmodel.arr[0])
                         expect($proxies[0].el.$model).to.be(vmodel.arr[0].$model)
                     }
-               
+
                     expect(vmodel.$model.arr[0]).to.be(vmodel.arr[0].$model)
                     body.removeChild(div)
                     div.innerHTML = ""
