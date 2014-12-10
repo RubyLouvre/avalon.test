@@ -967,8 +967,17 @@ define([], function() {
                     expect(vmodel.arr[1].$model.name).to.be("yyyy")
                     expect(vmodel.$model.arr[1].name).to.be("yyyy")
                     var data = vmodel.arr.$events[avalon.subscribers][0]
-                    expect(data.proxies[0].el).to.be(vmodel.arr[0])
-                    expect(data.proxies[0].el.$model).to.be(vmodel.arr[0].$model)
+                    var is138 = "$proxies" in  vmodel.arr
+                    if (is138) {
+                        var $proxies = vmodel.arr.$proxies
+                        expect($proxies[0].el()).to.be(vmodel.arr[0])
+                        expect($proxies[0].el().$model).to.be(vmodel.arr[0].$model)
+                    } else {
+                        var $proxies = data.proxies
+                        expect($proxies[0].el).to.be(vmodel.arr[0])
+                        expect($proxies[0].el.$model).to.be(vmodel.arr[0].$model)
+                    }
+               
                     expect(vmodel.$model.arr[0]).to.be(vmodel.arr[0].$model)
                     body.removeChild(div)
                     div.innerHTML = ""
@@ -1070,7 +1079,7 @@ define([], function() {
             <a href="#"  ms-on-click="serialize">serialize</a> <br>\
             <a href="#"  ms-on-click="clear">clear</a>\
             <p  ms-repeat-el="data.list" >\
-                <input type="text"   ms-attr-hehe="$index"  ms-duplex="el">'
+                <input type="text"   ms-attr-hehe="$index"  ms-duplex="el"></p>'
             body.appendChild(div)
             avalon.scan(div, vmodel)
             setTimeout(function() {
