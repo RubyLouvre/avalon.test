@@ -672,7 +672,34 @@ define([], function() {
             }, 300)
         })
     })
-    
+    describe("{{}}测试", function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "texttext",
+                x: '{{aaa}}',
+                y: '{{bbb}}',
+                arr: [1, 2, 3]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = 'A：<div ms-each="arr">{{x}}</div>B：<div ms-repeat="arr">{{y}}</div>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var ps = div.getElementsByTagName("div")
+                var prop = "textContent" in div ? "textContent" : "innerText"
+                expect(ps.length).to.be(4)
+                expect(ps[0][prop]).to.be("{{aaa}}{{aaa}}{{aaa}}")
+                expect(ps[1][prop]).to.be("{{bbb}}")
+                expect(ps[2][prop]).to.be("{{bbb}}")
+                expect(ps[3][prop]).to.be("{{bbb}}")
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+
+            }, 300)
+        })
+    })
     describe("ms-class", function() {
         it("async", function(done) {
             var model = avalon.define({
@@ -747,7 +774,7 @@ define([], function() {
         })
 
     })
-    describe('ms-duplex-bool', function() {
+    describe('ms-duplex-boolean', function() {
         //ms-duplex-bool只能用于radio控件，会自动转换value为布尔，同步到VM
         it("async", function(done) {
             var model = avalon.define('test', function(vm) {

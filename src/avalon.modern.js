@@ -189,7 +189,7 @@ function _number(a, len) { //用于模拟slice, splice的效果
 avalon.mix({
     rword: rword,
     subscribers: subscribers,
-    version: 1.36,
+    version: 1.37,
     ui: {},
     log: log,
     slice: function(nodes, start, end) {
@@ -1182,7 +1182,7 @@ function registerSubscriber(data) {
             var c = ronduplex.test(data.type) ? data : fn.apply(0, data.args)
             data.handler(c, data.element, data)
         } catch (e) {
-            // log("warning:exception throwed in [registerSubscriber] " + e)
+            log("warning:exception throwed in [registerSubscriber] " + e)
             delete data.evaluator
             var node = data.element
             if (node.nodeType === 3) {
@@ -2670,15 +2670,7 @@ bindingExecutors.html = function(val, elem, data) {
     var comment = DOC.createComment("ms-html")
     if (isHtmlFilter) {
         parent.insertBefore(comment, elem)
-        var length = data.group
-        while (elem) {
-            var nextNode = elem.nextSibling
-            parent.removeChild(elem)
-            length--
-            if (length === 0 || nextNode === null)
-                break
-            elem = nextNode
-        }
+        avalon.clearHTML(removeFragment(elem, data.group))
         data.element = comment //防止被CG
     } else {
         avalon.clearHTML(parent).appendChild(comment)
