@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
-avalon.js 1.3.7.3 build in 2014.11.10 
+avalon.js 1.3.7.3 build in 2014.11.12 
 ________________________________
 support IE6+ and other browsers
  ==================================================*/
@@ -1906,7 +1906,7 @@ function scanTag(elem, vmodels, node) {
     if (typeof a === "string") {
         return
     } else if (node = b || c) {
-        var newVmodel = VMODELS[node.value]
+        var newVmodel = avalon.vmodels[node.value]
         if (!newVmodel) {
             return
         }
@@ -1916,8 +1916,8 @@ function scanTag(elem, vmodels, node) {
         vmodels.cb = cb
         var name = node.name
         elem.removeAttribute(name) //removeAttributeNode不会刷新[ms-controller]样式规则
-        createSignalTower(elem, newVmodel)
         avalon(elem).removeClass(name)
+        createSignalTower(elem, newVmodel)
     }
     scanAttr(elem, vmodels) //扫描特性节点
 }
@@ -2003,24 +2003,23 @@ function scanAttr(elem, vmodels) {
     if (msData["ms-attr-checked"] && msData["ms-duplex"]) {
         log("warning!一个元素上不能同时定义ms-attr-checked与ms-duplex")
     }
-    var scanChild = true
+    var scanNode = true
     for (var i = 0, binding; binding = bindings[i]; i++) {
         var type = binding.type
-        if (type === "if" || type === "widget") {
-            executeBindings([binding], vmodels)
-            break
-        } else if (type === "data") {
-            executeBindings([binding], vmodels)
-        } else {
-            executeBindings(bindings.slice(i), vmodels)
-            bindings = []
-            scanChild = binding.type !== "repeat"
+        if (rnoscanAttrBinding.test(type)) {
+            return executeBindings(bindings.slice(0, i + 1), vmodels)
+        } else if (scanNode) {
+            scanNode = !rnoscanNodeBinding.test(type)
         }
     }
-    if (scanChild && !stopScan[elem.tagName] && rbind.test(elem.innerHTML.replace(rlt, "<").replace(rgt, ">"))) {
+    executeBindings(bindings, vmodels)
+
+    if (scanNode && !stopScan[elem.tagName] && rbind.test(elem.innerHTML.replace(rlt, "<").replace(rgt, ">"))) {
         scanNodeList(elem, vmodels) //扫描子孙元素
     }
 }
+var rnoscanAttrBinding = /^if|widget|repeat$/
+var rnoscanNodeBinding = /^each|with|html|include$/
 //IE67下，在循环绑定中，一个节点如果是通过cloneNode得到，自定义属性的specified为false，无法进入里面的分支，
 //但如果我们去掉scanAttr中的attr.specified检测，一个元素会有80+个特性节点（因为它不区分固有属性与自定义属性），很容易卡死页面
 if (!"1" [0]) {
@@ -3221,7 +3220,7 @@ bindingExecutors ["class"] = function(val, elem, data) {
                     var fn2 = $elem.bind(abandon, function() {
                         data.toggleClass && $elem.removeClass(data.newClass)
                     })
-                    data.roolback = function() {
+                    data.rollback = function() {
                         $elem.unbind("mouseleave", fn0)
                         $elem.unbind(activate, fn1)
                         $elem.unbind(abandon, fn2)
@@ -3325,14 +3324,14 @@ bindingExecutors["if"] = function(val, elem, data) {
             elem.removeAttribute(data.name)
             scanAttr(elem, data.vmodels)
         }
-        data.roolback = null
+        data.rollback  = null
     } else { //移出DOM树，并用注释节点占据原位置
         if (elem.nodeType === 1) {
             var node = data.element = DOC.createComment("ms-if")
             elem.parentNode.replaceChild(node, elem)
             data.template = elem //元素节点
             ifGroup.appendChild(elem)
-            data.roolback = function() {
+            data.rollback  = function() {
                 ifGroup.removeChild(data.template)
             }
         }
@@ -3961,11 +3960,15 @@ bindingHandlers.repeat = function(data, vmodels) {
     if ($list && avalon.Array.ensure($list, data)) {
         addSubscribers(data, $list)
     }
-    if (!Array.isArray($repeat) && type !== "each") {
-        var pool = withProxyPool[$repeat.$id]
+    if (xtype === "object") {
+        var id = $repeat.$id
+        var pool = id ? withProxyPool[id] : null
         if (!pool) {
-            withProxyCount++
-            pool = withProxyPool[$repeat.$id] = {}
+             pool = {}
+            if (id) {
+                withProxyCount++
+                withProxyPool[id] = pool
+            }
             for (var key in $repeat) {
                 if ($repeat.hasOwnProperty(key) && key !== "hasOwnProperty") {
                     (function(k, v) {

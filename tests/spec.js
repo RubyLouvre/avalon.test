@@ -676,7 +676,7 @@ define([], function() {
         it("async", function(done) {
             var model = avalon.define({
                 $id: "texttext",
-                x: '{{aaa}}',
+                x: '{{uuu}}',
                 y: '{{bbb}}',
                 arr: [1, 2, 3]
             })
@@ -689,7 +689,7 @@ define([], function() {
                 var ps = div.getElementsByTagName("div")
                 var prop = "textContent" in div ? "textContent" : "innerText"
                 expect(ps.length).to.be(4)
-                expect(ps[0][prop]).to.be("{{aaa}}{{aaa}}{{aaa}}")
+                expect(ps[0][prop]).to.be("{{uuu}}{{uuu}}{{uuu}}")
                 expect(ps[1][prop]).to.be("{{bbb}}")
                 expect(ps[2][prop]).to.be("{{bbb}}")
                 expect(ps[3][prop]).to.be("{{bbb}}")
@@ -1167,7 +1167,55 @@ define([], function() {
             }, 300)
         })
     })
-
+    describe("ms-repeat循环非监控对象", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define({
+                $id: "ms-repeat-skip",
+                $skipArray: ["banksInfo", "moreBanks"],
+                banksInfo: {
+                    ccb: {
+                        text: "建设银行"
+                    },
+                    boc: {
+                        text: "中国银行"
+                    },
+                    post: {
+                        text: "邮政银行"
+                    }
+                },
+                moreBanks: {
+                    abc: {
+                        text: "农业银行"
+                    },
+                    cmb: {
+                        text: "招商银行"
+                    },
+                    icbc: {
+                        text: "工商银行"
+                    }
+                }
+            })
+            var body = document.body
+            var aaa = document.createElement("div")
+            aaa.innerHTML = '<div ms-repeat="moreBanks" > {{$val.text}}</div><div ms-repeat="banksInfo" >{{$val.text}}</div>'
+            body.appendChild(aaa)
+            avalon.scan(aaa, vmodel)
+            setTimeout(function() {
+                var div = aaa.getElementsByTagName("div")
+                expect(div.length).to.be(6)
+                expect(div[0].innerHTML.trim()).to.be("农业银行")
+                expect(div[1].innerHTML.trim()).to.be("招商银行")
+                expect(div[2].innerHTML.trim()).to.be("工商银行")
+                expect(div[3].innerHTML.trim()).to.be("建设银行")
+                expect(div[4].innerHTML.trim()).to.be("中国银行")
+                expect(div[5].innerHTML.trim()).to.be("邮政银行")
+                body.removeChild(aaa)
+                aaa.innerHTML = ""
+                delete avalon.vmodels["ms-repeat-skip"]
+                done()
+            }, 300)
+        })
+    })
     describe("ms-each同时循环两行", function() {
         it("async", function(done) {
             var vmodel = avalon.define("ms-each-double", function(vm) {
