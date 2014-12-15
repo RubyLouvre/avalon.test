@@ -1167,6 +1167,43 @@ define([], function() {
             }, 300)
         })
     })
+
+    describe("ms-repeat循环非监控对象", function() {
+        it("async", function(done) {
+            var vmodel = avalon.define({
+                $id: "$outertest",
+                array: [[1, 2, 3, 4], ["a", "b", "c", "d"], [11, 22, 33, 44]]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<table border="1" width="500"><tr ms-repeat="array"><td  ms-repeat-elem="el">{{$outer.$index}}' +
+                    '.{{$index}}.{{elem}}</td></tr></table>'
+            body.appendChild(div)
+            avalon.scan(div, vmodel)
+            setTimeout(function() {
+                var tds = div.getElementsByTagName("td")
+
+                expect(tds.length).to.be(12)
+                expect(tds[0].innerHTML.trim()).to.be("0.0.1")
+                expect(tds[1].innerHTML.trim()).to.be("0.1.2")
+                expect(tds[2].innerHTML.trim()).to.be("0.2.3")
+                expect(tds[3].innerHTML.trim()).to.be("0.3.4")
+                expect(tds[4].innerHTML.trim()).to.be("1.0.a")
+                expect(tds[5].innerHTML.trim()).to.be("1.1.b")
+                expect(tds[6].innerHTML.trim()).to.be("1.2.c")
+                expect(tds[7].innerHTML.trim()).to.be("1.3.d")
+                expect(tds[8].innerHTML.trim()).to.be("2.0.11")
+                expect(tds[9].innerHTML.trim()).to.be("2.1.22")
+                expect(tds[10].innerHTML.trim()).to.be("2.2.33")
+                expect(tds[11].innerHTML.trim()).to.be("2.3.44")
+                body.removeChild(div)
+                div.innerHTML = ""
+                delete avalon.vmodels["$outertest"]
+                done()
+            }, 300)
+        })
+    })
+
     describe("ms-repeat循环非监控对象", function() {
         it("async", function(done) {
             var vmodel = avalon.define({
