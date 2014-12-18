@@ -1431,6 +1431,7 @@ define([], function() {
                     var lis = div.getElementsByTagName("li")
                     var li = lis[lis.length - 1]
                     expect(/true/.test(li.innerHTML)).to.be(true)
+                    delete avalon.vmodels["removeLastElement"]
                     body.removeChild(div)
                     done()
                 }, 50)
@@ -1486,6 +1487,62 @@ define([], function() {
                     done()
                 }
             }
+        })
+    })
+
+    describe("ms-with", function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "testmswith",
+                $skipArray: ["bbb"],
+                aaa: {
+                    a: 1,
+                    b: 2,
+                    c: 3
+                },
+                bbb: {
+                    a: 1,
+                    b: 2,
+                    c: 3
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<div ms-with="aaa"><p>{{$key}}--{{$val}}</p><input ms-duplex="$val"/></div>' +
+                    '<div ms-with="bbb"><p>{{$key}}--{{$val}}</p><input ms-duplex="$val"/></div>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var ps = div.getElementsByTagName("p")
+                expect(ps.length).to.be(6)
+                expect(ps[0].innerHTML).to.be("a--1")
+                expect(ps[1].innerHTML).to.be("b--2")
+                expect(ps[2].innerHTML).to.be("c--3")
+                expect(ps[3].innerHTML).to.be("a--1")
+                expect(ps[4].innerHTML).to.be("b--2")
+                expect(ps[5].innerHTML).to.be("c--3")
+                var inputs = div.getElementsByTagName("input")
+                inputs[0].value = 10
+                inputs[1].value = 20
+                inputs[2].value = 30
+                inputs[3].value = 40
+                inputs[4].value = 50
+                inputs[5].value = 60
+                setTimeout(function() {
+                    var ps = div.getElementsByTagName("p")
+                    expect(ps.length).to.be(6)
+                    expect(ps[0].innerHTML).to.be("a--10")
+                    expect(ps[1].innerHTML).to.be("b--20")
+                    expect(ps[2].innerHTML).to.be("c--30")
+                    expect(ps[3].innerHTML).to.be("a--1")
+                    expect(ps[4].innerHTML).to.be("b--2")
+                    expect(ps[5].innerHTML).to.be("c--3")
+                    delete avalon.vmodels["testmswith"]
+                    body.removeChild(div)
+                    done()
+                }, 100)
+
+            }, 50)
         })
     })
 
@@ -1568,8 +1625,25 @@ define([], function() {
                 expect(lis[0].innerHTML).to.be("kkk:vvv")
                 expect(lis[1].innerHTML).to.be("kkk2:vvv2")
                 expect(lis[2].innerHTML).to.be("kkk3:vvv3")
-                body.removeChild(div)
-                done()
+                model.object = {
+                    a: 22,
+                    b: 33,
+                    c: 44,
+                    d: 55
+                }
+                setTimeout(function() {
+                    var ul = div.getElementsByTagName("ul")[0]
+                    var lis = ul.getElementsByTagName("li")
+                    expect(lis.length).to.be(4)
+                    expect(lis[0].innerHTML).to.be("a:22")
+                    expect(lis[1].innerHTML).to.be("b:33")
+                    expect(lis[2].innerHTML).to.be("c:44")
+                    expect(lis[3].innerHTML).to.be("d:55")
+                    body.removeChild(div)
+                    done()
+                }, 300)
+
+
             }, 100)
         })
     })
