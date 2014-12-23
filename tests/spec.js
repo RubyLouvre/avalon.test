@@ -367,7 +367,7 @@ define([], function() {
             }, 100)
         })
     })
-    describe('range', function() {
+    describe("range", function() {
 
         it("sync", function() {
             expect(avalon.range(10)).to.eql([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -395,7 +395,7 @@ define([], function() {
         })
 
     })
-    describe('oneObject', function() {
+    describe("oneObject", function() {
 
         it("sync", function() {
             expect(avalon.oneObject("aa,bb,cc")).to.eql({
@@ -419,7 +419,7 @@ define([], function() {
     })
 
 
-    describe('addClass,removeClass', function() {
+    describe("addClass,removeClass", function() {
 
         it("async", function(done) {
             avalon.ready(function() {
@@ -481,8 +481,9 @@ define([], function() {
             expect(model.firstName).to.be("清风")
             expect(model.lastName).to.be("火羽")
         })
+
         it("async2", function(done) {
-            var model = avalon.define("test" + (new Date - 0), function(vm) {
+            var model = avalon.define("computed2", function(vm) {
                 vm.test0 = false;
                 vm.test1 = {
                     set: function(val) {
@@ -517,7 +518,7 @@ define([], function() {
                     buttons[1].click()
                     expect(model.test0).to.be(false)
                     expect(model.test1).to.be(false)
-
+                    delete avalon.vmodels.computed2
                     body.removeChild(div)
                     done()
                 }, 100)
@@ -527,7 +528,7 @@ define([], function() {
         })
 
         it("async3", function(done) {
-            var model = avalon.define("test2", function(vm) {
+            var model = avalon.define("computed3", function(vm) {
                 vm.test0 = false;
                 vm.test1 = false;
                 vm.test2 = false;
@@ -554,7 +555,7 @@ define([], function() {
             });
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<div ms-controller=\"test2\" type=\"button\"><button ms-click=\"one\">\u6D4B\u8BD51</button><br>test0: {{test0}}<br>test1: {{test1}}<br>test2: {{test2}}<br>msg: {{msg}}</div>"
+            div.innerHTML = "<div type=\"button\"><button ms-click=\"one\">\u6D4B\u8BD51</button><br>test0: {{test0}}<br>test1: {{test1}}<br>test2: {{test2}}<br>msg: {{msg}}</div>"
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function() {
@@ -564,11 +565,28 @@ define([], function() {
                     expect(model.test1).to.be(true)
                     expect(model.test2).to.be(true)
                     expect(model.msg).to.be("ok！！")
+                    delete avalon.vmodels.computed3
                     body.removeChild(div)
                     done()
                 })
             }, 100)
 
+        })
+
+        it("sync", function() {
+            var model = avalon.define({
+                $id: "computed4",
+                test1: "test1",
+                test2: {
+                    get: function() {
+                        return this.test1;
+                    }
+                }
+            });
+            expect(model.test2).to.be("test1")
+            model.test1 = "test@@@"
+            expect(model.$model.test2).to.be("test@@@")
+            delete avalon.vmodels.computed4
         })
 
     });
