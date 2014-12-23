@@ -283,6 +283,70 @@ define([], function() {
         })
     })
 
+    describe("ms-html", function() {
+        it("async1", function(done) {
+            var model = avalon.define({
+                $id: "ms-html1",
+                array: ["<span>{{$index}}</span>", "<span>{{$index}}</span>", "<span>{{$index}}</span>"]
+            })
+            var div = document.createElement("div")
+            div.innerHTML = '<div ms-repeat="array" ms-html="el"></div>'
+            var body = document.body
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var spans = div.getElementsByTagName("span")
+                expect(spans.length).to.be(3)
+                expect(spans[0].innerHTML).to.be("0")
+                expect(spans[1].innerHTML).to.be("1")
+                expect(spans[2].innerHTML).to.be("2")
+                delete avalon.vmodels["ms-html1"]
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+
+        it("async2", function(done) {
+            var div = document.createElement("div")
+            var model = avalon.define({
+                $id: "ms-html2",
+                toggle: false,
+                html: "<span>11</span><strong>222</strong><span>333</span><strong>444</strong><span>555</span><strong>666</strong>",
+                show: function() {
+                    model.toggle = true
+                },
+                scan: function() {
+                    avalon.scan(div)
+                }
+            });
+
+            div.innerHTML = '<div ms-if="toggle">%%%%{{html|html}}%%%%</div>'
+            var body = document.body
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var divs = div.getElementsByTagName("div")
+                expect(divs.length).to.be(0)
+                model.scan()
+                setTimeout(function() {
+                    model.show()
+                    setTimeout(function() {
+                        model.show()
+                        var spans = div.getElementsByTagName("span")
+                        var strongs = div.getElementsByTagName("strong")
+                        expect(spans.length).to.be(3)
+                        expect(strongs.length).to.be(3)
+                        delete avalon.vmodels["ms-html2"]
+                        div.innerHTML = ""
+                        body.removeChild(div)
+                        done()
+                    }, 100)
+                }, 100)
+            }, 100)
+        })
+    })
+
     describe('slice', function() {
 
         it("sync", function() {
