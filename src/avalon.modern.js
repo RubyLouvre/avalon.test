@@ -5,8 +5,8 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
-avalon.modern.js 1.38 build in 2014.12.23 
-____________________________
+avalon.modern.js 1.381 build in 2014.12.25 
+___________________________
 support IE6+ and other browsers
  ==================================================*/
 (function() {
@@ -189,7 +189,7 @@ function _number(a, len) { //用于模拟slice, splice的效果
 avalon.mix({
     rword: rword,
     subscribers: subscribers,
-    version: 1.38,
+    version: 1.381,
     ui: {},
     log: log,
     slice: function(nodes, start, end) {
@@ -944,12 +944,12 @@ function neutrinoFactory(parent, name, value, valueType) {
         midway[ret.$id] = function(data) {
             while (data = iterators.shift()) {
                 (function(el) {
-                    if (el.type) { //重新绑定
-                        avalon.nextTick(function() {
+                    avalon.nextTick(function() {
+                        if (el.type) { //重新绑定
                             el.rollback && el.rollback() //还原 ms-with ms-on
                             bindingHandlers[el.type](el, el.vmodels)
-                        })
-                    }
+                        }
+                    })
                 })(data)
             }
             delete midway[ret.$id]
@@ -1544,7 +1544,16 @@ function scanAttr(elem, vmodels) {
                         value: value,
                         priority: type in priorityMap ? priorityMap[type] : type.charCodeAt(0) * 10 + (Number(param) || 0)
                     }
-                    if (type === "if" && param === "loop") {
+                    if (type === "html" || type === "text") {
+                        var token = getToken(value)
+                        avalon.mix(binding, token)
+                        binding.filters = binding.filters.replace(rhasHtml, function() {
+                            binding.type = "html"
+                            binding.group = 1
+                            return ""
+                        })
+                    }
+                    if (name === "ms-if-loop") {
                         binding.priority += 100
                     }
                     if (vmodels.length) {
@@ -1578,22 +1587,27 @@ function scanAttr(elem, vmodels) {
 
 var rnoscanAttrBinding = /^if|widget|repeat$/
 var rnoscanNodeBinding = /^each|with|html|include$/
-var rfilters = /\|\s*(\w+)\s*(\([^)]*\))?/g,
+var rhasHtml = /\|\s*html\s*/,
         r11a = /\|\|/g,
-        r11b = /U2hvcnRDaXJjdWl0/g,
         rlt = /&lt;/g,
         rgt = /&gt;/g
 
-function trimFilter(value, leach) {
-    if (value.indexOf("|") > 0) { // 抽取过滤器 先替换掉所有短路与
-        value = value.replace(r11a, "U2hvcnRDaXJjdWl0") //btoa("ShortCircuit")
-        value = value.replace(rfilters, function(c, d, e) {
-            leach.push(d + (e || ""))
-            return ""
-        })
-        value = value.replace(r11b, "||") //还原短路与
+function getToken(value) {
+    if (value.indexOf("|") > 0) {
+        var index = value.replace(r11a, "\u1122\u3344").indexOf("|") //干掉所有短路或
+        if (index > -1) {
+            return {
+                filters: value.slice(index),
+                value: value.slice(0, index),
+                expr: true
+            }
+        }
     }
-    return value
+    return {
+        value: value,
+        filters: "",
+        expr: true
+    }
 }
 
 function scanExpr(str) {
@@ -1609,6 +1623,7 @@ function scanExpr(str) {
         if (value) { // {{ 左边的文本
             tokens.push({
                 value: value,
+                filters: "",
                 expr: false
             })
         }
@@ -1619,13 +1634,7 @@ function scanExpr(str) {
         }
         value = str.slice(start, stop)
         if (value) { //处理{{ }}插值表达式
-            var leach = []
-            value = trimFilter(value, leach)
-            tokens.push({
-                value: value,
-                expr: true,
-                filters: leach.length ? leach : void 0
-            })
+            tokens.push(getToken(value))
         }
         start = stop + closeTag.length
     } while (1)
@@ -1633,25 +1642,17 @@ function scanExpr(str) {
     if (value) { //}} 右边的文本
         tokens.push({
             value: value,
-            expr: false
+            expr: false,
+            filters: ""
         })
     }
-
     return tokens
 }
 
 function scanText(textNode, vmodels) {
     var bindings = []
     if (textNode.nodeType === 8) {
-        var leach = []
-        var value = trimFilter(textNode.nodeValue, leach)
-        var token = {
-            expr: true,
-            value: value
-        }
-        if (leach.length) {
-            token.filters = leach
-        }
+        var token = getToken(textNode.nodeValue)
         var tokens = [token]
     } else {
         tokens = scanExpr(textNode.data)
@@ -1660,22 +1661,14 @@ function scanText(textNode, vmodels) {
         for (var i = 0, token; token = tokens[i++]; ) {
             var node = DOC.createTextNode(token.value) //将文本转换为文本节点，并替换原来的文本节点
             if (token.expr) {
-                var filters = token.filters
-                var binding = {
-                    type: "text",
-                    element: node,
-                    value: token.value,
-                    filters: filters
-                }
-                if (filters && filters.indexOf("html") !== -1) {
-                    avalon.Array.remove(filters, "html")
-                    binding.type = "html"
-                    binding.group = 1
-                    if (!filters.length) {
-                        delete bindings.filters
-                    }
-                }
-                bindings.push(binding) //收集带有插值表达式的文本
+                token.type = "text"
+                token.element = node
+                token.filters = token.filters.replace(rhasHtml, function() {
+                    token.type = "html"
+                    token.group = 1
+                    return ""
+                })
+                bindings.push(token) //收集带有插值表达式的文本
             }
             hyperspace.appendChild(node)
         }
@@ -2177,10 +2170,32 @@ var cacheExprs = createCache(128)
 //取得求值函数及其传参
 var rduplex = /\w\[.*\]|\w\.\w/
 var rproxy = /(\$proxy\$[a-z]+)\d+$/
+var rthimRightParentheses = /\)\s*$/
+var rthimOtherParentheses = /\)\s*\|/g
+var rquoteFilterName = /\|\s*([$\w]+)/g
+var rpatchBracket = /"\s*\["/g
+var rthimLeftParentheses = /"\s*\(/g
+function parseFilter(val, filters) {
+    filters = filters
+            .replace(rthimRightParentheses, "")//处理最后的小括号
+            .replace(rthimOtherParentheses, function() {//处理其他小括号
+                return "],|"
+            })
+            .replace(rquoteFilterName, function(a, b) { //处理|及它后面的过滤器的名字
+                return "[" + quote(b)
+            })
+            .replace(rpatchBracket, function() {
+                return '"],["'
+            })
+            .replace(rthimLeftParentheses, function() {
+                return '",'
+            }) + "]"
+    return  "return avalon.filters.$filter(" + val + ", " + filters + ")"
+}
 
 function parseExpr(code, scopes, data) {
     var dataType = data.type
-    var filters = data.filters ? data.filters.join("") : ""
+    var filters = data.filters || ""
     var exprId = scopes.map(function(el) {
         return String(el.$id).replace(rproxy, "$1")
     }) + code + dataType + filters
@@ -2231,9 +2246,6 @@ function parseExpr(code, scopes, data) {
         })
     }
     //---------------args----------------
-    if (filters) {
-        args.push(avalon.filters)
-    }
     data.args = args
     //---------------cache----------------
     var fn = cacheExprs[exprId] //直接从缓存，免得重复生成
@@ -2245,26 +2257,12 @@ function parseExpr(code, scopes, data) {
     if (prefix) {
         prefix = "var " + prefix
     }
-    if (filters) { //文本绑定，双工绑定才有过滤器
-        code = "\nvar ret" + expose + " = " + code
-        var textBuffer = [],
-                fargs
-        textBuffer.push(code, "\r\n")
-        for (var i = 0, fname; fname = data.filters[i++]; ) {
-            var start = fname.indexOf("(")
-            if (start !== -1) {
-                fargs = fname.slice(start + 1, fname.lastIndexOf(")")).trim()
-                fargs = "," + fargs
-                fname = fname.slice(0, start).trim()
-            } else {
-                fargs = ""
-            }
-            textBuffer.push(" if(filters", expose, ".", fname, "){\n\ttry{\nret", expose,
-                    " = filters", expose, ".", fname, "(ret", expose, fargs, ")\n\t}catch(e){} \n}\n")
+    if (/\S/.test(filters)) { //文本绑定，双工绑定才有过滤器
+        if (!/text|html/.test(data.type)) {
+            throw Error("ms-" + data.type + "不支持过滤器")
         }
-        code = textBuffer.join("")
-        code += "\nreturn ret" + expose
-        names.push("filters" + expose)
+        code = "\nvar ret" + expose + " = " + code + ";\r\n"
+        code += parseFilter("ret" + expose, filters)
     } else if (dataType === "duplex") { //双工绑定
         var _body = "'use strict';\nreturn function(vvv){\n\t" +
                 prefix +
@@ -2689,7 +2687,7 @@ bindingExecutors["if"] = function(val, elem, data) {
             elem.removeAttribute(data.name)
             scanAttr(elem, data.vmodels)
         }
-        data.rollback  = null
+        data.rollback = null
     } else { //移出DOM树，并用注释节点占据原位置
         if (elem.nodeType === 1) {
             var node = data.element = DOC.createComment("ms-if")
@@ -2697,8 +2695,8 @@ bindingExecutors["if"] = function(val, elem, data) {
             data.template = elem //元素节点
             ifGroup.appendChild(elem)
             data.rollback = function() {
-                if(elem.parentNode === ifGroup){
-                      ifGroup.removeChild(elem)
+                if (elem.parentNode === ifGroup) {
+                    ifGroup.removeChild(elem)
                 }
             }
         }
@@ -3597,6 +3595,17 @@ var filters = avalon.filters = {
         truncation = truncation === void(0) ? "..." : truncation
         return target.length > length ? target.slice(0, length - truncation.length) + truncation : String(target)
     },
+    $filter: function(val) {
+        for (var i = 1, n = arguments.length; i < n; i++) {
+            var array = arguments[i]
+            var fn = avalon.filters[array.shift()]
+            if (typeof fn === "function") {
+                var arr = [val].concat(array)
+                val = fn.apply(null, arr)
+            }
+        }
+        return val
+    },
     camelize: camelize,
     //https://www.owasp.org/index.php/XSS_Filter_Evasion_Cheat_Sheet
     //    <a href="javasc&NewLine;ript&colon;alert('XSS')">chrome</a> 
@@ -4082,9 +4091,26 @@ new function() {
         if (typeof kernel.shim[url] === "object") {
             shim = kernel.shim[url]
         }
-        if (kernel.paths[url]) { //别名机制
-            url = kernel.paths[url]
+        url = url.split('/');
+        //For each module name segment, see if there is a path
+        //registered for it. Start with most specific name
+        //and work up from it.
+        for (var i = url.length, parentModule, parentPath; i > 0; i -= 1) {
+            parentModule = url.slice(0, i).join('/');
+
+            parentPath = kernel.paths[parentModule];
+            if (parentPath) {
+                //If an array, it means there are a few choices,
+                //Choose the one that is desired
+                if (Array.isArray(parentPath)) {
+                    parentPath = parentPath[0];
+                }
+                url.splice(0, i, parentPath);
+                break;
+            }
         }
+        //Join the path parts together, then figure out if baseUrl is needed.
+        url = url.join('/');
 
         //4. 补全路径
         if (/^(\w+)(\d)?:.*/.test(url)) {
@@ -4252,6 +4278,7 @@ new function() {
     innerRequire.config = kernel
     innerRequire.checkDeps = checkDeps
 }
+
 /*********************************************************************
  *                    DOMReady                                         *
  **********************************************************************/

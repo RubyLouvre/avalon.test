@@ -123,7 +123,7 @@ define([], function() {
     })
 
 
-    describe("parseHTML", function() {
+    describe("avalon.parseHTML", function() {
         avalon.parseHTML.p = 1
         it("async", function(done) {             //函数,正则,元素,节点,文档,window等对象为非
 
@@ -193,7 +193,7 @@ define([], function() {
 
         })
     })
-    describe('isWindow', function() {
+    describe("avalon.isWindow", function() {
 
         it("sync", function() {
             expect(avalon.isWindow(1)).to.be(false)
@@ -216,7 +216,7 @@ define([], function() {
 
     })
 
-    describe('isPlainObject', function() {
+    describe("avalon.isPlainObject", function() {
 
         it("sync", function() {
             //不能DOM, BOM与自定义"类"的实例
@@ -248,7 +248,7 @@ define([], function() {
 
     })
 
-    describe('isFunction', function() {
+    describe("avalon.isFunction", function() {
         if (avalon.isFunction) {
             it("sync", function() {
                 //不能DOM, BOM与自定义"类"的实例
@@ -264,7 +264,7 @@ define([], function() {
     })
 
 
-    describe('textNode.nodeValue === textNode.data', function() {
+    describe("textNode.nodeValue === textNode.data", function() {
         it("sync", function() {
 
             var element = document.createElement("div")
@@ -347,7 +347,7 @@ define([], function() {
         })
     })
 
-    describe('slice', function() {
+    describe("avalon.slice", function() {
 
         it("sync", function() {
             var a = [1, 2, 3, 4, 5, 6, 7]
@@ -372,7 +372,7 @@ define([], function() {
 
 
 
-    describe('isArrayLike', function() {
+    describe("内部方法isArrayLike", function() {
 
         function isArrayLike(obj) {
             if (obj && typeof obj === "object" && !avalon.isWindow(obj)) {
@@ -431,7 +431,7 @@ define([], function() {
             }, 100)
         })
     })
-    describe("range", function() {
+    describe("avalon.range", function() {
 
         it("sync", function() {
             expect(avalon.range(10)).to.eql([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -443,10 +443,10 @@ define([], function() {
 
     })
 
-    describe('xss', function() {
+    describe("filters.sanitize", function() {
 
-        it("sync", function() {
-            var str = "<a href='javascript:fix'>sss</a><img onclick=333 src=http://tp2.sinaimg.cn/1823438905/180/40054009869/1/><p onfocus='aaa' ontap=\"ddd\" title=eee onkeypress=eee>onmousewheel=eee<span onmouseup='ddd'>ddd</span></p><script>alert(1)<\/script>"
+        it("async", function(done) {
+            var str = "<a href='javascript:fix'>SSS</a><img onclick=333 src=http://tp2.sinaimg.cn/1823438905/180/40054009869/1/><p onfocus='aaa' ontap=\"ddd\" title=eee onkeypress=eee>onmousewheel=eee<span onmouseup='ddd'>DDD</span></p><script>alert(1)<\/script>222222"
             var ret = avalon.filters.sanitize(str)
             expect(ret.indexOf("fix")).to.be(-1)
             expect(ret.indexOf("onclick")).to.be(-1)
@@ -456,10 +456,45 @@ define([], function() {
             expect(ret.indexOf("onmouseup")).to.be(-1)
             expect(ret.indexOf("<script")).to.be(-1)
             expect(ret.indexOf("onmousewheel")).not.to.be(-1)
+
+            var model = avalon.define({
+                $id: "multiFilter",
+                test: str
+            })
+
+            var div = document.createElement("div")
+            div.innerHTML = '{{test|lowercase|truncate(239)|sanitize|html}}'
+
+            var body = document.body
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var ret = div.innerHTML
+                //console.log(ret)
+                expect(ret.indexOf("fix")).to.be(-1)
+                expect(ret.indexOf("onclick")).to.be(-1)
+                expect(ret.indexOf("ontap")).to.be(-1)
+                expect(ret.indexOf("onkeypress")).to.be(-1)
+                expect(ret.indexOf("onfocus")).to.be(-1)
+                expect(ret.indexOf("onmouseup")).to.be(-1)
+                expect(ret.indexOf("<script")).to.be(-1)
+                expect(ret.indexOf("onmousewheel")).not.to.be(-1)
+                expect(ret.indexOf("222")).to.be(-1)
+                var as = div.getElementsByTagName("a")
+                expect(as.length).to.be(1)
+                expect(as[0].innerHTML).to.be("sss")
+                as = div.getElementsByTagName("span")
+                expect(as.length).to.be(1)
+                expect(as[0].innerHTML).to.be("ddd")
+                delete avalon.vmodels["multiFilter"]
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+            }, 100)
         })
 
     })
-    describe("oneObject", function() {
+    describe("avalon.oneObject", function() {
 
         it("sync", function() {
             expect(avalon.oneObject("aa,bb,cc")).to.eql({
@@ -500,7 +535,7 @@ define([], function() {
 
     describe("filters.date", function() {
         //验证最常用的日期过滤器
-        it("async", function() {
+        it("sync", function() {
             var format = "yyyy MM dd:HH:mm:ss"
             expect(avalon.filters.date(new Date("2014/4/1"), format)).to.be("2014 04 01:00:00:00")
             expect(avalon.filters.date("2011/07/08", format)).to.be("2011 07 08:00:00:00")
@@ -512,6 +547,24 @@ define([], function() {
             expect(avalon.filters.date("2014-06-10T15:21:2", format)).to.be("2014 06 10:15:21:02")
             expect(avalon.filters.date("2014-12-07T22:50:58+08:00", format)).to.be("2014 12 07:22:50:58")
             expect(avalon.filters.date(1373021259229, format)).to.be("2013 07 05:18:47:39")
+        })
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "dateFilter",
+                test: "2014/12/24"
+            })
+            var div = document.createElement("div")
+            div.innerHTML = '{{test|date("yyyy MM dd:HH:mm:ss")}}'
+            var body = document.body
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                expect(div.innerHTML).to.be("2014 12 24:00:00:00")
+                delete avalon.vmodels["dateFilter"]
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+            }, 100)
         })
     })
     ////////////////////////////////////////////////////////////////////////
@@ -655,7 +708,7 @@ define([], function() {
 
     });
 
-    describe('ms-attr-*', function() {
+    describe("属性绑定", function() {
 
         it("async", function(done) {
             var model = avalon.define("ms-attr-*", function(vm) {
@@ -708,7 +761,7 @@ define([], function() {
     })
 
 
-    describe('ms-click', function() {
+    describe("事件绑定", function() {
         //移除操作分别在parseExprProxy与executeBindings里
         it("async", function(done) {
             var val = false
@@ -736,7 +789,7 @@ define([], function() {
 
     })
 
-    describe("ms-attr-checked", function() {
+    describe("checked绑定", function() {
         it("async", function(done) {
             var model = avalon.define('checkedx', function(vm) {
                 vm.x = 0
@@ -754,7 +807,7 @@ define([], function() {
             }, 300)
         })
     })
-    describe("{{}}测试", function() {
+    describe("插值表达式", function() {
         it("async", function(done) {
             var model = avalon.define({
                 $id: "texttext",
@@ -782,7 +835,7 @@ define([], function() {
             }, 300)
         })
     })
-    describe("ms-class", function() {
+    describe("类名绑定", function() {
         it("async", function(done) {
             var model = avalon.define({
                 $id: "ms-class-test",
@@ -811,7 +864,7 @@ define([], function() {
     ////////////////////////////////////////////////////////////////////////
     //////////    下面是ms-duplex及ms-duplex-*相关        /////////////////////
     ////////////////////////////////////////////////////////////////////////
-    describe("ms-duplex正统", function() {
+    describe("双工绑定", function() {
         it("sync", function() {
             var reg = /\w\[.*\]|\w\.\w/
             //用于ms-duplex
@@ -856,7 +909,7 @@ define([], function() {
         })
 
     })
-    describe('ms-duplex-boolean', function() {
+    describe("双工绑定ms-duplex-boolean", function() {
         //ms-duplex-bool只能用于radio控件，会自动转换value为布尔，同步到VM
         it("async", function(done) {
             var model = avalon.define('test', function(vm) {
@@ -883,7 +936,7 @@ define([], function() {
         })
     })
 
-    describe("ms-duplex-string", function() {
+    describe("双工绑定ms-duplex-string", function() {
         it("async", function(done) {
             var div = document.createElement("div")
             div.innerHTML = '<input ms-duplex-string="xxx" type="radio"  value="aaa">aaa' +
@@ -912,7 +965,7 @@ define([], function() {
             }, 300)
         })
     })
-    describe("ms-duplex-checked", function() {
+    describe("双工绑定ms-duplex-checked", function() {
         it("async", function(done) {
             var div = document.createElement("div")
             div.innerHTML = '<input ms-duplex-checked="xxx" type="checkbox" id="ms-duplex-checked-c" >' +
@@ -942,7 +995,7 @@ define([], function() {
             }, 300)
         })
     })
-    describe('ms-duplex', function() {
+    describe("双工绑定与$model", function() {
         //检测值的同步
         it("async", function(done) {
             var model = avalon.define("ms-duplex-select", function(vm) {
@@ -1754,7 +1807,7 @@ define([], function() {
         })
     })
 
-    describe('html-filter', function() {
+    describe("filters.html", function() {
         //确保位置没有错乱
         it("async", function(done) {
             var model = avalon.define("html-filter", function(vm) {
