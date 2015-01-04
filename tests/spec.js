@@ -902,18 +902,48 @@ define([], function() {
                 setTimeout(function() {
                     expect(ps[0].innerHTML).to.be("change")
                     body.removeChild(div)
+                    delete avalon.vmodels["ms-duplex-regexp"]
                     done()
                 })
             })
 
+        })
+        it("textarea", function(done) {
+            var model = avalon.define({
+                $id: "textarea",
+                aaa: 111,
+                bbb: 222
+            })
+
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<textarea ms-duplex="aaa" id="aaa"></textarea><span>{{aaa}}</span>' +
+                    '<input ms-duplex="bbb" id="bbb"><span>{{bbb}}</span>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var aaa = div.getElementsByTagName("textarea")[0]
+                var bbb = div.getElementsByTagName("input")[0]
+                aaa.value = "textarea"
+                bbb.value = "input"
+                setTimeout(function() {
+                    var spans = div.getElementsByTagName("span")
+                    expect(spans[0].innerHTML).to.be("textarea")
+                    expect(spans[1].innerHTML).to.be("input")
+                    body.removeChild(div)
+                    delete avalon.vmodels["textarea"]
+                    done()
+                }, 100)
+            }, 100)
         })
 
     })
     describe("双工绑定ms-duplex-boolean", function() {
         //ms-duplex-bool只能用于radio控件，会自动转换value为布尔，同步到VM
         it("async", function(done) {
-            var model = avalon.define('test', function(vm) {
-                vm.aaa = false
+            var model = avalon.define({
+                $id: "ms-duplex-boolean",
+                aaa: false
             })
             var body = document.body
             var div = document.createElement("div")
@@ -931,6 +961,7 @@ define([], function() {
                 expect(inputs[0].checked).to.be(true)
                 expect(model.aaa).to.be(true)
                 body.removeChild(div)
+                delete avalon.vmodels["ms-duplex-boolean"]
                 done()
             }, 100)
         })
@@ -944,8 +975,9 @@ define([], function() {
                     '<input ms-duplex-string="xxx" type="radio" value="ccc">ccc'
             document.body.appendChild(div)
 
-            var model = avalon.define("ms-click-ms-duplex", function(vm) {
-                vm.xxx = "bbb"
+            var model = avalon.define({
+                $id: "ms-click-ms-duplex",
+                xxx: "bbb"
             })
             avalon.scan(div, model)
             setTimeout(function() {//必须等扫描后才能开始测试，400ms是一个合理的数字
@@ -960,6 +992,7 @@ define([], function() {
                     expect(model.xxx).to.be("aaa")
                     document.body.removeChild(div)
                     div.innerHTML = ""
+                    delete avalon.vmodels["ms-click-ms-duplex"]
                     done()
                 }, 300)
             }, 300)
