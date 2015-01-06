@@ -1843,12 +1843,13 @@ define([], function() {
     describe("filters.html", function() {
         //确保位置没有错乱
         it("async", function(done) {
-            var model = avalon.define("html-filter", function(vm) {
-                vm.yyy = "<li >1</li><li>2</li><li>3</li><li>4</li>"
+            var model = avalon.define({
+                $id: "html-filter",
+                yyy: "<li >1</li><li>2</li><li>3</li><li>4</li>"
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<ul ms-controller=\"html-filter\">{{yyy|html}}<li class=\"last\">last</li></ul>"
+            div.innerHTML = "<ul>{{yyy|html}}<li class=\"last\">last</li></ul>"
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function() {
@@ -1864,6 +1865,7 @@ define([], function() {
                     expect((lis[6] || {}).innerHTML).to.be("last")
                     expect(lis.length).to.be(7)
                     body.removeChild(div)
+                    delete avalon.vmodels["html-filter"]
                     done()
                 }, 100)
 
@@ -1872,7 +1874,85 @@ define([], function() {
         })
     })
 
-    describe('html-filter2:https://github.com/RubyLouvre/avalon/issues/598', function() {
+    describe("filters.uppercase", function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "uppercase",
+                aaa: "aaa"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "{{aaa|uppercase}}"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                expect(div.innerHTML).to.be("AAA")
+                delete avalon.vmodels["uppercase"]
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+    })
+
+    describe("filters.lowercase", function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "lowercase",
+                aaa: "AAA"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "{{aaa|lowercase}}"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                expect(div.innerHTML).to.be("aaa")
+                delete avalon.vmodels["lowercase"]
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+    })
+
+    describe("filters.currency", function() {
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "currency",
+                aaa: 1122223
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "{{aaa|currency}}"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                expect(div.innerHTML).to.be("￥1,122,223.00")
+                delete avalon.vmodels["currency"]
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "currency2",
+                aaa: 7444442
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = "{{aaa|currency('$')}}"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                expect(div.innerHTML).to.be("$7,444,442.00")
+                delete avalon.vmodels["currency2"]
+                body.removeChild(div)
+                done()
+            }, 100)
+        })
+    })
+
+    describe("filters.html.2", function() {
+        //详见 https://github.com/RubyLouvre/avalon/issues/598
         it("async", function(done) {
             var model = avalon.define({
                 $id: 'html-filter2',
