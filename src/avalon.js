@@ -1377,9 +1377,12 @@ var CollectionPrototype = {
     },
     _add: function(arr, pos) { //在第pos个位置上，添加一组元素
         var oldLength = this.length
+        var n = arr.length
+        if(!n)
+            return oldLength
         pos = typeof pos === "number" ? pos : oldLength
         var added = []
-        for (var i = 0, n = arr.length; i < n; i++) {
+        for (var i = 0; i < n; i++) {
             added[i] = convert(arr[i], this.$model[pos + i])
         }
         _splice.apply(this, [pos, 0].concat(added))
@@ -4011,7 +4014,7 @@ bindingHandlers.repeat = function(data, vmodels) {
         var $events = $repeat.$events
         var pool = !$events ? {} : $events.$withProxyPool || ($events.$withProxyPool = {})
         data.handler("append", $repeat, pool)
-    } else {
+    } else if($repeat.length){
         data.handler("add", 0, $repeat)
     }
 }
