@@ -2000,7 +2000,34 @@ define([], function() {
         })
     })
 
-
+    describe("W3CFire的avalon签名", function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            function W3CFire(el, name, detail) {
+                var event = document.createEvent("Events")
+                event.initEvent(name, true, true)
+                event.fireByAvalon = true//签名，标记事件是由avalon触发
+                //event.isTrusted = false 设置这个opera会报错
+                if (detail)
+                    event.detail = detail
+                el.dispatchEvent(event)
+            }
+            var body = document.body
+            var div = document.createElement("div")
+            body.appendChild(div)
+            if (div.addEventListener) {
+                div.addEventListener("click", function(e) {
+                    expect(e.fireByAvalon).to.be(true)
+                    body.removeChild(div)
+                    done()
+                })
+            } else {
+                expect("IE").to.be("IE")
+                body.removeChild(div)
+                done()
+            }
+        })
+    })
 
     describe("循环绑定中的事件绑定", function() {
         //确保位置没有错乱
