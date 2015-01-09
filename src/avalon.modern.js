@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
-avalon.modern.js 1.381 build in 2015.1.8 
+avalon.modern.js 1.381 build in 2015.1.9 
 _____________________________
 support IE6+ and other browsers
  ==================================================*/
@@ -2987,11 +2987,10 @@ var TimerID, ribbon = []
 function W3CFire(el, name, detail) {
     var event = DOC.createEvent("Events")
     event.initEvent(name, true, true)
-    event.fireByAvalon = true
+    event.fireByAvalon = true//签名，标记事件是由avalon触发
     //event.isTrusted = false 设置这个opera会报错
-    if (detail) {
+    if (detail)
         event.detail = detail
-    }
     el.dispatchEvent(event)
 }
 

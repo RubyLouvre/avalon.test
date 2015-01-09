@@ -2000,6 +2000,24 @@ define([], function() {
         })
     })
 
+    describe("avalon.Array", function() {
+        //确保位置没有错乱
+        it("sync", function() {
+            var array = [1, 2, 3, 4, 5]
+            avalon.Array.ensure(array, 4)
+            expect(array.length).to.be(5)
+            avalon.Array.ensure(array, 6)
+            expect(array.length).to.be(6)
+            avalon.Array.remove(array, 7)
+            expect(array.length).to.be(6)
+            avalon.Array.remove(array, 4)
+            expect(array.length).to.be(5)
+            avalon.Array.removeAt(array, 4)
+            expect(array.length).to.be(4)
+            expect(array.join(",")).to.be("1,2,3,5")
+        })
+    })
+
     describe("W3CFire的avalon签名", function() {
         //确保位置没有错乱
         it("async", function(done) {
@@ -2018,9 +2036,11 @@ define([], function() {
             if (div.addEventListener) {
                 div.addEventListener("click", function(e) {
                     expect(e.fireByAvalon).to.be(true)
+                    e.stopPropagation()
                     body.removeChild(div)
                     done()
                 })
+                W3CFire(div, "click")
             } else {
                 expect("IE").to.be("IE")
                 body.removeChild(div)
