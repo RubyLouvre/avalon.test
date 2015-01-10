@@ -2016,6 +2016,77 @@ define([], function() {
             expect(array.length).to.be(4)
             expect(array.join(",")).to.be("1,2,3,5")
         })
+
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "array2",
+                array: ["a", "b", "c", "d"]
+            })
+            var body = document.body
+            var div = document.createElement("ul")
+            div.innerHTML = "<li ms-repeat='array'>{{el}}|{{$first}}|{{$last}}|{{$index}}</li>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var inputs = div.getElementsByTagName("li")
+                expect(inputs[0].innerHTML).to.be("a|true|false|0")
+                expect(inputs[1].innerHTML).to.be("b|false|false|1")
+                expect(inputs[2].innerHTML).to.be("c|false|false|2")
+                expect(inputs[3].innerHTML).to.be("d|false|true|3")
+                model.array.push("e", "f")
+                model.array.unshift("x", "y")
+                setTimeout(function() {
+                    var inputs = div.getElementsByTagName("li")
+                    expect(inputs[0].innerHTML).to.be("x|true|false|0")
+                    expect(inputs[1].innerHTML).to.be("y|false|false|1")
+                    expect(inputs[2].innerHTML).to.be("a|false|false|2")
+                    expect(inputs[3].innerHTML).to.be("b|false|false|3")
+                    expect(inputs[4].innerHTML).to.be("c|false|false|4")
+                    expect(inputs[5].innerHTML).to.be("d|false|false|5")
+                    expect(inputs[6].innerHTML).to.be("e|false|false|6")
+                    expect(inputs[7].innerHTML).to.be("f|false|true|7")
+                    model.array.splice(4, 2, "k")
+                    setTimeout(function() {
+                        var inputs = div.getElementsByTagName("li")
+                        expect(inputs[0].innerHTML).to.be("x|true|false|0")
+                        expect(inputs[1].innerHTML).to.be("y|false|false|1")
+                        expect(inputs[2].innerHTML).to.be("a|false|false|2")
+                        expect(inputs[3].innerHTML).to.be("b|false|false|3")
+                        expect(inputs[4].innerHTML).to.be("k|false|false|4")
+                        expect(inputs[5].innerHTML).to.be("e|false|false|5")
+                        expect(inputs[6].innerHTML).to.be("f|false|true|6")
+                        model.array.reverse()
+                        setTimeout(function() {
+                            var inputs = div.getElementsByTagName("li")
+                            expect(inputs[0].innerHTML).to.be("f|true|false|0")
+                            expect(inputs[1].innerHTML).to.be("e|false|false|1")
+                            expect(inputs[2].innerHTML).to.be("k|false|false|2")
+                            expect(inputs[3].innerHTML).to.be("b|false|false|3")
+                            expect(inputs[4].innerHTML).to.be("a|false|false|4")
+                            expect(inputs[5].innerHTML).to.be("y|false|false|5")
+                            expect(inputs[6].innerHTML).to.be("x|false|true|6")
+                            model.array.remove("b")
+                            model.array.removeAt(2)
+                            setTimeout(function() {
+                                var inputs = div.getElementsByTagName("li")
+                                expect(inputs[0].innerHTML).to.be("f|true|false|0")
+                                expect(inputs[1].innerHTML).to.be("e|false|false|1")
+                                expect(inputs[2].innerHTML).to.be("a|false|false|2")
+                                expect(inputs[3].innerHTML).to.be("y|false|false|3")
+                                expect(inputs[4].innerHTML).to.be("x|false|true|4")
+
+                                delete avalon.vmodels["array2"]
+                                body.removeChild(div)
+                                done()
+                            }, 100)
+ 
+                        }, 100)
+
+                    }, 100)
+
+                }, 100)
+            }, 100)
+        })
     })
 
     describe("W3CFire的avalon签名", function() {
