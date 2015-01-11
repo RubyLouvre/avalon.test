@@ -2079,7 +2079,7 @@ define([], function() {
                                 body.removeChild(div)
                                 done()
                             }, 100)
- 
+
                         }, 100)
 
                     }, 100)
@@ -2087,6 +2087,54 @@ define([], function() {
                 }, 100)
             }, 100)
         })
+
+        it("async", function(done) {
+            var model = avalon.define({
+                $id: "array3",
+                array: [{a: 7}, {a: 3}, {a: 1}, {a: 2}, {a: 6}, {a: 1}]
+            })
+            var body = document.body
+            var div = document.createElement("ul")
+            div.innerHTML = "<li ms-repeat='array'>{{el.a}}</li>"
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var inputs = div.getElementsByTagName("li")
+                expect(inputs[0].innerHTML).to.be("7")
+                expect(inputs[1].innerHTML).to.be("3")
+                expect(inputs[2].innerHTML).to.be("1")
+                expect(inputs[3].innerHTML).to.be("2")
+                expect(inputs[4].innerHTML).to.be("6")
+                expect(inputs[5].innerHTML).to.be("1")
+                model.array.sort(function(a, b) {
+                    return a.a - b.a
+                })
+                setTimeout(function() {
+                    var inputs = div.getElementsByTagName("li")
+                    expect(inputs[0].innerHTML).to.be("1")
+                    expect(inputs[1].innerHTML).to.be("1")
+                    expect(inputs[2].innerHTML).to.be("2")
+                    expect(inputs[3].innerHTML).to.be("3")
+                    expect(inputs[4].innerHTML).to.be("6")
+                    expect(inputs[5].innerHTML).to.be("7")
+                    model.array.reverse()
+                    setTimeout(function() {
+                        var inputs = div.getElementsByTagName("li")
+                        expect(inputs[0].innerHTML).to.be("7")
+                        expect(inputs[1].innerHTML).to.be("6")
+                        expect(inputs[2].innerHTML).to.be("3")
+                        expect(inputs[3].innerHTML).to.be("2")
+                        expect(inputs[4].innerHTML).to.be("1")
+                        expect(inputs[5].innerHTML).to.be("1")
+                      
+                        delete avalon.vmodels["array3"]
+                        body.removeChild(div)
+                        done()
+                    }, 100)
+                }, 100)
+            }, 100)
+        })
+
     })
 
     describe("W3CFire的avalon签名", function() {

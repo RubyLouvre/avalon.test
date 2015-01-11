@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.381 build in 2015.1.10 
+ avalon.modern.js 1.381 build in 2015.1.12 
 _____________________________
  support IE6+ and other browsers
  ==================================================*/
@@ -1192,33 +1192,59 @@ var CollectionPrototype = {
     }
 }
 
-"sort,reverse".replace(rword, function(method) {
-    CollectionPrototype[method] = function() {
-        var aaa = this.$model,
-                bbb = aaa.slice(0),
-                sorted = false
-        ap[method].apply(aaa, arguments) //先移动model
-        for (var i = 0, n = bbb.length; i < n; i++) {
-            var a = aaa[i],
-                    b = bbb[i]
-            if (!isEqual(a, b)) {
-                sorted = true
-                var index = bbb.indexOf(a, i)
-                var remove = this._splice(index, 1)[0]
-                var remove2 = bbb.splice(index, 1)[0]
-                this._splice(i, 0, remove)
-                bbb.splice(i, 0, remove2)
-                this._fire("move", index, i)
-            }
+function sortByIndex(array, indexes) {
+    var map = {};
+    for (var i = 0, n = indexes.length; i < n; i++) {
+        map[i] = array[i] // preserve
+        var j = indexes[i]
+        if (j in map) {
+            array[i] = map[j]
+            delete map[j]
+        } else {
+            array[i] = array[j]
         }
-        bbb = void 0
-        if (sorted) {
+    }
+}
+function sortFn(x, y) {
+    if (x === y)
+        return 0
+    if ((typeof x === "string") && (typeof y === "string"))
+        return String(x).localeCompare(y)
+    x = x + ""
+    y = y + ""
+    return x === y ? 0 : x < y ? -1 : 1
+}
+function reverseFn() {
+    return 1
+}
+"sort,reverse".replace(rword, function(method) {
+    CollectionPrototype[method] = function(fn) {
+        var array = this.$model//这是要排序的新数组
+        var compareFn = method == "reverse" ? reverseFn : typeof fn === "function" ? fn : sortFn
+        var hasSort = false
+        var indexes = array.map(function(el, i) {
+            return {
+                data: el,
+                index: i
+            }
+        }).sort(function(a, b) {
+            var r = compareFn(a.data, b.data)
+            if (!hasSort) {
+                hasSort = r
+            }
+            return r
+        }).map(function(el, i) {
+            array[i] = el.data
+            return el.index
+        })
+        if (hasSort) {
+            sortByIndex(this, indexes)
+            this._fire("move", indexes)
             this._fire("index", 0)
         }
         return this
     }
 })
-
 
 /*********************************************************************
  *                           依赖调度系统                             *
@@ -3073,7 +3099,7 @@ function ticker() {
 var watchValueInTimer = noop
 var watchValueInProp = false
 new function() {
-    try {//IE9-IE11, firefox
+    try {//#272 IE9-IE11, firefox
         var setters = {}
         var aproto = HTMLInputElement.prototype
         var bproto = HTMLTextAreaElement.prototype
@@ -3347,9 +3373,9 @@ bindingHandlers.repeat = function(data, vmodels) {
     elem.removeAttribute(data.name)
     data.sortedCallback = getBindingCallback(elem, "data-with-sorted", vmodels)
     data.renderedCallback = getBindingCallback(elem, "data-" + type + "-rendered", vmodels)
-
-    var comment = data.element = DOC.createComment("ms-" + type + "-end")
-    data.clone = DOC.createComment("ms-" + type)
+    var signature = generateID(type)
+    var comment = data.element = DOC.createComment(signature + ":end")
+    data.clone = DOC.createComment(signature)
     hyperspace.appendChild(comment)
 
     if (type === "each" || type === "with") {
@@ -3405,8 +3431,8 @@ bindingHandlers.repeat = function(data, vmodels) {
 bindingExecutors.repeat = function(method, pos, el) {
     if (method) {
         var data = this
-        var endRepeat = data.element
-        var parent = endRepeat.parentNode
+        var end = data.element
+        var parent = end.parentNode
         var proxies = data.proxies
         var transation = hyperspace.cloneNode(false)
         switch (method) {
@@ -3415,61 +3441,68 @@ bindingExecutors.repeat = function(method, pos, el) {
                 var array = data.$repeat
                 var last = array.length - 1
                 var fragments = []
-                var locatedNode = locateFragment(data, pos)
+                var start = locateNode(data, pos)
                 for (var i = pos; i < n; i++) {
                     var proxy = eachProxyAgent(i, data)
                     proxies.splice(i, 0, proxy)
                     shimController(data, transation, proxy, fragments)
                 }
-                parent.insertBefore(transation, locatedNode)
+                parent.insertBefore(transation, start)
                 for (var i = 0, fragment; fragment = fragments[i++]; ) {
                     scanNodeArray(fragment.nodes, fragment.vmodels)
                     fragment.nodes = fragment.vmodels = null
                 }
                 break
             case "del": //将pos后的el个元素删掉(pos, el都是数字)
-                var transation = removeFragment(pos, el, proxies, endRepeat)
+                start = proxies[pos].$stamp
+                end = locateNode(data, pos + el)
+                sweepNodes(start, end)
                 var removed = proxies.splice(pos, el)
-                avalon.clearHTML(transation)
                 recycleProxies(removed, "each")
                 break
-            case "index": //将proxies中的第pos个起的所有元素重新索引（pos为数字，el用作循环变量）
+            case "clear":
+                var check = data.$stamp || proxies[0]
+                if (check) {
+                    start = check.$stamp || check
+                    sweepNodes(start, end)
+                }
+                recycleProxies(proxies, "each")
+                break
+            case "move":
+                start = proxies[0].$stamp
+                var signature = start.nodeValue
+                var rooms = []
+                var room = [], node
+                sweepNodes(start, end, function() {
+                    room.unshift(this)
+                    if (this.nodeValue === signature) {
+                        rooms.unshift(room)
+                        room = []
+                    }
+                })
+                sortByIndex(proxies, pos)
+                sortByIndex(rooms, pos)
+                while (room = rooms.shift()) {
+                    while (node = room.shift()) {
+                        transation.appendChild(node)
+                    }
+                }
+                parent.insertBefore(transation, end)
+                break
+            case "index": //将proxies中的第pos个起的所有元素重新索引
                 var last = proxies.length - 1
                 for (; el = proxies[pos]; pos++) {
                     el.$index = pos
                     el.$first = pos === 0
                     el.$last = pos === last
                 }
-                break
-            case "clear":
-                var check = data.$stamp || proxies[0]
-                if (check) {
-                    var start = check.$stamp || check
-                    while (true) {
-                        var node = endRepeat.previousSibling
-                        if (!node)
-                            break
-                        parent.removeChild(node)
-                        if (node === start) {
-                            break
-                        }
-                    }
-                }
-                recycleProxies(proxies, "each")
-                break
-            case "move": //将proxies中的第pos个元素移动el位置上(pos, el都是数字)
-                locatedNode = locateFragment(data, el)
-                transation = removeFragment(pos, 1, proxies, endRepeat)
-                parent.insertBefore(transation, locatedNode)
-                var t = proxies.splice(pos, 1)[0]
-                proxies.splice(el, 0, t)
-                break
+                return
             case "set": //将proxies中的第pos个元素的VM设置为el（pos为数字，el任意）
                 var proxy = proxies[pos]
                 if (proxy) {
                     notifySubscribers(proxy.$events.$index)
                 }
-                break
+                return
             case "append": //将pos的键值对从el中取出（pos为一个普通对象，el为预先生成好的代理VM对象池）
                 var pool = el
                 var keys = []
@@ -3494,23 +3527,21 @@ bindingExecutors.repeat = function(method, pos, el) {
                     }
                 }
                 var comment = data.$stamp = data.clone
-                parent.insertBefore(comment, endRepeat)
-                parent.insertBefore(transation, endRepeat)
+                parent.insertBefore(comment, end)
+                parent.insertBefore(transation, end)
                 for (var i = 0, fragment; fragment = fragments[i++]; ) {
                     scanNodeArray(fragment.nodes, fragment.vmodels)
                     fragment.nodes = fragment.vmodels = null
                 }
                 break
         }
-        if (method === "index")
-            return
         if (method === "clear")
             method = "del"
         var callback = data.renderedCallback || noop,
                 args = arguments
         checkScan(parent, function() {
             callback.apply(parent, args)
-            if (parent.oldValue && parent.tagName === "SELECT") {//&& method === "index") { //fix #503
+            if (parent.oldValue && parent.tagName === "SELECT") { //fix #503
                 avalon(parent).val(parent.oldValue.split(","))
             }
         }, NaN)
@@ -3536,24 +3567,22 @@ function shimController(data, transation, proxy, fragments) {
     fragments.push(fragment)
 }
 
-function locateFragment(data, pos) {
+function locateNode(data, pos) {
     var proxy = data.proxies[pos]
     return proxy ? proxy.$stamp : data.element
 }
-function removeFragment(a, n, proxies, endRepeat) {
-    var start = proxies[a].$stamp
-    var proxy = proxies[a + n]
-    var end = proxy ? proxy.$stamp : endRepeat
+
+function sweepNodes(start, end, callback) {
     while (true) {
         var node = end.previousSibling
         if (!node)
             break
-        hyperspace.insertBefore(node, hyperspace.firstChild)
+        node.parentNode.removeChild(node)
+        callback && callback.call(node)
         if (node === start) {
             break
         }
     }
-    return hyperspace
 }
 
 // 为ms-each,ms-with, ms-repeat会创建一个代理VM，
@@ -4056,9 +4085,11 @@ new function() {
                 innerRequire(shim.deps || "", function() {
                     loadJS(url, id, function() {
                         modules[id].state = 2
-                        if (shim.exports)
-                            modules[id].exports = typeof shim.exports === "function" ?
-                                    shim.exports() : window[shim.exports]
+                        var s = shim.exports
+                        if (s && modules[id].exports === void 0) {
+                            modules[id].exports = typeof s === "function" ?
+                                    s() : window[s]
+                        }
                         innerRequire.checkDeps()
                     })
                 })
@@ -4374,7 +4405,6 @@ new function() {
             delete factory.delay //释放内存
             innerRequire.apply(null, args) //0,1,2 --> 1,2,0
         }
-
         if (name) {
             factory.delay(name, args)
         } else { //先进先出
