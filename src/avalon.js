@@ -1,12 +1,12 @@
 /*==================================================
- Copyright (c) 2013-2014 司徒正美 and other contributors
+ Copyright (c) 2013-2015 司徒正美 and other contributors
  http://www.cnblogs.com/rubylouvre/
  https://github.com/RubyLouvre
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.js 1.381 build in 2015.1.12 
-____________________________________
+ avalon.js 1.39 build in 2015.1.15 
+_____________________________________
  support IE6+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -261,7 +261,7 @@ function _number(a, len) { //用于模拟slice, splice的效果
 avalon.mix({
     rword: rword,
     subscribers: subscribers,
-    version: 1.381,
+    version: 1.39,
     ui: {},
     log: log,
     slice: W3C ? function(nodes, start, end) {
@@ -431,9 +431,9 @@ var bindingExecutors = avalon.bindingExecutors = {}
 /*判定是否类数组，如节点集合，纯数组，arguments与拥有非负整数的length属性的纯JS对象*/
 
 function isArrayLike(obj) {
-    if (obj && typeof obj === "object" && !avalon.isWindow(obj)) {
+    if (obj && typeof obj === "object") {
         var n = obj.length
-        if (+n === n && !(n % 1) && n >= 0) { //检测length属性是否为非负整数
+        if (n === (n >>> 0)) { //检测length属性是否为非负整数
             try {
                 if ({}.propertyIsEnumerable.call(obj, "length") === false) { //如果是原生对象
                     return Array.isArray(obj) || /^\s?function/.test(obj.item || obj.callee)
@@ -812,7 +812,7 @@ var plugins = {
         } else {
             var test = openTag + "test" + closeTag
             cinerator.innerHTML = test
-            if (cinerator.innerHTML !== test && cinerator.innerHTML.indexOf("&lt;") >= 0) {
+            if (cinerator.innerHTML !== test && cinerator.innerHTML.indexOf("&lt;") > -1) {
                 throw new SyntaxError("此定界符不合法")
             }
             cinerator.innerHTML = ""
@@ -1045,9 +1045,6 @@ try {
 } catch (e) {
     canHideOwn = false
 }
-var K = function(fn) {
-    fn()
-}
 function modelFactory(source, $special, $model) {
     if (Array.isArray(source)) {
         var arr = source.concat()
@@ -1097,14 +1094,18 @@ function modelFactory(source, $special, $model) {
                     }
                     if (!isEqual(oldValue, newValue)) {
                         $model[name] = newValue
-                        var callback = kernel.digest ? setTimeout : K
-                        if (!accessor.pedding) {
+                        if ($events.$digest) {
+                            if(accessor.pedding)
+                                return
                             accessor.pedding = true
-                            callback(function() {
+                            setTimeout(function() {
                                 notifySubscribers($events[name]) //同步视图
                                 safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
                                 accessor.pedding = false
                             })
+                        } else {
+                            notifySubscribers($events[name]) //同步视图
+                            safeFire($vmodel, name, newValue, oldValue) //触发$watch回调
                         }
                     }
                 } else {
@@ -1124,9 +1125,18 @@ function modelFactory(source, $special, $model) {
                 accessor.get = val.get
                 accessor.type = 0
                 initCallbacks.push(function() {
-                    Registry[expose] = function() {
-                        $model[name] = accessor.get.call($vmodel)
+                    var data = {
+                        evaluator: function() {
+                            data.element = null
+                            data.type = new Date - 0
+                            $model[name] = accessor.get.call($vmodel)
+                        },
+                        element: head,
+                        type: new Date - 0,
+                        handler: noop,
+                        args: []
                     }
+                    Registry[expose] = data
                     accessor.call($vmodel)
                     delete Registry[expose]
                 })
@@ -1500,7 +1510,11 @@ var CollectionPrototype = {
             change = true
         }
         if (m > 2) {  //如果用户添加了元素
-            args.splice(3, 1, 0, "add", start, m - 2)
+            if (change) {
+                args.splice(3, 1, 0, "add", start, m - 2)
+            } else {
+                args.push("add", start, m - 2, 0)
+            }
             change = true
         }
         if (change) { //返回被移除的元素
@@ -1587,38 +1601,27 @@ function sortByIndex(array, indexes) {
         }
     }
 }
-function sortFn(x, y) {
-    if (x === y)
-        return 0
-    if ((typeof x === "string") && (typeof y === "string"))
-        return String(x).localeCompare(y)
-    x = x + ""
-    y = y + ""
-    return x === y ? 0 : x < y ? -1 : 1
-}
-function reverseFn() {
-    return 1
-}
+
 "sort,reverse".replace(rword, function(method) {
-    CollectionPrototype[method] = function(fn) {
-        var array = this.$model//这是要排序的新数组
-        var compareFn = method == "reverse" ? reverseFn : typeof fn === "function" ? fn : sortFn
-        var hasSort = false
-        var indexes = array.map(function(el, i) {
-            return {
-                data: el,
-                index: i
+    CollectionPrototype[method] = function() {
+        var newArray = this.$model//这是要排序的新数组
+        var oldArray = newArray.concat() //保持原来状态的旧数组
+        var mask = Math.random()
+        var indexes = []
+        var hasSort
+        ap[method].apply(newArray, arguments) //排序
+        for (var i = 0, n = oldArray.length; i < n; i++) {
+            var neo = newArray[i]
+            var old = oldArray[i]
+            if (isEqual(neo, old)) {
+                indexes.push(i)
+            } else {
+                var index = oldArray.indexOf(neo)
+                indexes.push(index)//得到新数组的每个元素在旧数组对应的位置
+                oldArray[index] = mask    //屏蔽已经找过的元素
+                hasSort = true
             }
-        }).sort(function(a, b) {
-            var r = compareFn(a.data, b.data)
-            if (!hasSort) {
-                hasSort = r
-            }
-            return r
-        }).map(function(el, i) {
-            array[i] = el.data
-            return el.index
-        })
+        }
         if (hasSort) {
             sortByIndex(this, indexes)
             this._fire("move", indexes)
@@ -1642,7 +1645,7 @@ function registerSubscriber(data) {
             var c = ronduplex.test(data.type) ? data : fn.apply(0, data.args)
             data.handler(c, data.element, data)
         } catch (e) {
-            // log("warning:exception throwed in [registerSubscriber] " + e)
+           //log("warning:exception throwed in [registerSubscriber] " + e)
             delete data.evaluator
             var node = data.element
             if (node.nodeType === 3) {
@@ -1723,7 +1726,7 @@ function removeSubscribers() {
     }
     var diff = false
     types.forEach(function(type) {
-        if (oldInfo[type] && oldInfo[type] !== newInfo[type]) {
+        if (oldInfo[type] !== newInfo[type]) {
             needTest[type] = 1
             diff = true
         }
@@ -1944,8 +1947,9 @@ function executeBindings(bindings, vmodels) {
     }
     bindings.length = 0
 }
+
 //https://github.com/RubyLouvre/avalon/issues/636
-function mergeTextNode(elem) {
+var mergeTextNodes = IEVersion && window.MutationObserver ? function (elem) {
     var node = elem.firstChild, text
     while (node) {
         var aaa = node.nextSibling
@@ -1961,7 +1965,7 @@ function mergeTextNode(elem) {
         }
         node = aaa
     }
-}
+} : 0
 
 var rmsAttr = /ms-(\w+)-?(.*)/
 var priorityMap = {
@@ -1974,6 +1978,7 @@ var priorityMap = {
     "duplex": 2000,
     "on": 3000
 }
+
 var events = oneObject("animationend,blur,change,input,click,dblclick,focus,keydown,keypress,keyup,mousedown,mouseenter,mouseleave,mousemove,mouseout,mouseover,mouseup,scan,scroll,submit")
 var obsoleteAttrs = oneObject("value,title,alt,checked,selected,disabled,readonly,enabled")
 function bindingSorter(a, b) {
@@ -2107,9 +2112,7 @@ function scanAttr(elem, vmodels) {
     }
     executeBindings(bindings, vmodels)
     if (scanNode && !stopScan[elem.tagName] && rbind.test(elem.innerHTML.replace(rlt, "<").replace(rgt, ">"))) {
-        if (IEVersion) {
-            mergeTextNode(elem)
-        }
+        mergeTextNodes && mergeTextNodes(elem)
         scanNodeList(elem, vmodels) //扫描子孙元素
     }
 }
@@ -2417,11 +2420,11 @@ avalon.fn.mix({
         }
     },
     offsetParent: function() {
-        var offsetParent = this[0].offsetParent || root
-        while (offsetParent && (offsetParent.tagName !== "HTML") && avalon.css(offsetParent, "position") === "static") {
-            offsetParent = offsetParent.offsetParent
+        var offsetParent = this[0].offsetParent
+        while (offsetParent && avalon.css(offsetParent, "position") === "static") {
+            offsetParent = offsetParent.offsetParent;
         }
-        return avalon(offsetParent || root)
+        return avalon(offsetParent)
     },
     bind: function(type, fn, phase) {
         if (this[0]) { //此方法不会链
@@ -2480,6 +2483,7 @@ avalon.parseJSON = window.JSON ? JSON.parse : function(data) {
         }
         avalon.error("Invalid JSON: " + data);
     }
+    return data
 }
 
 //生成avalon.fn.scrollLeft, avalon.fn.scrollTop方法
@@ -2789,7 +2793,7 @@ var valHooks = {
         values = [].concat(values) //强制转换为数组
         var getter = valHooks["option:get"]
         for (var i = 0, el; el = node.options[i++]; ) {
-            if ((el.selected = values.indexOf(getter(el)) >= 0)) {
+            if ((el.selected = values.indexOf(getter(el)) > -1)) {
                 optionSet = true
             }
         }
@@ -2940,7 +2944,8 @@ function parseExpr(code, scopes, data) {
             var reg = new RegExp("\\b" + v + "(?:\\.\\w+|\\[\\w+\\])+", "ig")
             code = code.replace(reg, function(_) {
                 var c = _.charAt(v.length)
-                var method = /^\s*\(/.test(RegExp.rightContext)
+                var r = IEVersion ? code.slice(arguments[1] + _.length) : RegExp.rightContext
+                var method = /^\s*\(/.test(r)
                 if (c === "." || c === "[" || method) {//比如v为aa,我们只匹配aa.bb,aa[cc],不匹配aaa.xxx
                     var name = "var" + String(Math.random()).replace(/^0\./, "")
                     if (method) {//array.size()
@@ -3718,7 +3723,6 @@ function ticker() {
 }
 
 var watchValueInTimer = noop
-var watchValueInProp = false
 new function() {
     try {//#272 IE9-IE11, firefox
         var setters = {}
@@ -3743,15 +3747,6 @@ new function() {
             set: newSetter
         })
     } catch (e) {
-        try {
-            if ("webkitUserSelect" in root.style) {//chrome safar6+, opera15+
-                Object.defineProperty(document.createElement("input"), "value", {
-                    set: newSetter
-                })
-                return watchValueInProp = true
-            }
-        } catch (e) {
-        }
         watchValueInTimer = avalon.tick
     }
 }
@@ -3799,24 +3794,6 @@ duplexBinding.INPUT = function(element, evaluator, data) {
                 })
             }
         }
-    }
-    var watchProp = watchValueInProp && /text/.test(element.type)
-    if (watchProp) {
-        element.addEventListener("input", function(e) {
-            if (composing)
-                return
-            var sel = window.getSelection()
-            // http://stackoverflow.com/questions/7380190/select-whole-word-with-getselection/7381574#7381574
-            if (sel.extend) {
-                sel.extend(this, 0)
-            } else {
-                this.select()
-            }
-            var value = sel.toString()
-            var n = value.length
-            this.setSelectionRange(n, n)
-            this.oldValue = value
-        })
     }
     //当model变化时,它就会改变value的值
     data.handler = function() {
@@ -3867,7 +3844,7 @@ duplexBinding.INPUT = function(element, evaluator, data) {
 
         data.handler = function() {
             var array = [].concat(evaluator()) //强制转换为数组
-            element.checked = array.indexOf(data.pipe(element.value, data, "get")) >= 0
+            element.checked = array.indexOf(data.pipe(element.value, data, "get")) > -1
         }
         bound(W3C ? "change" : "click", updateVModel)
     } else {
@@ -3911,46 +3888,18 @@ duplexBinding.INPUT = function(element, evaluator, data) {
             }
         })
     }
-
-    element.avalonSetter = updateVModel
     if (/text|password/.test(element.type)) {
-        if (watchProp) {//chrome safari
-            element.value = String(data.pipe(evaluator(), data, "set"))
-            Object.defineProperty(element, "value", {
-                set: function(text) {
-                    text = text == null ? "" : String(text)
-                    if (this.oldValue !== text) {
-                        //先选中表单元素创建一个选区，然后清空value
-                        //http://stackoverflow.com/questions/6690752/insert-html-at-caret-in-a-contenteditable-div/6691294#6691294
-                        this.select()
-                        var sel = window.getSelection()
-                        if (sel.rangeCount) {
-                            var range = sel.getRangeAt(0)
-                            range.deleteContents()
-                        }
-                        //接着使用insertHTML或insertText命令设置value
-                        //http://stackoverflow.com/questions/12027137/javascript-trick-for-paste-as-plain-text-in-execcommand
-                        document.execCommand("insertText", false, text)
-                        this.blur() // https://github.com/RubyLouvre/avalon/issues/651
-                        this.oldValue = text
-                    }
-                },
-                get: function() {
-                    return this.oldValue
+        watchValueInTimer(function() {
+            if (root.contains(element)) {
+                if (element.value !== element.oldValue) {
+                    updateVModel()
                 }
-            })
-        } else {
-            watchValueInTimer(function() {
-                if (root.contains(element)) {
-                    if (element.value !== element.oldValue) {
-                        updateVModel()
-                    }
-                } else if (!element.msRetain) {
-                    return false
-                }
-            })
-        }
+            } else if (!element.msRetain) {
+                return false
+            }
+        })
     }
+    element.avalonSetter = updateVModel
     element.oldValue = element.value
     registerSubscriber(data)
     callback.call(element, element.value)
@@ -4034,13 +3983,8 @@ bindingHandlers.repeat = function(data, vmodels) {
         }
     }
     var elem = data.element
-    if (freturn) {
-        return avalon(elem).addClass("avalonHide")
-    }
-
-    avalon(elem).removeClass("avalonHide")
-
     elem.removeAttribute(data.name)
+
     data.sortedCallback = getBindingCallback(elem, "data-with-sorted", vmodels)
     data.renderedCallback = getBindingCallback(elem, "data-" + type + "-rendered", vmodels)
     var signature = generateID(type)
@@ -4069,11 +4013,13 @@ bindingHandlers.repeat = function(data, vmodels) {
         start && start.parentNode && start.parentNode.removeChild(start)
         target = data.element = data.type === "repeat" ? target : parentNode
     }
-
+    if (freturn) {
+        return
+    }
     data.handler = bindingExecutors.repeat
     data.$outer = {}
-    var check0 = "$key",
-            check1 = "$val"
+    var check0 = "$key"
+    var check1 = "$val"
     if (Array.isArray($repeat)) {
         check0 = "$first"
         check1 = "$last"
@@ -4084,13 +4030,13 @@ bindingHandlers.repeat = function(data, vmodels) {
             break
         }
     }
-    var $list = ($repeat.$events || {})[subscribers]
+    var $events = $repeat.$events
+    var $list = ($events || {})[subscribers]
     if ($list && avalon.Array.ensure($list, data)) {
         addSubscribers(data, $list)
     }
     if (xtype === "object") {
         data.$with = true
-        var $events = $repeat.$events
         var pool = !$events ? {} : $events.$withProxyPool || ($events.$withProxyPool = {})
         data.handler("append", $repeat, pool)
     } else if ($repeat.length) {
@@ -4734,85 +4680,20 @@ var modules = avalon.modules = {
     }
 }
 
-
 new function() {
     var loadings = [] //正在加载中的模块列表
     var factorys = [] //储存需要绑定ID与factory对应关系的模块（标准浏览器下，先parse的script节点会先onload）
     var basepath
 
-    function cleanUrl(url) {
+    function trimHashAndQuery(url) {
         return (url || "").replace(/[?#].*/, "")
     }
 
-    plugins.js = function(url, shim) {
-        var id = cleanUrl(url)
-        if (!modules[id]) { //如果之前没有加载过
-            modules[id] = {
-                id: id,
-                exports: {}
-            }
-            if (shim) { //shim机制
-                innerRequire(shim.deps || "", function() {
-                    loadJS(url, id, function() {
-                        modules[id].state = 2
-                        var s = shim.exports
-                        if (s && modules[id].exports === void 0) {
-                            modules[id].exports = typeof s === "function" ?
-                                    s() : window[s]
-                        }
-                        innerRequire.checkDeps()
-                    })
-                })
-            } else {
-                loadJS(url, id)
-            }
-        }
-        return id
-    }
-    plugins.css = function(url) {
-        var id = url.replace(/(#.+|\W)/g, "") ////用于处理掉href中的hash与所有特殊符号
-        if (!DOC.getElementById(id)) {
-            var node = DOC.createElement("link")
-            node.rel = "stylesheet"
-            node.href = url
-            node.id = id
-            head.insertBefore(node, head.firstChild)
-        }
-    }
-    plugins.css.ext = ".css"
-    plugins.js.ext = ".js"
-
-    plugins.text = function(url) {
-        var xhr = getXHR()
-        var id = url.replace(/[?#].*/, "")
-        modules[id] = {}
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                var status = xhr.status;
-                if (status > 399 && status < 600) {
-                    avalon.error(url + " 对应资源不存在或没有开启 CORS")
-                } else {
-                    modules[id].state = 2
-                    modules[id].exports = xhr.responseText
-                    innerRequire.checkDeps()
-                }
-            }
-        }
-        xhr.open("GET", url, true)
-        if ("withCredentials" in xhr) {
-            xhr.withCredentials = true
-        }
-        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
-        xhr.send()
-        return id
-    }
-
-
-    var cur = getCurrentScript(true)
+    var cur = getCurrentScript(true) //求得当前avalon.js 所在的JS文件的路径
     if (!cur) { //处理window safari的Error没有stack的问题
         cur = avalon.slice(DOC.scripts).pop().src
     }
-    var url = cleanUrl(cur)
+    var url = trimHashAndQuery(cur)
     basepath = kernel.base = url.slice(0, url.lastIndexOf("/") + 1)
 
     function getCurrentScript(base) {
@@ -4851,6 +4732,88 @@ new function() {
         }
     }
 
+    innerRequire = avalon.require = function(array, factory, parent) {
+        if (!Array.isArray(array)) {
+            avalon.error("require的第一个参数必须是依赖列数,类型为数组 " + array)
+        }
+        var args = [] // 放置所有依赖项的完整路径
+        var deps = {} // args的另一种表现形式，为的是方便去重
+        var dn = 0  //需要安装的模块数
+        var cn = 0  // 已安装完的模块数
+        var id = parent || "callback" + setTimeout("1")
+        parent = parent || basepath
+
+        array.forEach(function(el) {
+            var url = loadResources(el, parent) //加载资源，并返回能加载资源的完整路径
+            if (url) {
+                dn++
+                if (modules[url] && modules[url].state === 2) {
+                    cn++
+                }
+                if (!deps[url]) {
+                    args.push(url)
+                    deps[url] = "司徒正美" //去重
+                }
+            }
+        })
+        modules[id] = {//保存此模块的相关信息
+            id: id,
+            factory: factory,
+            deps: deps,
+            args: args,
+            state: 1
+        }
+        if (dn === cn) { //如果需要安装的等于已安装好的
+            fireFactory(id, args, factory) //安装到框架中
+        } else {
+            //放到检测列队中,等待checkDeps处理
+            loadings.unshift(id)
+        }
+        checkDeps()
+    }
+
+    innerRequire.define = function(urlOrId, deps, factory) { //模块名,依赖列表,模块本身
+        var args = aslice.call(arguments)
+        if (typeof urlOrId === "string") {
+            var id = args.shift()
+        }
+        if (typeof args[0] === "function") {
+            args.unshift([])
+        }
+        //上线合并后能直接得到模块ID,否则寻找当前正在解析中的script节点的src作为模块ID
+        //现在除了safari5,1-外，我们都能直接通过getCurrentScript一步到位得到当前执行的script节点，
+        //safari可通过onload+delay闭包组合解决
+        var url = modules[id] && modules[id].state >= 1 ? id : trimHashAndQuery(getCurrentScript())
+        if (!modules[url] && id) {
+            modules[url] = {
+                id: url,
+                factory: factory,
+                state: 1
+            }
+        }
+        factory = args[1]
+        factory.id = id //用于调试
+        factory.delay = function(d) {
+            args.push(d)
+            var isCycle = true
+            try {
+                isCycle = checkCycle(modules[d].deps, d)
+            } catch (e) {
+            }
+            if (isCycle) {
+                avalon.error(d + "模块与之前的模块存在循环依赖，请不要直接用script标签引入" + d + "模块")
+            }
+            delete factory.delay //释放内存
+            innerRequire.apply(null, args) //0,1,2 --> 1,2,0
+        }
+        if (url) {
+            factory.delay(url)
+        } else { //先进先出
+            factorys.push(factory)
+        }
+    }
+    innerRequire.define.amd = modules
+
     function checkCycle(deps, nick) {
         //检测是否存在循环依赖
         for (var id in deps) {
@@ -4881,7 +4844,7 @@ new function() {
     }
 
     function checkFail(node, onError, fuckIE) {
-        var id = cleanUrl(node.src) //检测是否死链
+        var id = trimHashAndQuery(node.src) //检测是否死链
         node.onload = node.onreadystatechange = node.onerror = null
         if (onError || (fuckIE && !modules[id].state)) {
             setTimeout(function() {
@@ -4955,7 +4918,7 @@ new function() {
             }
         }
         //5. 补全扩展名
-        url = cleanUrl(ret)
+        url = trimHashAndQuery(ret)
         var ext = plugin.ext
         if (ext) {
             if (url.slice(0 - ext.length) !== ext) {
@@ -4994,95 +4957,6 @@ new function() {
         log("debug: 正准备加载 " + url) //更重要的是IE6下可以收窄getCurrentScript的寻找范围
     }
 
-    innerRequire = avalon.require = function(list, factory, parent) {
-        // 用于检测它的依赖是否都为2
-        var deps = {},
-                // 用于保存依赖模块的返回值
-                args = [],
-                // 需要安装的模块数
-                dn = 0,
-                // 已安装完的模块数
-                cn = 0,
-                id = parent || "callback" + setTimeout("1")
-        parent = parent || basepath
-        String(list).replace(rword, function(el) {
-            var url = loadResources(el, parent)
-            if (url) {
-                dn++
-                if (modules[url] && modules[url].state === 2) {
-                    cn++
-                }
-                if (!deps[url]) {
-                    args.push(url)
-                    deps[url] = "司徒正美" //去重
-                }
-            }
-        })
-        modules[id] = {//创建一个对象,记录模块的加载情况与其他信息
-            id: id,
-            factory: factory,
-            deps: deps,
-            args: args,
-            state: 1
-        }
-        if (dn === cn) { //如果需要安装的等于已安装好的
-            fireFactory(id, args, factory) //安装到框架中
-        } else {
-            //放到检测列队中,等待checkDeps处理
-            loadings.unshift(id)
-        }
-        checkDeps()
-    }
-
-    /**
-     * 定义模块
-     * @param {String} id ? 模块ID
-     * @param {Array} deps ? 依赖列表
-     * @param {Function} factory 模块工厂
-     * @api public
-     */
-    innerRequire.define = function(id, deps, factory) { //模块名,依赖列表,模块本身
-        var args = aslice.call(arguments)
-
-        if (typeof id === "string") {
-            var _id = args.shift()
-        }
-        if (typeof args[0] === "function") {
-            args.unshift([])
-        } //上线合并后能直接得到模块ID,否则寻找当前正在解析中的script节点的src作为模块ID
-        //现在除了safari外，我们都能直接通过getCurrentScript一步到位得到当前执行的script节点，
-        //safari可通过onload+delay闭包组合解决
-        var name = modules[_id] && modules[_id].state >= 1 ? _id : cleanUrl(getCurrentScript())
-        if (!modules[name] && _id) {
-            modules[name] = {
-                id: name,
-                factory: factory,
-                state: 1
-            }
-        }
-        factory = args[1]
-        factory.id = _id //用于调试
-        factory.delay = function(d) {
-            args.push(d)
-            var isCycle = true
-            try {
-                isCycle = checkCycle(modules[d].deps, d)
-            } catch (e) {
-            }
-            if (isCycle) {
-                avalon.error(d + "模块与之前的模块存在循环依赖，请不要直接用script标签引入" + d + "模块")
-            }
-            delete factory.delay //释放内存
-            innerRequire.apply(null, args) //0,1,2 --> 1,2,0
-        }
-        if (name) {
-            factory.delay(name, args)
-        } else { //先进先出
-            factorys.push(factory)
-        }
-    }
-    innerRequire.define.amd = modules
-
     function fireFactory(id, deps, factory) {
         for (var i = 0, array = [], d; d = deps[i++]; ) {
             array.push(modules[d].exports)
@@ -5095,6 +4969,70 @@ new function() {
         }
         return ret
     }
+
+    plugins.js = function(url, shim) {
+        var id = trimHashAndQuery(url)
+        if (!modules[id]) { //如果之前没有加载过
+            modules[id] = {
+                id: id,
+                exports: {}
+            }
+            if (shim) { //shim机制
+                innerRequire(shim.deps || "", function() {
+                    loadJS(url, id, function() {
+                        modules[id].state = 2
+                        var s = shim.exports
+                        if (s && modules[id].exports === void 0) {
+                            modules[id].exports = typeof s === "function" ?
+                                    s() : window[s]
+                        }
+                        innerRequire.checkDeps()
+                    })
+                })
+            } else {
+                loadJS(url, id)
+            }
+        }
+        return id
+    }
+    plugins.css = function(url) {
+        var id = trimHashAndQuery(url).replace(/\W/g, "_") ////用于处理掉href中的hash与所有特殊符号
+        if (!DOC.getElementById(id)) {
+            var node = DOC.createElement("link")
+            node.rel = "stylesheet"
+            node.href = url
+            node.id = id
+            head.insertBefore(node, head.firstChild)
+        }
+    }
+    plugins.css.ext = ".css"
+    plugins.js.ext = ".js"
+
+    plugins.text = function(url) {
+        var xhr = getXHR()
+        var id = trimHashAndQuery(url)
+        modules[id] = {}
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                var status = xhr.status;
+                if (status > 399 && status < 600) {
+                    avalon.error(url + " 对应资源不存在或没有开启 CORS")
+                } else {
+                    modules[id].state = 2
+                    modules[id].exports = xhr.responseText
+                    innerRequire.checkDeps()
+                }
+            }
+        }
+        xhr.open("GET", url, true)
+        if ("withCredentials" in xhr) {
+            xhr.withCredentials = true
+        }
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
+        xhr.send()
+        return id
+    }
+
     innerRequire.config = kernel
     innerRequire.checkDeps = checkDeps
 }
@@ -5153,7 +5091,7 @@ avalon.bind(window, "load", fireReady)
 
 avalon.ready = function(fn) {
     if (innerRequire) {
-        innerRequire("ready!", fn)
+        innerRequire(["ready!"], fn)
     } else if (fireReady === noop) {
         fn(avalon)
     } else {

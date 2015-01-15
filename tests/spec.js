@@ -122,6 +122,102 @@ define([], function() {
         })
     })
 
+    describe("shortcircuit", function() {
+        it("async", function(done) {
+            var body = document.body
+            var div = document.createElement("div")
+            var str = '<select id="select1">' +
+                    '    <option ms-repeat="data" ms-if-loop="(el.id.indexOf(filter) > -1) || (el.name.indexOf(filter) > -1)">{{ el.name }}</option>' +
+                    '</select>' +
+                    '<select id="select2">' +
+                    '    <option ms-repeat="data" ms-if-loop="el.id.indexOf(filter) > -1">{{ el.name }}</option>' +
+                    '</select>' +
+                    '<select id="select3">' +
+                    '    <option ms-repeat="data" ms-if-loop="el.name.indexOf(filter) > -1">{{ el.name }}</option>' +
+                    '</select>' +
+                    '<input type="text" ms-duplex="filter"/>'
+            div.innerHTML = str
+            body.appendChild(div)
+            var vm = avalon.define({
+                $id: "shortcircuit",
+                filter: "",
+                data: [
+                    {id: "47", name: "111"},
+                    {id: "58", name: "222"},
+                    {id: "69", name: "333"}
+                ]
+            });
+            avalon.scan(div, vm)
+            setTimeout(function() {
+                var s = div.getElementsByTagName("select")
+                expect(avalon(s[0]).val()).to.be("111")
+                expect(avalon(s[1]).val()).to.be("111")
+                expect(avalon(s[2]).val()).to.be("111")
+                vm.filter = "22"
+                setTimeout(function() {
+                    var s = div.getElementsByTagName("select")
+                    expect(avalon(s[0]).val()).to.be("222")
+                    expect(avalon(s[1]).val() || "").to.be("")
+                    expect(avalon(s[2]).val()).to.be("222")
+                    vm.filter = "5"
+                    setTimeout(function() {
+                        var s = div.getElementsByTagName("select")
+                        expect(avalon(s[0]).val()).to.be("222")
+                        expect(avalon(s[1]).val()).to.be("222")
+                        expect(avalon(s[2]).val() || "").to.be("")
+                        vm.filter = "5"
+                        delete avalon.vmodels.shortcircuit
+                        div.innerHTML = ""
+                        body.removeChild(div)
+                        done()
+
+                    }, 150)
+
+                }, 150)
+
+            }, 150)
+
+        })
+    })
+    describe("array.splice(0,0,1,2,3)", function() {
+        it("async", function(done) {
+            var body = document.body
+            var div = document.createElement("div")
+            var str = ' <ul>' +
+                    '   <li ms-repeat="array">{{el}}</li>' +
+                    '</ul>'
+            div.innerHTML = str
+            body.appendChild(div)
+            var vm = avalon.define({
+                $id: "arraysplice",
+                array: [1, 2]
+            });
+            avalon.scan(div, vm)
+            setTimeout(function() {
+                var s = div.getElementsByTagName("li")
+                expect(s[0].innerHTML).to.be("1")
+                expect(s[1].innerHTML).to.be("2")
+                vm.array.splice(0, 0, 3, 4, 5)
+
+                setTimeout(function() {
+                    var s = div.getElementsByTagName("li")
+                    expect(s.length).to.be(5)
+                    expect(s[0].innerHTML).to.be("3")
+                    expect(s[1].innerHTML).to.be("4")
+                    expect(s[2].innerHTML).to.be("5")
+                    expect(s[3].innerHTML).to.be("1")
+                    expect(s[4].innerHTML).to.be("2")
+                    delete avalon.vmodels.shortcircuit
+                    div.innerHTML = ""
+                    body.removeChild(div)
+                    done()
+
+                }, 150)
+
+            }, 150)
+
+        })
+    })
 
     describe("avalon.parseHTML", function() {
         avalon.parseHTML.p = 1
@@ -156,8 +252,6 @@ define([], function() {
 
             var nodes = avalon.parseHTML('<param name="audio" value="music.wav" /><param name="width" value="600" /><param name="height" value="400" />').childNodes
             expect(nodes.length).to.be(3)
-
-
 
 
             setTimeout(function() {
@@ -431,6 +525,36 @@ define([], function() {
             }, 100)
         })
     })
+
+//    describe("计算属性多次初触发", function() {
+//        //确保位置没有错乱
+//        it("sync", function() {
+//            var index = 1
+//            var model = avalon.define("computed2", function(vm) {
+//                vm.salary1 = 1
+//                vm.salary2 = 2
+//                vm.salary3 = 3
+//                vm.amount = {
+//                    get: function() {
+//                        index++
+//                        return this.salary1 + this.salary2 + this.salary3;
+//                    }
+//                };
+//            });
+//            expect(index).to.be(1)
+//            expect(model.amount).to.be(6)
+//            model.salary1 = 1000
+//            expect(index).to.be(2)
+//            expect(model.amount).to.be(1005)
+//            model.salary2 = 100
+//            expect(index).to.be(3)
+//            expect(model.amount).to.be(1103)
+//            model.salary3 = 10
+//            expect(index).to.be(4)
+//            expect(model.amount).to.be(1110)
+//            avalon.vmodels.computed2
+//        })
+//    })
     describe("avalon.range", function() {
 
         it("sync", function() {
@@ -2126,7 +2250,7 @@ define([], function() {
                         expect(inputs[3].innerHTML).to.be("2")
                         expect(inputs[4].innerHTML).to.be("1")
                         expect(inputs[5].innerHTML).to.be("1")
-                      
+
                         delete avalon.vmodels["array3"]
                         body.removeChild(div)
                         done()
