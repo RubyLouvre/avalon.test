@@ -219,6 +219,66 @@ define([], function() {
         })
     })
 
+    describe("array.clear() + checkbox ms-duplex-string", function() {
+        //https://github.com/RubyLouvre/avalon/issues/668
+        it("async", function(done) {
+            var vm = avalon.define({
+                $id: 'idTypeTable',
+                data: [
+                    {"Code": "10001", "Title": "图书证1"},
+                    {"Code": "10002", "Title": "图书证2"},
+                    {"Code": "10003", "Title": "图书证3"},
+                    {"Code": "10004", "Title": "图书证4"}],
+                selectedArr: ["10001", "10002", "10003"],
+                checkAll: function() {
+                    vm.selectedArr = ["10001", "10002", "10003", "10004"];
+                },
+                cancelAll: function() {
+                    vm.selectedArr.clear();
+                }
+            })
+
+            var body = document.body
+            var div = document.createElement("div")
+            var str = '<ul>' +
+                    '<li ms-repeat="data">' +
+                    '     <input type="checkbox" ms-attr-value="el.Code" ms-duplex-string="selectedArr">{{el.Title}}' +
+                    '</li>' +
+                    '</ul>'
+            div.innerHTML = str
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function() {
+                var s = div.getElementsByTagName("input")
+                expect(s[0].checked).to.be(true)
+                expect(s[1].checked).to.be(true)
+                expect(s[2].checked).to.be(true)
+                expect(s[3].checked).to.be(false)
+                vm.cancelAll()
+                setTimeout(function() {
+                    var s = div.getElementsByTagName("input")
+                    expect(s[0].checked).to.be(false)
+                    expect(s[1].checked).to.be(false)
+                    expect(s[2].checked).to.be(false)
+                    expect(s[3].checked).to.be(false)
+                    vm.checkAll()
+                    setTimeout(function() {
+                        var s = div.getElementsByTagName("input")
+                        expect(s[0].checked).to.be(true)
+                        expect(s[1].checked).to.be(true)
+                        expect(s[2].checked).to.be(true)
+                        expect(s[3].checked).to.be(true)
+                        delete avalon.vmodels.idTypeTable
+                        div.innerHTML = ""
+                        body.removeChild(div)
+                        done()
+                    }, 300)
+                }, 300)
+            }, 300)
+
+        })
+    })
+
     describe("avalon.parseHTML", function() {
         avalon.parseHTML.p = 1
         it("async", function(done) {             //函数,正则,元素,节点,文档,window等对象为非
