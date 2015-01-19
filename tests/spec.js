@@ -580,9 +580,44 @@ define([], function() {
                 a.array = a.array
                 setTimeout(function() {
                     expect(avalon.type(a.array)).to.be("array")
+                    delete avalon.vmodels["vm.array"]
                     done()
                 }, 200)
             }, 100)
+        })
+    })
+
+    describe("vm.array被重置后$watch机制还有效", function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            var count = 1, length
+            var model = avalon.define("arrlength", function(vm) {
+                vm.arr = [1, 2, 3]
+            });
+            model.arr.$watch('length', function(a) {
+                length = a
+                console.log(length+"!")
+                ++count
+                console.log(count)
+            });
+            var hehe = model.arr;
+            setTimeout(function() {
+                model.arr = [1, 2, 3, 4, 5, 6, 7]
+            }, 50);
+            setTimeout(function() {
+                expect(length).to.be(7)
+                expect(count).to.be(2)
+            }, 100);
+            setTimeout(function() {
+                
+                hehe.push(10)
+            }, 150);
+            setTimeout(function() {
+                expect(length).to.be(8)
+                expect(count).to.be(3)
+                delete avalon.vmodels["arrlength"]
+                done()
+            }, 200);
         })
     })
 
