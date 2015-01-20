@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.js 1.39 build in 2015.1.19 
+ avalon.js 1.39 build in 2015.1.20 
 _____________________________________
  support IE6+ and other browsers
  ==================================================*/
@@ -4689,13 +4689,15 @@ new function() {
 
     var cur = getCurrentScript(true) //求得当前avalon.js 所在的JS文件的路径
     if (!cur) { //处理window safari的Error没有stack的问题
-        cur = avalon.slice(DOC.scripts).pop().src
+        cur = DOC.scripts[DOC.scripts.length - 1].src
     }
     var url = trimHashAndQuery(cur)
-    kernel.massUrl = url.slice(0, url.lastIndexOf("/") + 1)
+    kernel.loaderUrl = url.slice(0, url.lastIndexOf("/") + 1)
 
-    function getBaseUrl() {
-        return typeof kernel.baseUrl === "string" ? kernel.baseUrl : kernel.massUrl
+    function getBaseUrl(parentUrl) {
+        return kernel.baseUrl ? kernel.baseUrl : parentUrl ?
+                parentUrl.substr(0, parentUrl.lastIndexOf("/")) :
+                kernel.loaderUrl
     }
 
     function getCurrentScript(base) {
@@ -4729,7 +4731,8 @@ new function() {
         var nodes = (base ? DOC : head).getElementsByTagName("script") //只在head标签中寻找
         for (var i = nodes.length, node; node = nodes[--i]; ) {
             if ((base || node.className === subscribers) && node.readyState === "interactive") {
-                return node.className = node.src
+                var url = "1"[0] ? node.src : node.getAttribute("src", 4)
+                return node.className = url
             }
         }
     }
@@ -4740,37 +4743,23 @@ new function() {
         }
         var args = [] // 放置所有依赖项的完整路径
         var deps = {} // args的另一种表现形式，为的是方便去重
-        var dn = 0  //需要安装的模块数
-        var cn = 0  // 已安装完的模块数
         var id = parentUrl || "callback" + setTimeout("1")
-        parentUrl = parentUrl ? parentUrl.substr(0, parentUrl.lastIndexOf("/")) : getBaseUrl()
-
+        parentUrl = getBaseUrl(parentUrl)
         array.forEach(function(el) {
             var url = loadResources(el, parentUrl) //加载资源，并返回能加载资源的完整路径
             if (url) {
-                dn++
-                if (modules[url] && modules[url].state === 2) {
-                    cn++
-                }
                 if (!deps[url]) {
                     args.push(url)
                     deps[url] = "司徒正美" //去重
                 }
             }
         })
-        modules[id] = {//保存此模块的相关信息
-            id: id,
-            factory: factory,
-            deps: deps,
-            args: args,
-            state: 1
+        if (!modules[id]) {
+            //如果此模块是定义在另一个JS文件中, 那必须等该文件加载完毕
+            //才能放到检测列队中
+            loadings.push(id)
         }
-        if (dn === cn) { //如果需要安装的等于已安装好的
-            fireFactory(id, args, factory) //安装到框架中
-        } else {
-            //放到检测列队中,等待checkDeps处理
-            loadings.unshift(id)
-        }
+        modules[id] = makeModule(id, 1, factory || noop, deps, args)//更新此模块信息
         checkDeps()
     }
 
@@ -4790,11 +4779,8 @@ new function() {
         factory.id = id //用于调试
 
         if (!modules[url] && id) {
-            modules[url] = {//必须先行定义，并且不存在deps，用于checkCycle方法
-                id: url,
-                factory: factory,
-                state: 1
-            }
+            //必须先行定义，并且不存在deps，用于checkCycle方法
+            modules[url] = makeModule(url, 1, factory)
         }
 
         factory.require = function(url) {
@@ -4862,7 +4848,7 @@ new function() {
         }
     }
 
-    function isAbs(path) {
+    function isAbsUrl(path) {
         //http://stackoverflow.com/questions/10687099/how-to-test-if-a-url-string-is-absolute-or-relative
         return  /^(?:[a-z]+:)?\/\//i.test(String(path))
     }
@@ -4872,11 +4858,11 @@ new function() {
         var oldBase = DOC.getElementsByTagName("base")
         var oldHref = oldBase && oldBase.href
         var ourBase = oldBase || head.appendChild(DOC.createElement("base"))
-        var resolver = DOC.createElement("a")
+        var node = DOC.createElement("a")
         ourBase.href = baseUrl
-        resolver.href = url
+        node.href = url
         try {
-            return resolver.href
+            return  "1"[0] ? node.href : node.getAttribute("href", 4)
         } finally {
             if (oldBase) {
                 oldBase.href = oldHref
@@ -4906,9 +4892,39 @@ new function() {
         }
         return a + b
     }
+    function makeShimExports(value) {
+        function fn() {
+            var ret;
+            if (value.init) {
+                ret = value.init.apply(window, arguments);
+            }
+            return ret || (value.exports && getGlobal(value.exports));
+        }
+        return fn
+    }
+    function makeModule(id, state, factory, deps, args) {
+        return {
+            id: id,
+            state: state,
+            factory: factory,
+            deps: deps,
+            args: args
+        }
+    }
+
+    function getGlobal(value) {
+        if (!value) {
+            return value;
+        }
+        var g = window
+        value.split('.').forEach(function(part) {
+            g = g[part]
+        })
+        return g;
+    }
 
     function loadResources(url, parentUrl) {
-        //1. 特别处理mass|ready标识符
+        //1. 特别处理ready标识符
         if (url === "ready!" || (modules[url] && modules[url].state === 2)) {
             return url
         }
@@ -4921,8 +4937,16 @@ new function() {
         plugin = plugin || "js"
         plugin = plugins[plugin] || noop
         //3. 处理shim配置项
-        if (typeof kernel.shim[url] === "object") {
-            var shim = kernel.shim[url]
+        var shim = kernel.shim[url]
+        if (typeof shim === "object") {
+            if (Array.isArray(shim)) {
+                shim = kernel.shim[url] = {
+                    deps: shim
+                }
+            }
+            if (!shim.exportsFn && (shim.exports || shim.init)) {
+                shim.exportsFn = makeShimExports(shim)
+            }
         }
         //4. 处理paths配置项
         url = url.split("/");
@@ -4951,9 +4975,9 @@ new function() {
             }
         }
         //5. 转换为绝对路径
-        if (!isAbs(url)) {
+        if (!isAbsUrl(url)) {
             url = joinPath(parentUrl, url)
-            if (!isAbs(url)) {
+            if (!isAbsUrl(url)) {
                 url = getAbsUrl(url, getBaseUrl())
             }
         }
@@ -4979,6 +5003,8 @@ new function() {
                 }
                 if (checkFail(node, false, !W3C)) {
                     log("debug: 已成功加载 " + url)
+                    loadings.push(id)
+                    checkDeps()
                 }
             }
         }
@@ -5036,24 +5062,16 @@ new function() {
 
 
     plugins.js = function(url, shim) {
-        if (!isAbs(url)) {
-            url = getAbsUrl(url, getBaseUrl())
-        }
         var id = trimHashAndQuery(url)
-
         if (!modules[id]) { //如果之前没有加载过
-            modules[id] = {
-                id: id,
-                exports: {}
-            }
+            var module = modules[id] = makeModule(id, 1)
             if (shim) { //shim机制
                 innerRequire(shim.deps || [], function() {
+                    var args = avalon.slice(arguments)
                     loadJS(url, id, function() {
-                        modules[id].state = 2
-                        var s = shim.exports
-                        if (s && modules[id].exports === void 0) {
-                            modules[id].exports = typeof s === "function" ?
-                                    s() : window[s]
+                        module.state = 2
+                        if (shim.exportsFn) {
+                            module.exports = shim.exportsFn.apply(0, args)
                         }
                         innerRequire.checkDeps()
                     })
