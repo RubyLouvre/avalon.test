@@ -80,6 +80,16 @@ define([], function() {
             body.removeChild(div)
         })
     })
+    describe("加载器", function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            require(["./mmRequest"], function() {
+                expect(typeof avalon.ajax).to.be("function")
+                expect(typeof avalon.mmPromise).to.be("function")
+                done()
+            })
+        })
+    })
     describe("确保数组的$model与它的元素的$model是共通的", function() {
         //确保位置没有错乱
         it("sync", function() {
@@ -89,7 +99,6 @@ define([], function() {
             expect(test.array.$model[0]).to.be(test.array[0].$model)
         })
     })
-
     describe('newparser', function() {
         //确保位置没有错乱
         it("sync", function() {
@@ -607,7 +616,7 @@ define([], function() {
                 expect(count).to.be(2)
             }, 100);
             setTimeout(function() {
-                
+
                 hehe.push(10)
             }, 150);
             setTimeout(function() {

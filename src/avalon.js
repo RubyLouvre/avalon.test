@@ -4759,7 +4759,10 @@ new function() {
             //才能放到检测列队中
             loadings.push(id)
         }
-        modules[id] = makeModule(id, 1, factory, deps, args)//更新此模块信息
+        if (!modules[id] || modules[id].state !== 2) {
+            modules[id] = makeModule(id, 1, factory, deps, args)//更新此模块信息
+        }
+      
         checkDeps()
     }
 
@@ -4791,7 +4794,7 @@ new function() {
             } catch (e) {
             }
             if (isCycle) {
-                avalon.error(url + "模块与之前的模块存在循环依赖，请不要直接用script标签引入" + d + "模块")
+                avalon.error(url + "模块与之前的模块存在循环依赖，请不要直接用script标签引入" + url + "模块")
             }
 
             delete factory.require //释放内存
