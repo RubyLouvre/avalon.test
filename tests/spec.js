@@ -596,9 +596,7 @@ define([], function() {
             });
             model.arr.$watch('length', function(a) {
                 length = a
-                console.log(length+"!")
                 ++count
-                console.log(count)
             });
             var hehe = model.arr;
             setTimeout(function() {
@@ -689,7 +687,6 @@ define([], function() {
             avalon.scan(div, model)
             setTimeout(function() {
                 var ret = div.innerHTML
-                //console.log(ret)
                 expect(ret.indexOf("fix")).to.be(-1)
                 expect(ret.indexOf("onclick")).to.be(-1)
                 expect(ret.indexOf("ontap")).to.be(-1)
