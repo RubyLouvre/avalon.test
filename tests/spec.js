@@ -93,22 +93,46 @@ define([], function() {
             setTimeout(function() {
                 require.config({
                     baseUrl: "/avalon/src/jQuery/",
+                    paths: {
+                        jquery: "jquery-1.11.2"
+                    },
                     "shim": {
                         "jquery.alpha": ["jquery"],
                         "jquery.beta": ["jquery"]
                     }
                 })
-                require(["jquery","jquery.alpha","jquery.beta"], function(a) {
+                require(["jquery", "jquery.alpha", "jquery.beta"], function(a) {
                     expect(typeof a).to.be("function")
                     expect(typeof a.fn.alpha).to.be("function")
                     expect(typeof a.fn.beta).to.be("function")
+                    done()
+                })
+
+            })
+
+        })
+
+        it("async", function(done) {
+            setTimeout(function() {
+                require.config({
+                    baseUrl: "/avalon/src/jQuery/",
+                    paths: {
+                        jquery: "jquery-1.11.2",
+                        "jquery.placeholder": "jquery.placeholder",
+                        underscore: "underscore-1.7",
+                        backbone: "backbone"
+                    }
+                })
+                require(["backbone", "jquery.placeholder"], function(a, b) {
+                    expect(a.VERSION).to.be("1.1.2")
+                    expect(typeof jQuery.fn.placeholder.input).to.be("boolean")
                     done()
                 })
             })
 
         })
     })
-    return
+
     describe("确保数组的$model与它的元素的$model是共通的", function() {
         //确保位置没有错乱
         it("sync", function() {
