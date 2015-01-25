@@ -5,8 +5,8 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.39 build in 2015.1.22 
-______________________________
+ avalon.modern.js 1.391 build in 2015.1.25 
+_____________________________
  support IE6+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -214,7 +214,7 @@ function _number(a, len) { //用于模拟slice, splice的效果
 avalon.mix({
     rword: rword,
     subscribers: subscribers,
-    version: 1.39,
+    version: 1.391,
     ui: {},
     log: log,
     slice: function(nodes, start, end) {
@@ -690,8 +690,6 @@ var EventBus = {
 
 var ravalon = /(\w+)\[(avalonctrl)="(\S+)"\]/
 var findNodes = function(str) {
-    //pc safari v5.1: typeof DOC.querySelectorAll(str) === 'function'
-    //https://gist.github.com/DavidBruant/1016007
     return DOC.querySelectorAll(str)
 } 
 /*********************************************************************
@@ -756,6 +754,7 @@ function getNewValue(accessor, name, value, $vmodel) {
                 setter.call($vmodel, value)
                 $events[name] = lock
             }
+            console.log("----")
             return  getter.call($vmodel) //同步$model
         case 1://监控属性
             return value
@@ -828,18 +827,20 @@ function modelFactory(source, $special, $model) {
                     //计算属性与对象属性需要重新计算newValue
                     if (accessor.type !== 1) {
                         newValue = getNewValue(accessor, name, newValue, $vmodel)
+                        if (!accessor.type)
+                            return
                     }
                     if (!isEqual(oldValue, newValue)) {
                         $model[name] = newValue
                         if ($events.$digest) {
-                            if (accessor.pedding)
-                                return
-                            accessor.pedding = true
-                            setTimeout(function() {
-                                notifySubscribers($events[name]) //同步视图
-                                safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
-                                accessor.pedding = false
-                            })
+                            if (!accessor.pedding) {
+                                accessor.pedding = true
+                                setTimeout(function() {
+                                    notifySubscribers($events[name]) //同步视图
+                                    safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
+                                    accessor.pedding = false
+                                })
+                            }
                         } else {
                             notifySubscribers($events[name]) //同步视图
                             safeFire($vmodel, name, newValue, oldValue) //触发$watch回调
@@ -848,7 +849,23 @@ function modelFactory(source, $special, $model) {
                 } else {
                     if (accessor.type === 0) { //type 0 计算属性 1 监控属性 2 对象属性
                         //计算属性不需要收集视图刷新函数,都是由其他监控属性代劳
-                        return $model[name] = accessor.get.call($vmodel)
+                        var newValue = accessor.get.call($vmodel)
+                        if (oldValue !== newValue) {
+                            $model[name] = newValue
+                            //这里不用同步视图
+                            if ($events.$digest) {
+                                if (!accessor.pedding) {
+                                    accessor.pedding = true
+                                    setTimeout(function() {
+                                        safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
+                                        accessor.pedding = false
+                                    })
+                                }
+                            } else {
+                                safeFire($vmodel, name, newValue, oldValue) //触发$watch回调
+                            }
+                        }
+                        return newValue
                     } else {
                         collectSubscribers($events[name]) //收集视图函数
                         return accessor.svmodel || oldValue
@@ -864,8 +881,8 @@ function modelFactory(source, $special, $model) {
                 initCallbacks.push(function() {
                     var data = {
                         evaluator: function() {
-                            data.element = null
                             data.type = new Date - 0
+                            data.element = null
                             $model[name] = accessor.get.call($vmodel)
                         },
                         element: head,
@@ -1412,10 +1429,6 @@ var tagHooks = new function() {
     this.th = this.td
 }
 
-tagHooks.optgroup = tagHooks.option
-tagHooks.tbody = tagHooks.tfoot = tagHooks.colgroup = tagHooks.caption = tagHooks.thead
-tagHooks.th = tagHooks.td
-
 String("circle,defs,ellipse,image,line,path,polygon,polyline,rect,symbol,text,use").replace(rword, function(tag) {
     tagHooks[tag] = tagHooks.g //处理SVG
 })
@@ -1425,8 +1438,8 @@ var scriptTypes = oneObject(["", "text/javascript", "text/ecmascript", "applicat
 var script = DOC.createElement("script")
 
 avalon.parseHTML = function(html) {
-    if (typeof html !== "string") {
-        html = html + ""
+    if (typeof html !== "string" ) {
+        return DOC.createDocumentFragment()
     }
     html = html.replace(rxhtml, "<$1></$2>").trim()
     var tag = (rtagName.exec(html) || ["", ""])[1].toLowerCase(),
@@ -1467,6 +1480,7 @@ avalon.clearHTML = function(node) {
     }
     return node
 }
+
 /*********************************************************************
  *                           扫描系统                                 *
  **********************************************************************/
@@ -2114,7 +2128,7 @@ function showHidden(node, array) {
         var node = this[0]
         if (arguments.length === 0) {
             if (node.setTimeout) { //取得窗口尺寸,IE9后可以用node.innerWidth /innerHeight代替
-                return node["inner" + name] || node.document.documentElement[clientProp]
+                return node["inner" + name] 
             }
             if (node.nodeType === 9) { //取得页面尺寸
                 var doc = node.documentElement
@@ -4002,6 +4016,7 @@ new function() {
 /*********************************************************************
  *                      AMD加载器                                   *
  **********************************************************************/
+//https://www.devbridge.com/articles/understanding-amd-requirejs/
 var modules = avalon.modules = {
     "ready!": {
         exports: avalon
@@ -4028,9 +4043,10 @@ new function() {
     var url = trimQuery(cur)
     kernel.loaderUrl = url.slice(0, url.lastIndexOf("/") + 1)
 
+
     function getBaseUrl(parentUrl) {
-        return kernel.baseUrl ? kernel.baseUrl : parentUrl ?
-                parentUrl.substr(0, parentUrl.lastIndexOf("/")) :
+         return  parentUrl ?
+                parentUrl.substr(0, parentUrl.lastIndexOf("/")) : kernel.baseUrl ? kernel.baseUrl :
                 kernel.loaderUrl
     }
 
@@ -4188,7 +4204,6 @@ new function() {
         //http://stackoverflow.com/questions/10687099/how-to-test-if-a-url-string-is-absolute-or-relative
         return  /^(?:[a-z]+:)?\/\//i.test(String(path))
     }
-    var now = new Date - 0
     var allpaths = kernel["orig.paths"] = {}
     var allmaps = kernel["orig.maps"] = {}
     var allpackages = kernel["packages"] = []
@@ -4196,35 +4211,29 @@ new function() {
     avalon.mix(plugins, {
         paths: function(hash) {
             avalon.mix(allpaths, hash)
-            kernel.paths = createIndexArray(allpaths)
+            kernel.paths = makeIndexArray(allpaths)
         },
         map: function(hash) {
             avalon.mix(allmaps, hash)
-            var maps = createIndexArray(allmaps, 1)
-            avalon.each(maps, function(_, item) {
-                item.v = createIndexArray(item.v)
+            var list = makeIndexArray(allmaps, 1, 1)
+            avalon.each(list, function(_, item) {
+                item.val = makeIndexArray(item.val)
             })
-            kernel.maps = maps
+            kernel.map = list
         },
         packages: function(array) {
             array = array.concat(allpackages)
             var uniq = {}
             var ret = []
-            for (var i = 0, el; el = array[i++]; ) {
-                var pkg = el
-                if (typeof el === "string") {
-                    pkg = {
-                        name: el.split("/")[0],
-                        location: el,
-                        main: "main"
-                    }
-                }
-                if (!uniq[pkg.name]) {
-                    uniq[pkg.name] = 1
+            for (var i = 0, pkg; pkg = array[i++]; ) {
+                var pkg = typeof pkg === "string" ? {name: pkg} : pkg
+                var name = pkg.name
+                if (!uniq[name]) {
+                    var url = pkg.location ? pkg.location : joinPath(name, pkg.main || "main")
+                    url = url.replace(/\.js$/i, "")
                     ret.push(pkg)
-                    pkg.location = pkg.location || pkg.name
-                    pkg.main = (pkg.main || 'main').replace(/\.js$/i, '')
-                    pkg.reg = createPrefixRegexp(pkg.name)
+                    uniq[name] = pkg.location = url
+                    pkg.reg = createPrefixRegexp(name)
                 }
             }
             kernel.packages = ret.sort()
@@ -4234,7 +4243,7 @@ new function() {
                 hash = {"*": hash}
             }
             avalon.mix(allargs, hash)
-            kernel.urlArgs = createIndexArray(allargs, 1)
+            kernel.urlArgs = makeIndexArray(allargs, 1)
         },
         bundles: function(obj) {
             var bundles = kernel.bundles = {}
@@ -4243,6 +4252,21 @@ new function() {
                     bundles[id] = key
                 })
             }
+        },
+        baseUrl: function(url) {
+            if (!isAbsUrl(url)) {
+                var baseElement = head.getElementsByTagName("base")[0]
+                if (baseElement) {
+                    head.removeChild(baseElement)
+                }
+                var node = DOC.createElement("a")
+                node.href = url
+                url = "1"[0] ? node.href : node.getAttribute("href", 4)
+                if (baseElement) {
+                    head.insertBefore(baseElement, head.firstChild)
+                }
+            }
+            kernel.baseUrl = url
         },
         shim: function(obj) {
             for (var i in obj) {
@@ -4259,64 +4283,55 @@ new function() {
             kernel.shim = obj
         }
     })
+
     //创建一个经过特殊算法排好序的数组
-    function createIndexArray(hash, useStar) {
-        var index = hash2array(hash, 1, useStar);
+    function makeIndexArray(hash, useStar, part) {
+        var index = hash2array(hash, useStar, part);
         index.sort(descSorterByKOrName);
         return index;
     }
     function createPrefixRegexp(prefix) {
         return new RegExp('^' + prefix + '(/|$)');
     }
-    function hash2array(hash, createRegExp, useStar) {
+    function hash2array(hash, useStar, part) {
         var array = [];
         for (var key in hash) {
             if (hash.hasOwnProperty(key)) {
                 var item = {
-                    k: key,
-                    v: hash[key]
+                    name: key,
+                    val: hash[key]
                 }
                 array.push(item)
-                if (createRegExp) {
-                    item.reg = key === '*' && useStar
-                            ? /^/
-                            : createPrefixRegexp(key)
+                item.reg = key === "*" && useStar
+                        ? /^/
+                        : createPrefixRegexp(key)
+                if (part && key !== "*") {
+                    item.reg = new RegExp('\/' + key.replace(/^\//, "") + '(/|$)');
                 }
             }
         }
         return array
     }
-    // 根据元素的k或name项进行数组字符数逆序的排序函数
-    function descSorterByKOrName(a, b) {
-        var aValue = a.k || a.name
-        var bValue = b.k || b.name
-        if (bValue === '*') {
-            return -1
-        }
-        if (aValue === '*') {
-            return 1
-        }
-        return bValue.length - aValue.length
-    }
-
-
-    function getAbsUrl(url, baseUrl) {
-        //http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
-        var oldBase = DOC.getElementsByTagName("base")[0]
-        var oldHref = oldBase && oldBase.href
-        var ourBase = oldBase || head.appendChild(DOC.createElement("base"))
-        var node = DOC.createElement("a")
-        ourBase.href = baseUrl
-        node.href = url
-        try {
-            return  "1"[0] ? node.href : node.getAttribute("href", 4)
-        } finally {
-            if (oldBase) {
-                oldBase.href = oldHref
-            } else {
-                head.removeChild(ourBase)
+    function eachIndexArray(moduleID, array, matcher) {
+        array = array || []
+        for (var i = 0, el; el = array[i++]; ) {
+            if (el.reg.test(moduleID)) {
+                matcher(el.val, el.name, el)
+                return false
             }
         }
+    }
+    // 根据元素的name项进行数组字符数逆序的排序函数
+    function descSorterByKOrName(a, b) {
+        var aaa = a.name
+        var bbb = b.name
+        if (bbb === "*") {
+            return -1
+        }
+        if (aaa === "*") {
+            return 1
+        }
+        return bbb.length - aaa.length
     }
 
     var rdeuce = /\/\w+\/\.\./
@@ -4351,14 +4366,7 @@ new function() {
         return fn
     }
 
-    function indexRetrieve(moduleID, array, matcher) {
-        array = array || []
-        for (var i = 0, el; el = array[i++]; ) {
-            if (el.reg.test(moduleID)) {
-                return matcher(el.v, el.k, el)
-            }
-        }
-    }
+
     function makeModule(id, state, factory, deps, args) {
         return {
             id: id,
@@ -4374,7 +4382,7 @@ new function() {
             return value;
         }
         var g = window
-        value.split('.').forEach(function(part) {
+        value.split(".").forEach(function(part) {
             g = g[part]
         })
         return g;
@@ -4402,33 +4410,33 @@ new function() {
         }
         //3. 是否命中paths配置项
         var usePath
-        indexRetrieve(id, kernel.paths, function(value, key) {
+        eachIndexArray(id, kernel.paths, function(value, key) {
             url = url.replace(key, value)
             usePath = 1
         })
-        // 4. 是否命中packages配置项
+        //4. 是否命中packages配置项
         if (!usePath) {
-            indexRetrieve(id, kernel.packages, function(value, key, item) {
+            eachIndexArray(id, kernel.packages, function(value, key, item) {
                 url = url.replace(item.name, item.location)
             })
         }
-        //5. 转换为绝对路径
+        //5. 是否命中map配置项
+        eachIndexArray(parentUrl, kernel.map, function(array) {
+            eachIndexArray(url, array, function(mdValue, mdKey) {
+                url = url.replace(mdKey, mdValue)
+                parentUrl = getBaseUrl()
+            })
+        })
+        //6. 转换为绝对路径
         if (!isAbsUrl(url)) {
-            if (parentUrl === getBaseUrl()) {
-                url = getAbsUrl(url, parentUrl)
-            } else {
-                url = joinPath(parentUrl, url)
-            }
+            url = joinPath(parentUrl, url)
         }
-        //6 还原扩展名，query
+        //7. 还原扩展名，query
         url += ext + query
-        indexRetrieve(id, kernel.urlArgs, function(value) {
+        //8. 处理urlArgs
+        eachIndexArray(id, kernel.urlArgs, function(value) {
             url += (url.indexOf("?") === -1 ? "?" : "&") + value;
         })
-        //7. 缓存处理
-        if (kernel.nocache) {
-            url += (url.indexOf("?") === -1 ? "?" : "&") + (new Date - 0)
-        }
         return plugin(url, kernel.shim[id])
     }
 
@@ -4436,7 +4444,7 @@ new function() {
         //通过script节点加载目标模块
         var node = DOC.createElement("script")
         node.className = subscribers //让getCurrentScript只处理类名为subscribers的script节点
-        node[W3C ? "onload" : "onreadystatechange"] = function() {
+        node[W3C ?  "onload" :  "onreadystatechange"] = function() {
             if (W3C || /loaded|complete/i.test(node.readyState)) {
                 //mass Framework会在_checkFail把它上面的回调清掉，尽可能释放回存，尽管DOM0事件写法在IE6下GC无望
                 var factory = factorys.pop()

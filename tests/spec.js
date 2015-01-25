@@ -82,14 +82,14 @@ define([], function() {
     })
     describe("加载器", function() {
         //确保位置没有错乱
-        it("async", function(done) {
+        it("普通加载", function(done) {
             require(["./mmRequest"], function() {
                 expect(typeof avalon.ajax).to.be("function")
                 expect(typeof avalon.mmPromise).to.be("function")
                 done()
             })
         })
-        it("async", function(done) {
+        it("测试baseUrl, paths, shim", function(done) {
             setTimeout(function() {
                 require.config({
                     baseUrl: "/avalon/src/jQuery/",
@@ -112,7 +112,7 @@ define([], function() {
 
         })
 
-        it("async", function(done) {
+        it("测试加载拥有AMD结构的流行库", function(done) {
             setTimeout(function() {
                 require.config({
                     baseUrl: "/avalon/src/jQuery/",
@@ -129,8 +129,20 @@ define([], function() {
                     done()
                 })
             })
-
         })
+
+        it("测试baseUrl, packages", function(done) {
+            setTimeout(function() {
+                require.config({
+                    baseUrl: "/avalon/src",
+                    packages: ["cat"]
+                })
+                require(["./loader/ccc", "./loader/ddd", "cat"], function(a, b, c) {
+                    expect(a + b + c).to.be(85)
+                    done()
+                })
+            })
+        }, 300)
     })
 
     describe("确保数组的$model与它的元素的$model是共通的", function() {
