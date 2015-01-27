@@ -2,7 +2,17 @@ define([], function() {
 ////////////////////////////////////////////////////////////////////////
 //////////    最前面的是与绑定没关的测试   /////////////////////////////
 ////////////////////////////////////////////////////////////////////////
-
+    function fireClick(el) {
+        if (el.click) {
+            el.click()
+        } else {
+            //https://developer.mozilla.org/samples/domref/dispatchEvent.html
+            var evt = document.createEvent("MouseEvents")
+            evt.initMouseEvent("click", true, true, window,
+                    0, 0, 0, 0, 0, false, false, false, false, 0, null);
+            !el.dispatchEvent(evt);
+        }
+    }
     describe("扫描机制", function() {
         it("async", function(done) {
             var model = avalon.define({
@@ -627,17 +637,16 @@ define([], function() {
 
 
     describe("内部方法isArrayLike", function() {
-
         function isArrayLike(obj) {
             if (!obj)
                 return false
-            var type = Object.prototype.toString.call(obj).slice(8, -1)
-            if (/(?:null|undefined|regexp|string|number|boolean|function|window|global)$/i.test(type))
-                return false
-            if (type === "Array")
-                return true
             var n = obj.length
             if (n === (n >>> 0)) { //检测length属性是否为非负整数
+                var type = Object.prototype.toString.call(obj).slice(8, -1)
+                if (/(?:regexp|string|function|window|global)$/i.test(type))
+                    return false
+                if (type === "Array")
+                    return true
                 try {
                     if ({}.propertyIsEnumerable.call(obj, "length") === false) { //如果是原生对象
                         return  /^\s?function/.test(obj.item || obj.callee)
@@ -658,6 +667,9 @@ define([], function() {
             expect(isArrayLike("string")).to.be(false)
             expect(isArrayLike(/test/)).to.be(false)
             expect(isArrayLike(window)).to.be(false)
+            expect(isArrayLike(true)).to.be(false)
+            expect(isArrayLike(avalon.noop)).to.be(false)
+            expect(isArrayLike(100)).to.be(false)
             expect(isArrayLike(document)).to.be(false)
             expect(isArrayLike(arguments)).to.be(true)
             expect(isArrayLike(document.links)).to.be(true)
@@ -1534,6 +1546,7 @@ define([], function() {
         })
 
     })
+
     describe("对象数组全部删光再添加,确保ms-duplex还可以用#403", function() {
         it("async", function(done) {
             var vmodel = avalon.define("recycleEachProxy", function(vm) {
@@ -1562,18 +1575,18 @@ define([], function() {
                 expect(lis[0][prop].trim()).to.be("1")
                 expect(lis[1][prop].trim()).to.be("2")
                 expect(lis[2][prop].trim()).to.be("3")
-                lis[0].click()
+                fireClick(lis[0])
                 lis = div.getElementsByTagName("li")
-                lis[0].click()
+                fireClick(lis[0])
                 lis = div.getElementsByTagName("li")
-                lis[0].click()
+                fireClick(lis[0])
                 setTimeout(function() {
                     var lis = div.getElementsByTagName("li")
                     expect(lis.length).to.be(0)
                     var button = div.getElementsByTagName("button")[0]
-                    button.click()
-                    button.click()
-                    button.click()
+                    fireClick(button)
+                    fireClick(button)
+                    fireClick(button)
                     setTimeout(function() {
                         var lis = div.getElementsByTagName("li")
                         expect(lis.length).to.be(3)
@@ -1638,11 +1651,11 @@ define([], function() {
             }, 200)
             setTimeout(function() {
                 var as = div.getElementsByTagName("a")
-                as[2].click()//请空
+                fireClick(as[2])//请空
                 setTimeout(function() {
-                    as[0].click()//请空
-                    as[0].click()//请空
-                    as[0].click()//请空
+                    fireClick(as[0])//请空
+                    fireClick(as[0])//请空
+                    fireClick(as[0])//请空
                 })
                 setTimeout(function() {
                     var input = div.getElementsByTagName("input")
