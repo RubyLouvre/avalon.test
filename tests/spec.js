@@ -137,12 +137,48 @@ define([], function() {
                     baseUrl: "/avalon/src",
                     packages: ["cat"]
                 })
+                var index = 0
                 require(["./loader/ccc", "./loader/ddd", "cat"], function(a, b, c) {
                     expect(a + b + c).to.be(85)
-                    done()
+                    ++index
                 })
+                setTimeout(function() {
+                    expect(index).to.be(1)
+                    done()
+                }, 200)
             })
         }, 300)
+
+        it("测试map", function(done) {
+            setTimeout(function() {
+                require.config({
+                    baseUrl: "/avalon/src/loader",
+                    map: {
+                        "old/aaa": {
+                            ddd: "ddd1.0"
+                        },
+                        "new/aaa": {
+                            ddd: "ddd1.2"
+                        },
+                        "*": {
+                            ddd: "ddd1.1"
+                        }
+                    }
+                })
+                var index2 = 0
+                require(["old/aaa", "new/aaa", "eee"], function(a, b, c) {
+                    expect(a).to.be(1456)
+                    expect(b).to.be(1300)
+                    expect(c).to.be(8990)
+                    avalon.log(a, b, c)
+                    ++index2
+                })
+                setTimeout(function() {
+                    expect(index2).to.be(1)
+                    done()
+                }, 270)
+            })
+        }, 600)
     })
 
     describe("确保数组的$model与它的元素的$model是共通的", function() {
@@ -593,17 +629,22 @@ define([], function() {
     describe("内部方法isArrayLike", function() {
 
         function isArrayLike(obj) {
-            if (obj && typeof obj === "object" && !avalon.isWindow(obj)) {
-                var n = obj.length
-                if (+n === n && !(n % 1) && n >= 0) { //检测length属性是否为非负整数
-                    try {
-                        if ({}.propertyIsEnumerable.call(obj, "length") === false) { //如果是原生对象
-                            return Array.isArray(obj) || /^\s?function/.test(obj.item || obj.callee)
-                        }
-                        return true
-                    } catch (e) { //IE的NodeList直接抛错
-                        return true
+            if (!obj)
+                return false
+            var type = Object.prototype.toString.call(obj).slice(8, -1)
+            if (/(?:null|undefined|regexp|string|number|boolean|function|window|global)$/i.test(type))
+                return false
+            if (type === "Array")
+                return true
+            var n = obj.length
+            if (n === (n >>> 0)) { //检测length属性是否为非负整数
+                try {
+                    if ({}.propertyIsEnumerable.call(obj, "length") === false) { //如果是原生对象
+                        return  /^\s?function/.test(obj.item || obj.callee)
                     }
+                    return true
+                } catch (e) { //IE的NodeList直接抛错
+                    return !obj.eval //IE6-8 window
                 }
             }
             return false
@@ -616,19 +657,17 @@ define([], function() {
             expect(isArrayLike(document.createElement("select"))).to.be(true);
             expect(isArrayLike("string")).to.be(false)
             expect(isArrayLike(/test/)).to.be(false)
-
             expect(isArrayLike(window)).to.be(false)
             expect(isArrayLike(document)).to.be(false)
-
-            expect(isArrayLike(arguments)).to.be.ok()
-            expect(isArrayLike(document.links)).to.be.ok()
-            expect(isArrayLike(document.documentElement.childNodes)).to.be.ok()
-            //自定义对象必须有length,并且为非负正数
+            expect(isArrayLike(arguments)).to.be(true)
+            expect(isArrayLike(document.links)).to.be(true)
+            expect(isArrayLike(document.documentElement.childNodes)).to.be(true)
+            // 自定义对象必须有length, 并且为非负正数
             expect(isArrayLike({
                 0: "a",
                 1: "b",
                 length: 2
-            })).to.be.ok()
+            })).to.be(true)
 
         })
 
@@ -1220,6 +1259,7 @@ define([], function() {
     })
     describe("双工绑定ms-duplex-boolean", function() {
         //ms-duplex-bool只能用于radio控件，会自动转换value为布尔，同步到VM
+        //IE6下通过程序触发radio控件，ms-duplex-boolean失效 https://github.com/RubyLouvre/avalon/issues/681
         it("async", function(done) {
             var model = avalon.define({
                 $id: "ms-duplex-boolean",
@@ -1235,14 +1275,19 @@ define([], function() {
 
             setTimeout(function() {
                 var inputs = div.getElementsByTagName("input")
-                expect(inputs[0].checked).to.be(false)
+                expect(inputs.length).to.be(2)
+                expect(inputs[0].checked + "1").to.be("false1")
                 expect(inputs[1].checked).to.be(true)
                 inputs[0].click()
-                expect(inputs[0].checked).to.be(true)
-                expect(model.aaa).to.be(true)
-                body.removeChild(div)
-                delete avalon.vmodels["ms-duplex-boolean"]
-                done()
+                setTimeout(function() {
+                    expect(inputs[0].checked + "2").to.be("true2")
+                    expect(typeof model.aaa).to.be("boolean")
+                    expect(model.aaa).to.be(true)
+                    body.removeChild(div)
+                    delete avalon.vmodels["ms-duplex-boolean"]
+                    done()
+                }, 100)
+
             }, 100)
         })
     })
