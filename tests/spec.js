@@ -140,6 +140,23 @@ define([], function() {
                 })
             })
         })
+        it("测试text插件", function(done) {
+            setTimeout(function() {
+                require.config({
+                    baseUrl: "/avalon/src/jQuery/"
+                })
+                var index = 0
+                require(["./aaa.js", "text!aaa.txt"], function(a, b) {
+                    expect(a).to.be("aaa")
+                    expect(b).to.be("text")
+                    ++index
+                })
+                setTimeout(function() {
+                    expect(index).to.be(1)
+                    done()
+                }, 150)
+            })
+        })
 
         it("测试baseUrl, packages", function(done) {
             setTimeout(function() {
