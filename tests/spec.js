@@ -898,6 +898,8 @@ define([], function() {
             expect(avalon.filters.date("1373021259229", format)).to.be("2013 07 05:18:47:39")
             expect(avalon.filters.date("2014-06-10T15:21:2", format)).to.be("2014 06 10:15:21:02")
             expect(avalon.filters.date("2014-12-07T22:50:58+08:00", format)).to.be("2014 12 07:22:50:58")
+            expect(avalon.filters.date("2015-01-31 00:00:00", "yyyy-MM-dd")).to.be("2015-01-31")
+            expect(avalon.filters.date("\/Date(1216796600500)\/", "yyyy-MM-dd")).to.be("2008-07-23")
             expect(avalon.filters.date(1373021259229, format)).to.be("2013 07 05:18:47:39")
         })
         it("async", function(done) {
