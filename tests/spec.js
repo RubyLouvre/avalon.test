@@ -99,117 +99,117 @@ define([], function() {
                 done()
             })
         })
-        it("测试baseUrl, paths, shim", function(done) {
-            setTimeout(function() {
-                require.config({
-                    baseUrl: "/avalon/src/jQuery/",
-                    paths: {
-                        jquery: "jquery-1.11.2"
-                    },
-                    "shim": {
-                        "jquery.alpha": ["jquery"],
-                        "jquery.beta": ["jquery"]
-                    }
-                })
-                require(["jquery", "jquery.alpha", "jquery.beta"], function(a) {
-                    expect(typeof a).to.be("function")
-                    expect(typeof a.fn.alpha).to.be("function")
-                    expect(typeof a.fn.beta).to.be("function")
-                    done()
-                })
-
-            })
-
-        })
-
-        it("测试加载拥有AMD结构的流行库", function(done) {
-            setTimeout(function() {
-                require.config({
-                    baseUrl: "/avalon/src/jQuery/",
-                    paths: {
-                        jquery: "jquery-1.11.2",
-                        "jquery.placeholder": "jquery.placeholder",
-                        underscore: "underscore-1.7",
-                        backbone: "backbone"
-                    }
-                })
-                require(["backbone", "jquery.placeholder"], function(a, b) {
-                    expect(a.VERSION).to.be("1.1.2")
-                    expect(typeof jQuery.fn.placeholder.input).to.be("boolean")
-                    done()
-                })
-            })
-        })
-        it("测试text,css插件", function(done) {
-            setTimeout(function() {
-                require.config({
-                    baseUrl: "/avalon/src/jQuery/"
-                })
-                var index = 0
-                require(["./aaa.js", "text!./aaa.txt", "css!./eee"], function(a, b) {
-                    expect(a).to.be("aaa")
-                    expect(b).to.be("text")
-                    ++index
-                })
-                setTimeout(function() {
-                    expect(index).to.be(1)
-                    var color = avalon(document.body).css("border-left-color")
-                    if (color === "rgb(255, 0, 0)")
-                        color = "red"
-                    expect(color).to.be("red")
-                    done()
-                }, 140)
-            })
-        })
-
-        it("测试baseUrl, packages", function(done) {
-            setTimeout(function() {
-                require.config({
-                    baseUrl: "/avalon/src",
-                    packages: ["cat"]
-                })
-                var index = 0
-                require(["./loader/ccc", "./loader/ddd", "cat"], function(a, b, c) {
-                    expect(a + b + c).to.be(85)
-                    ++index
-                })
-                setTimeout(function() {
-                    expect(index).to.be(1)
-                    done()
-                }, 200)
-            })
-        }, 300)
-
-        it("测试map", function(done) {
-            setTimeout(function() {
-                require.config({
-                    baseUrl: "/avalon/src/loader",
-                    map: {
-                        "old/aaa": {
-                            ddd: "ddd1.0"
-                        },
-                        "new/aaa": {
-                            ddd: "ddd1.2"
-                        },
-                        "*": {
-                            ddd: "ddd1.1"
-                        }
-                    }
-                })
-                var index2 = 0
-                require(["old/aaa", "new/aaa", "eee"], function(a, b, c) {
-                    expect(a).to.be(1456)
-                    expect(b).to.be(1300)
-                    expect(c).to.be(8990)
-                    avalon.log(a, b, c)
-                    ++index2
-                })
-                setTimeout(function() {
-                    expect(index2).to.be(1)
-                    done()
-                }, 270)
-            })
-        }, 600)
+//        it("测试baseUrl, paths, shim", function(done) {
+//            setTimeout(function() {
+//                require.config({
+//                    baseUrl: "/avalon/src/jQuery/",
+//                    paths: {
+//                        jquery: "jquery-1.11.2"
+//                    },
+//                    "shim": {
+//                        "jquery.alpha": ["jquery"],
+//                        "jquery.beta": ["jquery"]
+//                    }
+//                })
+//                require(["jquery", "jquery.alpha", "jquery.beta"], function(a) {
+//                    expect(typeof a).to.be("function")
+//                    expect(typeof a.fn.alpha).to.be("function")
+//                    expect(typeof a.fn.beta).to.be("function")
+//                    done()
+//                })
+//
+//            })
+//
+//        })
+//
+//        it("测试加载拥有AMD结构的流行库", function(done) {
+//            setTimeout(function() {
+//                require.config({
+//                    baseUrl: "/avalon/src/jQuery/",
+//                    paths: {
+//                        jquery: "jquery-1.11.2",
+//                        "jquery.placeholder": "jquery.placeholder",
+//                        underscore: "underscore-1.7",
+//                        backbone: "backbone"
+//                    }
+//                })
+//                require(["backbone", "jquery.placeholder"], function(a, b) {
+//                    expect(a.VERSION).to.be("1.1.2")
+//                    expect(typeof jQuery.fn.placeholder.input).to.be("boolean")
+//                    done()
+//                })
+//            })
+//        })
+//        it("测试text,css插件", function(done) {
+//            setTimeout(function() {
+//                require.config({
+//                    baseUrl: "/avalon/src/jQuery/"
+//                })
+//                var index = 0
+//                require(["./aaa.js", "text!./aaa.txt", "css!./eee"], function(a, b) {
+//                    expect(a).to.be("aaa")
+//                    expect(b).to.be("text")
+//                    ++index
+//                })
+//                setTimeout(function() {
+//                    expect(index).to.be(1)
+//                    var color = avalon(document.body).css("border-left-color")
+//                    if (color === "rgb(255, 0, 0)")
+//                        color = "red"
+//                    expect(color).to.be("red")
+//                    done()
+//                }, 140)
+//            })
+//        })
+//
+//        it("测试baseUrl, packages", function(done) {
+//            setTimeout(function() {
+//                require.config({
+//                    baseUrl: "/avalon/src",
+//                    packages: ["cat"]
+//                })
+//                var index = 0
+//                require(["./loader/ccc", "./loader/ddd", "cat"], function(a, b, c) {
+//                    expect(a + b + c).to.be(85)
+//                    ++index
+//                })
+//                setTimeout(function() {
+//                    expect(index).to.be(1)
+//                    done()
+//                }, 200)
+//            })
+//        }, 300)
+//
+//        it("测试map", function(done) {
+//            setTimeout(function() {
+//                require.config({
+//                    baseUrl: "/avalon/src/loader",
+//                    map: {
+//                        "old/aaa": {
+//                            ddd: "ddd1.0"
+//                        },
+//                        "new/aaa": {
+//                            ddd: "ddd1.2"
+//                        },
+//                        "*": {
+//                            ddd: "ddd1.1"
+//                        }
+//                    }
+//                })
+//                var index2 = 0
+//                require(["old/aaa", "new/aaa", "eee"], function(a, b, c) {
+//                    expect(a).to.be(1456)
+//                    expect(b).to.be(1300)
+//                    expect(c).to.be(8990)
+//                    avalon.log(a, b, c)
+//                    ++index2
+//                })
+//                setTimeout(function() {
+//                    expect(index2).to.be(1)
+//                    done()
+//                }, 270)
+//            })
+//        }, 600)
     })
 
     describe("确保数组的$model与它的元素的$model是共通的", function() {
@@ -564,6 +564,28 @@ define([], function() {
             expect(first.nodeValue).to.be(first.data)
             expect(element.lastChild.nodeValue).to.be(element.lastChild.data)
             document.body.removeChild(element)
+
+        })
+    })
+
+    describe("插值表达式中存在|", function() {
+        it("sync", function(done) {
+            var vm = avalon.define({
+                $id: "rstringLiteral",
+                xxx: "111",
+                yyy: "222"
+            })
+            var div = document.createElement("div")
+            div.innerHTML = "{{xxx + '|'+ yyy}}"
+            document.body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function() {
+                expect(div.innerHTML).to.be("111|222")
+                document.body.removeChild(div)
+                div.innerHTML = ""
+                delete  avalon.vmodels["rstringLiteral"]
+                done()
+            })
 
         })
     })

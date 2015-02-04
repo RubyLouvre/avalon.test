@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.391 build in 2015.2.3 
+ avalon.modern.js 1.391 build in 2015.2.4 
 ______________________________
  support IE6+ and other browsers
  ==================================================*/
@@ -1709,10 +1709,13 @@ var rhasHtml = /\|\s*html\s*/,
         r11a = /\|\|/g,
         rlt = /&lt;/g,
         rgt = /&gt;/g
-
+        rstringLiteral  = /(['"])(\\\1|.)+?\1/g
 function getToken(value) {
     if (value.indexOf("|") > 0) {
-        var index = value.replace(r11a, "\u1122\u3344").indexOf("|") //干掉所有短路或
+        var scapegoat = value.replace( rstringLiteral, function(_){
+            return Math.pow(10,_.length)
+        })
+        var index = scapegoat.replace(r11a, "\u1122\u3344").indexOf("|") //干掉所有短路或
         if (index > -1) {
             return {
                 filters: value.slice(index),
@@ -4694,11 +4697,10 @@ function fireReady() {
     if (innerRequire) {
         modules["ready!"].state = 4
         innerRequire.checkDeps()//隋性函数，防止IE9二次调用_checkDeps
-    } else {
-        readyList.forEach(function(a) {
-            a(avalon)
-        })
     }
+    readyList.forEach(function(a) {
+        a(avalon)
+    })
     fireReady = noop //隋性函数，防止IE9二次调用_checkDeps
 }
 
