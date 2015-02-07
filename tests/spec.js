@@ -221,6 +221,48 @@ define([], function() {
             expect(test.array.$model[0]).to.be(test.array[0].$model)
         })
     })
+
+
+    describe("avalon.each", function() {
+        //确保位置没有错乱
+        it("sync", function() {
+            var array = ["aaa", "bbb", "ccc", "ddd"], index = 0
+            avalon.each(array, function(a, b) {
+                switch (index++) {
+                    case 0:
+                        expect(a).to.be(0)
+                        expect(b).to.be("aaa")
+                        break;
+                    case 1:
+                        expect(a).to.be(1)
+                        expect(b).to.be("bbb")
+                        break;
+                    case 2:
+                        expect(a).to.be(2)
+                        expect(b).to.be("ccc")
+                        break;
+                    case 3:
+                        expect(a).to.be(3)
+                        expect(b).to.be("ddd")
+                        break;
+                }
+            })
+            var obj = {xxx: 111, yyy: 222}, k = 0
+            avalon.each(obj, function(a, b) {
+                switch (k++) {
+                    case 0:
+                        expect(a).to.be("xxx")
+                        expect(b).to.be(111)
+                        break;
+                    case 1:
+                        expect(a).to.be("yyy")
+                        expect(b).to.be(222)
+                        break;
+                }
+            })
+        })
+    })
+
     describe('newparser', function() {
         //确保位置没有错乱
         it("sync", function() {
