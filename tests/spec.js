@@ -222,6 +222,44 @@ define([], function() {
         })
     })
 
+    describe("offsetParent", function() {
+        //确保位置没有错乱
+        it("async", function(done) {
+            var div = document.createElement("div")
+            div.innerHTML = '<table id="offsetparenttable" border="1">' +
+                    '    <tr>' +
+                    '        <td id="offsetparenttd">TD</td>' +
+                    '    </tr>' +
+                    '</table>' +
+                    '<ul>' +
+                    '    <li id="offsetparentli"></li>' +
+                    '</ul>' +
+                    '<div id="offsetrelative" style="position:relative;left:20px;height:200px;width:200px;background:red;">' +
+                    '   <div id="offsetreabsolue" style="position:absolute;left:20px;height:100px;width:200px;background:pink;">' +
+                    '        <div id="offsetreabsolue2" style="position:absolute;left:40px;height:50px;width:50px;background:blue;"></div>' +
+                    '        <div id="offsetreabsolue3" style="height:20px;"></div>' +
+                    '        <div id="offsetreabsolue4" style="position:absolute;left:60px;top:40px;height:20px;width:20px;background:green;"></div>' +
+                    '     </div>' +
+                    '</div>'
+            document.body.appendChild(div)
+            setTimeout(function() {
+                var offsetParent = function(id) {
+                    return avalon(document.getElementById(id)).offsetParent()[0] || {}
+                }
+                expect(offsetParent("offsetparenttd").tagName).to.be("HTML")
+                expect(offsetParent("offsetparentli").tagName).to.be("HTML")
+                expect(offsetParent("offsetrelative").tagName).to.be("HTML")
+                expect(offsetParent("offsetreabsolue").id).to.be("offsetrelative")
+                expect(offsetParent("offsetreabsolue2").id).to.be("offsetreabsolue")
+                expect(offsetParent("offsetreabsolue3").id).to.be("offsetreabsolue")
+                expect(offsetParent("offsetreabsolue4").id).to.be("offsetreabsolue")
+                div.innerHTML = ""
+                document.body.removeChild(div)
+                done()
+            }, 100)
+        })
+    })
+
 
     describe("avalon.each", function() {
         //确保位置没有错乱

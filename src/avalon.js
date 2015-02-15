@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.js 1.391 built in 2015.2.12
+ avalon.js 1.4 built in 2015.2.15
  support IE6+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -261,7 +261,7 @@ function _number(a, len) { //用于模拟slice, splice的效果
 avalon.mix({
     rword: rword,
     subscribers: subscribers,
-    version: 1.391,
+    version: 1.4,
     ui: {},
     log: log,
     slice: W3C ? function(nodes, start, end) {
@@ -2445,7 +2445,7 @@ avalon.fn.mix({
         while (offsetParent && avalon.css(offsetParent, "position") === "static") {
             offsetParent = offsetParent.offsetParent;
         }
-        return avalon(offsetParent)
+        return avalon(offsetParent || root)
     },
     bind: function(type, fn, phase) {
         if (this[0]) { //此方法不会链
