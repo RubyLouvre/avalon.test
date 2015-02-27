@@ -90,6 +90,20 @@ define([], function() {
             body.removeChild(div)
         })
     })
+    describe("avalon.ready", function() {
+//确保位置没有错乱
+        it("async", function(done) {
+            var index = 0
+            avalon.ready(function() {
+                ++index
+            })
+            setTimeout(function() {
+                expect(index).to.be(1)
+                done()
+            },300)
+        })
+
+    })
     describe("加载器", function() {
         //确保位置没有错乱
         it("普通加载", function(done) {

@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.4 built in 2015.2.15
+ avalon.modern.js 1.4 built in 2015.2.27
  support IE10+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -623,7 +623,9 @@ var EventBus = {
             special = RegExp.$1
             type = RegExp.$2
         }
-        var events = this.$events
+        var events = this.$events 
+        if(!events)
+            return
         var args = aslice.call(arguments, 1)
         var detail = [type].concat(args)
         if (special === "all") {
@@ -4677,29 +4679,31 @@ new function() {
 /*********************************************************************
  *                    DOMReady                                         *
  **********************************************************************/
-var readyList = []
+var readyList = [], isReady
 function fireReady() {
-    if (innerRequire) {
-        modules["domReady!"].state = 4
-        innerRequire.checkDeps()//隋性函数，防止IE9二次调用_checkDeps
+    if (!isReady) {
+        isReady = true
+        if (innerRequire) {
+            modules["domReady!"].state = 4
+            innerRequire.checkDeps()//隋性函数，防止IE9二次调用_checkDeps
+        }
+        readyList.forEach(function(a) {
+            a(avalon)
+        })
     }
-    readyList.forEach(function(a) {
-        a(avalon)
-    })
-    fireReady = noop //隋性函数，防止IE9二次调用_checkDeps
 }
 
 if (DOC.readyState === "complete") {
     setTimeout(fireReady) //如果在domReady之外加载
 } else {
     DOC.addEventListener("DOMContentLoaded", fireReady)
-    window.addEventListener("load", fireReady)
 }
+window.addEventListener("load", fireReady)
 avalon.ready = function(fn) {
-    if (fireReady === noop) {
-        fn(avalon)
-    } else {
+    if (!isReady) {
         readyList.push(fn)
+    } else {
+        fn(avalon)
     }
 }
 avalon.config({
