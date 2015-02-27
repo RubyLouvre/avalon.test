@@ -100,7 +100,7 @@ define([], function() {
             setTimeout(function() {
                 expect(index).to.be(1)
                 done()
-            },300)
+            }, 300)
         })
 
     })
@@ -961,6 +961,14 @@ define([], function() {
             }, 100)
         })
 
+    })
+
+    describe("filters.number", function() {
+        it("sync", function() {
+            expect(avalon.filters.number(1111111111)).to.be("1,111,111,111.000")
+            expect(avalon.filters.number(1111111111, 2, '.', '-')).to.be("1-111-111-111.00")
+
+        })
     })
     describe("avalon.oneObject", function() {
 
