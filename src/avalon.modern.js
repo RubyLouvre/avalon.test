@@ -1714,7 +1714,7 @@ var rhasHtml = /\|\s*html\s*/,
 function getToken(value) {
     if (value.indexOf("|") > 0) {
         var scapegoat = value.replace( rstringLiteral, function(_){
-            return Math.pow(10,_.length)
+            return Array(_.length+1).join("1")
         })
         var index = scapegoat.replace(r11a, "\u1122\u3344").indexOf("|") //干掉所有短路或
         if (index > -1) {
@@ -2912,7 +2912,7 @@ duplexBinding.INPUT = function(element, evaluator, data) {
         composing = false
     }
     //当value变化时改变model的值
-    function updateVModel() {
+    var updateVModel = function() {
         if (composing)//处理中文输入法在minlengh下引发的BUG
             return
         var val = element.oldValue = element.value //防止递归调用形成死循环

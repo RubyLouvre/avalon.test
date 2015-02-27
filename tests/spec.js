@@ -970,6 +970,32 @@ define([], function() {
 
         })
     })
+
+    describe("filters.truncate", function() {
+        it("async", function(done) {
+
+            var model = avalon.define({
+                $id: "truncate",
+                name: "大跃进右"
+            })
+
+            var div = document.createElement("div")
+            div.innerHTML = '{{name|truncate(3,"***")}}'
+
+            var body = document.body
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function() {
+                var ret = div.innerHTML
+                expect(ret).to.be("***")
+                delete avalon.vmodels["truncate"]
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+            }, 100)
+
+        })
+    })
     describe("avalon.oneObject", function() {
 
         it("sync", function() {
@@ -1032,12 +1058,21 @@ define([], function() {
                 test: "2014/12/24"
             })
             var div = document.createElement("div")
-            div.innerHTML = '{{test|date("yyyy MM dd:HH:mm:ss")}}'
+            div.innerHTML = '<p>{{test|date("yyyy MM dd:HH:mm:ss")}}</p>'
+                    + '<p>{{ 1373021259229|date("yyyy MM dd:HH:mm:ss")}}</p>'
+                    + '<p>{{ "1373021259229"|date("yyyy MM dd:HH:mm:ss")}}</p>'
+                    + '<p>{{ "2014-12-07T22:50:58+08:00" | date("yyyy MM dd:HH:mm:ss")}}</p>'
+                    + '<p>{{ "\/Date(1373021259229)\/" | date("yyyy MM dd:HH:mm:ss")}}</p>'
             var body = document.body
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function() {
-                expect(div.innerHTML).to.be("2014 12 24:00:00:00")
+               var ps = div.getElementsByTagName("p")
+                expect(ps[0].innerHTML).to.be("2014 12 24:00:00:00")
+                expect(ps[1].innerHTML).to.be("2013 07 05:18:47:39")
+                expect(ps[2].innerHTML).to.be("2013 07 05:18:47:39")
+                expect(ps[3].innerHTML).to.be("2014 12 07:22:50:58")
+                expect(ps[4].innerHTML).to.be("2013 07 05:18:47:39")
                 delete avalon.vmodels["dateFilter"]
                 div.innerHTML = ""
                 body.removeChild(div)

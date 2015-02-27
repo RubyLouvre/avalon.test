@@ -283,7 +283,7 @@ avalon.mix({
     noop: noop,
     /*如果不用Error对象封装一下，str在控制台下可能会乱码*/
     error: function(str, e) {
-        throw new (e || Error)(str)
+        throw  (e || Error)(str)
     },
     /*将一个以空格或逗号隔开的字符串或数组,转换成一个键值都为1的对象*/
     oneObject: oneObject,
@@ -702,7 +702,7 @@ function fixEvent(event) {
     return ret
 }
 
-var eventHooks = avalon.eventHooks 
+var eventHooks = avalon.eventHooks
 //针对firefox, chrome修正mouseenter, mouseleave
 if (!("onmouseenter" in root)) {
     avalon.each({
@@ -2195,7 +2195,7 @@ var rhasHtml = /\|\s*html\s*/,
 function getToken(value) {
     if (value.indexOf("|") > 0) {
         var scapegoat = value.replace( rstringLiteral, function(_){
-            return Math.pow(10,_.length)
+            return Array(_.length+1).join("1")
         })
         var index = scapegoat.replace(r11a, "\u1122\u3344").indexOf("|") //干掉所有短路或
         if (index > -1) {
@@ -2501,10 +2501,10 @@ avalon.parseJSON = window.JSON ? JSON.parse : function(data) {
             if (rvalidchars.test(data.replace(rvalidescape, "@")
                     .replace(rvalidtokens, "]")
                     .replace(rvalidbraces, ""))) {
-                return (new Function("return " + data))();
+                return (new Function("return " + data))()
             }
         }
-        avalon.error("Invalid JSON: " + data);
+        avalon.error("Invalid JSON: " + data)
     }
     return data
 }
@@ -3543,8 +3543,7 @@ duplexBinding.INPUT = function(element, evaluator, data) {
         composing = false
     }
     //当value变化时改变model的值
-
-    function updateVModel() {
+    var updateVModel = function() {
         if (composing)  //处理中文输入法在minlengh下引发的BUG
             return
         var val = element.oldValue = element.value //防止递归调用形成死循环
