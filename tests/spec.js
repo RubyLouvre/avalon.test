@@ -444,6 +444,42 @@ define([], function() {
         })
     })
 
+    describe("data-duplex-event='change'", function() {
+        //https://github.com/RubyLouvre/avalon/issues/668
+        it("async", function(done) {
+            var vm = avalon.define({
+                $id: "data-duplex-event",
+                q: 'aaa'
+            })
+
+            var body = document.body
+            var div = document.createElement("div")
+            var str = '<input ms-duplex="q"  data-duplex-event="blur"/>{{q}}'
+            div.innerHTML = str
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function() {
+                var aaa = div.getElementsByTagName("input")[0]
+            
+                aaa.value = "222"
+                setTimeout(function() {
+                    expect(vm.q).to.be("222")
+                
+                        delete avalon.vmodels["data-duplex-event"]
+                        div.innerHTML = ""
+                        body.removeChild(div)
+                        done()
+                     
+               
+
+                }, 300)
+
+
+            })
+
+        })
+    })
+
     describe("array.clear() + checkbox ms-duplex-string", function() {
         //https://github.com/RubyLouvre/avalon/issues/668
         it("async", function(done) {
@@ -1067,7 +1103,7 @@ define([], function() {
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function() {
-               var ps = div.getElementsByTagName("p")
+                var ps = div.getElementsByTagName("p")
                 expect(ps[0].innerHTML).to.be("2014 12 24:00:00:00")
                 expect(ps[1].innerHTML).to.be("2013 07 05:18:47:39")
                 expect(ps[2].innerHTML).to.be("2013 07 05:18:47:39")
