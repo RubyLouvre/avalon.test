@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.js 1.4 built in 2015.3.3
+ avalon.js 1.4 built in 2015.3.12
  support IE6+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -357,7 +357,7 @@ avalon.mix({
         if (typeof hook === "object") {
             type = hook.type
             if (hook.deel) {
-                fn = hook.deel(el, fn)
+                 fn = hook.deel(el, type, fn, phase)
             }
         }
         var callback = W3C ? fn : function(e) {
@@ -377,6 +377,9 @@ avalon.mix({
         var callback = fn || noop
         if (typeof hook === "object") {
             type = hook.type
+            if (hook.deel) {
+                fn = hook.deel(el, type, fn, false)
+            }
         }
         if (W3C) {
             el.removeEventListener(type, callback, !!phase)
@@ -818,7 +821,7 @@ if (!("onmouseenter" in root)) {
     }, function(origType, fixType) {
         eventHooks[origType] = {
             type: fixType,
-            deel: function(elem, fn) {
+            deel: function(elem, _,  fn) {
                 return function(e) {
                     var t = e.relatedTarget
                     if (!t || (t !== elem && !(elem.compareDocumentPosition(t) & 16))) {
@@ -846,7 +849,7 @@ avalon.each({
 if (!("oninput" in DOC.createElement("input"))) {
     eventHooks.input = {
         type: "propertychange",
-        deel: function(elem, fn) {
+        deel: function(elem, _, fn) {
             return function(e) {
                 if (e.propertyName === "value") {
                     e.type = "input"
@@ -866,7 +869,7 @@ if (DOC.onmousewheel === void 0) {
     var fixWheelDelta = fixWheelType === "wheel" ? "deltaY" : "detail"
     eventHooks.mousewheel = {
         type: fixWheelType,
-        deel: function(elem, fn) {
+        deel: function(elem, _, fn) {
             return function(e) {
                 e.wheelDeltaY = e.wheelDelta = e[fixWheelDelta] > 0 ? -120 : 120
                 e.wheelDeltaX = 0
@@ -1208,19 +1211,19 @@ function modelFactory(source, $special, $model) {
                     }
                     if (!isEqual(oldValue, newValue)) {
                         $model[name] = newValue
-                        if ($events.$digest) {
-                            if (!accessor.pedding) {
-                                accessor.pedding = true
-                                setTimeout(function() {
-                                    notifySubscribers($events[name]) //同步视图
-                                    safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
-                                    accessor.pedding = false
-                                })
-                            }
-                        } else {
+//                        if ($events.$digest) {
+//                            if (!accessor.pedding) {
+//                                accessor.pedding = true
+//                                setTimeout(function() {
+//                                    notifySubscribers($events[name]) //同步视图
+//                                    safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
+//                                    accessor.pedding = false
+//                                })
+//                            }
+//                        } else {
                             notifySubscribers($events[name]) //同步视图
                             safeFire($vmodel, name, newValue, oldValue) //触发$watch回调
-                        }
+//                        }
                     }
                 } else {
                     if (accessor.type === 0) { //type 0 计算属性 1 监控属性 2 对象属性
@@ -1229,17 +1232,17 @@ function modelFactory(source, $special, $model) {
                         if (oldValue !== newValue) {
                             $model[name] = newValue
                             //这里不用同步视图
-                            if ($events.$digest) {
-                                if (!accessor.pedding) {
-                                    accessor.pedding = true
-                                    setTimeout(function() {
-                                        safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
-                                        accessor.pedding = false
-                                    })
-                                }
-                            } else {
+//                            if ($events.$digest) {
+//                                if (!accessor.pedding) {
+//                                    accessor.pedding = true
+//                                    setTimeout(function() {
+//                                        safeFire($vmodel, name, $model[name], oldValue) //触发$watch回调
+//                                        accessor.pedding = false
+//                                    })
+//                                }
+//                            } else {
                                 safeFire($vmodel, name, newValue, oldValue) //触发$watch回调
-                            }
+//                            }
                         }
                         return newValue
                     } else {
@@ -3596,6 +3599,7 @@ function ticker() {
 }
 
 var watchValueInTimer = noop
+ var rmsinput = /text|password|hidden/
 new function() {
     try {//#272 IE9-IE11, firefox
         var setters = {}
@@ -3604,6 +3608,8 @@ new function() {
         function newSetter(value) {
             if (avalon.contains(root, this)) {
                 setters[this.tagName].call(this, value)
+                if (!rmsinput.test(this.type))
+                    return
                 if (!this.msFocus && this.avalonSetter) {
                     this.avalonSetter()
                 }
@@ -3635,7 +3641,7 @@ if (IEVersion) {
 
 //处理radio, checkbox, text, textarea, password
 duplexBinding.INPUT = function(element, evaluator, data) {
-    var type = element.type,
+    var $type = element.type,
             bound = data.bound,
             $elem = avalon(element),
             composing = false
@@ -3674,7 +3680,7 @@ duplexBinding.INPUT = function(element, evaluator, data) {
             element.value = val
         }
     }
-    if (data.isChecked || element.type === "radio") {
+    if (data.isChecked || $type === "radio") {
         var IE6 = IEVersion === 6
         updateVModel = function() {
             if ($elem.data("duplex-observe") !== false) {
@@ -3700,7 +3706,7 @@ duplexBinding.INPUT = function(element, evaluator, data) {
             }
         }
         bound("click", updateVModel)
-    } else if (type === "checkbox") {
+    } else if ($type === "checkbox") {
         updateVModel = function() {
             if ($elem.data("duplex-observe") !== false) {
                 var method = element.checked ? "ensure" : "remove"
@@ -3767,7 +3773,7 @@ duplexBinding.INPUT = function(element, evaluator, data) {
         element.msFocus = false
     })
     
-    if (/text|password/.test(element.type)) {
+    if (rmsinput.test($type)) {
         watchValueInTimer(function() {
             if (root.contains(element)) {
                 if (!element.msFocus && element.oldValue !== element.value) {
@@ -5490,16 +5496,14 @@ new function() {
  **********************************************************************/
 
 var readyList = [], isReady
-var fireReady = function() {
-    if (!isReady) {
-        isReady = true
-        if (innerRequire) {
-            modules["domReady!"].state = 4
-            innerRequire.checkDeps()
-        }
-        readyList.forEach(function(a) {
-            a(avalon)
-        })
+var fireReady = function(fn) {
+    isReady = true
+    if (innerRequire) {
+        modules["domReady!"].state = 4
+        innerRequire.checkDeps()
+    }
+    while(fn = readyList.shift()){
+        fn(avalon)
     }
 }
 

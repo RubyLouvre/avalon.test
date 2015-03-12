@@ -90,6 +90,38 @@ define([], function() {
             body.removeChild(div)
         })
     })
+    describe("custom.filter", function() {
+        
+        it("async", function(done) {
+            avalon.filters.parseSymbol = function(str) {
+                return {
+                    '元': '元',
+                    'USD': '美元',
+                    'HKD': '港币'
+                }[str];
+            };
+            var vm = avalon.define({
+                $id: 'custom.filter',
+                name: "大跃进右"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '{{"HKD" |parseSymbol}}'
+            body.appendChild(div)
+            avalon.scan(div, vm)
+
+            setTimeout(function() {
+                
+                expect(div.innerHTML).to.be("港币")
+                delete avalon.vmodels["custom.filter"]
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+
+            }, 300)
+
+        })
+    })
     describe("avalon.ready", function() {
 //确保位置没有错乱
         it("async", function(done) {
@@ -460,21 +492,51 @@ define([], function() {
             avalon.scan(div, vm)
             setTimeout(function() {
                 var aaa = div.getElementsByTagName("input")[0]
-            
+
                 aaa.value = "222"
                 setTimeout(function() {
                     expect(vm.q).to.be("222")
-                
-                        delete avalon.vmodels["data-duplex-event"]
-                        div.innerHTML = ""
-                        body.removeChild(div)
-                        done()
-                     
-               
+
+                    delete avalon.vmodels["data-duplex-event"]
+                    div.innerHTML = ""
+                    body.removeChild(div)
+                    done()
+
+
 
                 }, 300)
 
 
+            })
+
+        })
+    })
+    
+        describe("input:hidden", function() {
+        //https://github.com/RubyLouvre/avalon/issues/668
+        it("async", function(done) {
+            var vm = avalon.define({
+                $id: "input:hidden",
+                q: 'aaa'
+            })
+
+            var body = document.body
+            var div = document.createElement("div")
+            var str = '<input ms-duplex="q"  type="hidden"/>{{q}}'
+            div.innerHTML = str
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function() {
+                var aaa = div.getElementsByTagName("input")[0]
+                aaa.value = "222"
+                setTimeout(function() {
+                    expect(vm.q).to.be("222")
+                    delete avalon.vmodels["input:hidden"]
+                    div.innerHTML = ""
+                    body.removeChild(div)
+                    done()
+
+                }, 300)
             })
 
         })
