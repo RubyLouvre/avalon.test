@@ -652,7 +652,7 @@ define([], function () {
             var xxx = avalon.parseHTML("<table></table>").firstChild
             expect(xxx.tagName).to.be("TABLE")
             expect(xxx.innerHTML).to.be("")
-            
+
             setTimeout(function () {
                 expect(avalon.parseHTML.p).to.be(11)
                 delete avalon.parseHTML.p
@@ -1593,6 +1593,41 @@ define([], function () {
                     expect(model.aaa).to.be(true)
                     body.removeChild(div)
                     delete avalon.vmodels["ms-duplex-boolean"]
+                    done()
+                }, 100)
+
+            }, 100)
+        })
+    })
+
+    describe("双工绑定ms-duplex-number", function () {
+        //1.4.1新添加
+        it("async", function (done) {
+            var model = avalon.define({
+                $id: "ms-duplex-number",
+                aaa: 222,
+                bbb: NaN
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = ['<input ms-duplex-number="aaa" >',
+                '<input ms-duplex-number="bbb" data-duplex-number="strong">'
+            ].join("")
+            body.appendChild(div)
+            avalon.scan(div, model)
+
+            setTimeout(function () {
+                var inputs = div.getElementsByTagName("input")
+                expect(inputs.length).to.be(2)
+                expect(inputs[0].value).to.be("222")
+                expect(inputs[1].value).to.be("0")
+                inputs[0].value = "888"
+                inputs[1].value = "999"
+                setTimeout(function () {
+                    expect(model.aaa).to.be(888)
+                    expect(model.bbb).to.be(999)
+                    body.removeChild(div)
+                    delete avalon.vmodels["ms-duplex-number"]
                     done()
                 }, 100)
 
