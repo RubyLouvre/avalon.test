@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.js 1.41 built in 2015.3.19
+ avalon.js 1.41 built in 2015.3.20
  support IE6+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -189,9 +189,7 @@ avalon.isWindow = function(obj) {
         return false
     // 利用IE678 window == document为true,document == window竟然为false的神奇特性
     // 标准浏览器及IE9，IE10等使用 正则检测
-    /* jshint ignore:start */
-    return obj == obj.document && obj.document != obj
-    /* jshint ignore:end */
+    return obj == obj.document && obj.document != obj //jshint ignore:line
 }
 
 function isWindow(obj) {
@@ -4847,7 +4845,6 @@ new function() {// jshint ignore:line
     var loadings = [] //正在加载中的模块列表
     var factorys = [] //放置define方法的factory函数
     var rjsext = /\.js$/i
-    var name2url = {}
     function makeRequest(name, config) {
 //1. 去掉资源前缀
         var res = "js"
@@ -4893,7 +4890,7 @@ new function() {// jshint ignore:line
         //1. 如果该模块已经发出请求，直接返回
         var module = modules[name]
         var urlNoQuery = name && req.urlNoQuery
-        if (module && module.state >= 3) {
+        if (module && module.state >= 1) {
             return name
         }
         module = modules[urlNoQuery]
@@ -5151,10 +5148,6 @@ new function() {// jshint ignore:line
             if (!deps)
                 continue
             for (var j = 0, key; key = deps[j]; j++) {
-                var k = name2url[key]
-                if (k) {
-                    key = deps[j] = k
-                }
                 if (Object(modules[key]).state !== 4) {
                     continue loop
                 }
@@ -5320,7 +5313,6 @@ new function() {// jshint ignore:line
         var module = Object(modules[id])
         module.state = 4
         for (var i = 0, array = [], d; d = deps[i++]; ) {
-            d = name2url[d] || d
             if (d === "exports") {
                 var obj = module.exports || (module.exports = {})
                 array.push(obj)

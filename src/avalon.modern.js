@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.41 built in 2015.3.19
+ avalon.modern.js 1.41 built in 2015.3.20
  support IE10+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -4138,7 +4138,6 @@ new function() {// jshint ignore:line
     var loadings = [] //正在加载中的模块列表
     var factorys = [] //放置define方法的factory函数
     var rjsext = /\.js$/i
-    var name2url = createMap()
     function makeRequest(name, config) {
 //1. 去掉资源前缀
         var res = "js"
@@ -4184,7 +4183,7 @@ new function() {// jshint ignore:line
         //1. 如果该模块已经发出请求，直接返回
         var module = modules[name]
         var urlNoQuery = name && req.urlNoQuery
-        if (module && module.state >= 3) {
+        if (module && module.state >= 1) {
             return name
         }
         module = modules[urlNoQuery]
@@ -4442,10 +4441,6 @@ new function() {// jshint ignore:line
             if (!deps)
                 continue
             for (var j = 0, key; key = deps[j]; j++) {
-                var k = name2url[key]
-                if (k) {
-                    key = deps[j] = k
-                }
                 if (Object(modules[key]).state !== 4) {
                     continue loop
                 }
@@ -4586,7 +4581,6 @@ new function() {// jshint ignore:line
         var module = Object(modules[id])
         module.state = 4
         for (var i = 0, array = [], d; d = deps[i++]; ) {
-            d = name2url[d] || d
             if (d === "exports") {
                 var obj = module.exports || (module.exports = createMap())
                 array.push(obj)
