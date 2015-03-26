@@ -139,11 +139,16 @@ define([], function () {
     describe("加载器", function () {
         //确保位置没有错乱
         it("普通加载", function (done) {
+            var a = 1
             require(["./mmRequest"], function () {
-                expect(typeof avalon.ajax).to.be("function")
-                expect(typeof avalon.mmPromise).to.be("function")
-                done()
+                a = 2
             })
+            setTimeout(function () {
+                expect(typeof avalon.ajax).to.be("function")
+                expect(typeof avalon.Promise).to.be("function")
+                expect(a).to.be(2)
+                done()
+            }, 500)
         })
         it("测试baseUrl, paths, shim", function (done) {
             setTimeout(function () {
