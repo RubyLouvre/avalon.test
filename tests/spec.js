@@ -122,6 +122,63 @@ define([], function () {
 
         })
     })
+    
+    
+      describe("ms-duplex-checked", function () {
+
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: 'ms-duplex-checked',
+                testCheck1: false,
+                testCheck2: false,
+                testCheck3: false
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '  <input type="checkbox" ms-duplex-checked="testCheck1"> {{testCheck1}}' +
+                    '<input type="checkbox" ms-duplex-checked="testCheck2"> {{testCheck2}}' +
+                    '<input type="checkbox" ms-duplex-checked="testCheck3"> {{testCheck3}}' +
+                    '<input type="text">'
+
+            body.appendChild(div)
+            avalon.scan(div, vm)
+
+            setTimeout(function () {
+                var inputs = div.getElementsByTagName("input")
+
+                expect(inputs[0].checked).to.be(false)
+                expect(inputs[1].checked).to.be(false)
+                expect(inputs[2].checked).to.be(false)
+                inputs[1].click()
+
+                setTimeout(function () {
+                    var inputs = div.getElementsByTagName("input")
+
+                    expect(inputs[1].checked).to.be(true)
+                    expect(vm.testCheck2).to.be(true)
+                    inputs[3].focus()
+                    setTimeout(function () {
+                        var inputs = div.getElementsByTagName("input")
+
+                        expect(inputs[1].checked).to.be(true)
+                      
+                delete avalon.vmodels["ms-duplex-checked"]
+                div.innerHTML = ""
+                body.removeChild(div)
+                done()
+
+
+
+                    }, 300)
+
+
+                }, 300)
+
+            }, 300)
+
+        })
+    })
+    
     describe("avalon.ready", function () {
 //确保位置没有错乱
         it("async", function (done) {
