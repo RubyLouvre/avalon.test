@@ -658,6 +658,9 @@ define([], function () {
             expect(xxx.tagName).to.be("TABLE")
             expect(xxx.innerHTML).to.be("")
 
+            var yyy = avalon.parseHTML("xxx").firstChild
+            expect(yyy.nodeValue).to.be("xxx")
+
             setTimeout(function () {
                 expect(avalon.parseHTML.p).to.be(11)
                 delete avalon.parseHTML.p
