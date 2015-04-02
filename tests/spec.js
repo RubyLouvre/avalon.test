@@ -122,9 +122,9 @@ define([], function () {
 
         })
     })
-    
-    
-      describe("ms-duplex-checked", function () {
+
+
+    describe("ms-duplex-checked", function () {
 
         it("async", function (done) {
             var vm = avalon.define({
@@ -161,11 +161,11 @@ define([], function () {
                         var inputs = div.getElementsByTagName("input")
 
                         expect(inputs[1].checked).to.be(true)
-                      
-                delete avalon.vmodels["ms-duplex-checked"]
-                div.innerHTML = ""
-                body.removeChild(div)
-                done()
+
+                        delete avalon.vmodels["ms-duplex-checked"]
+                        div.innerHTML = ""
+                        body.removeChild(div)
+                        done()
 
 
 
@@ -178,7 +178,7 @@ define([], function () {
 
         })
     })
-    
+
     describe("avalon.ready", function () {
 //确保位置没有错乱
         it("async", function (done) {
@@ -2311,34 +2311,75 @@ define([], function () {
         })
     })
 
-    describe('移除数组最后一个元素后确保$last正确无误', function () {
+    describe("当删除一个元素时$last会自动向前挪", function () {
 
         it("async", function (done) {
-            var model = avalon.define('removeLastElement', function (vm) {
-                vm.array = [2, 3, 4, 5]
+            var model = avalon.define({
+                $id: "$last1",
+                array: [1, 2, 3, 4]
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<ul>' +
-                    '<li ms-repeat="array">{{$last}}<button type="button" ms-click="$remove">移除</button></li>' +
-                    '</ul>'
+            div.innerHTML = '<ul><li ms-repeat="array" ms-class="xxx: $last"><button type="button" ms-click="$remove">移除</button></li></ul>'
             body.appendChild(div)
             avalon.scan(div, model)
 
             setTimeout(function () {
-                var buttons = div.getElementsByTagName("button")
-                var button = buttons[buttons.length - 1]
+                var lis = div.getElementsByTagName("li")
+                expect(lis.length).to.be(4)
+                expect(lis[0].className).to.be("")
+                expect(lis[1].className).to.be("")
+                expect(lis[2].className).to.be("")
+                expect(lis[3].className).to.be("xxx")
+                var button = lis[3].firstChild
                 button.click()
                 setTimeout(function () {
                     var lis = div.getElementsByTagName("li")
-                    var li = lis[lis.length - 1]
-                    expect(/true/.test(li.innerHTML)).to.be(true)
-                    delete avalon.vmodels["removeLastElement"]
+                    expect(lis.length).to.be(3)
+                    expect(lis[0].className).to.be("")
+                    expect(lis[1].className).to.be("")
+                    expect(lis[2].className).to.be("xxx")
+                    delete avalon.vmodels["$last1"]
                     body.removeChild(div)
                     done()
                 }, 50)
 
 
+            }, 50)
+        })
+    })
+
+    describe("当添加一个元素时$last会自动向后移", function () {
+    //https://github.com/RubyLouvre/avalon/issues/785
+        it("async", function (done) {
+            var model = avalon.define({
+                $id: "$last2",
+                array: [1, 2, 3, 4]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '<ul><li ms-repeat="array" ms-class="xxx: $last">{{$index}}</li></ul>'
+            body.appendChild(div)
+            avalon.scan(div, model)
+
+            setTimeout(function () {
+                var lis = div.getElementsByTagName("li")
+                expect(lis.length).to.be(4)
+                expect(lis[0].className).to.be("")
+                expect(lis[1].className).to.be("")
+                expect(lis[2].className).to.be("")
+                expect(lis[3].className).to.be("xxx")
+                model.array.push(5, 6)
+                setTimeout(function () {
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis.length).to.be(6)
+                    expect(lis[5].className).to.be("xxx")
+                    expect(lis[4].className).to.be("")
+                    expect(lis[3].className).to.be("")
+                    delete avalon.vmodels["$last2"]
+                    body.removeChild(div)
+                    done()
+                }, 50)
             }, 50)
         })
     })
