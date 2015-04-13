@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.js 1.41 built in 2015.4.2
+ avalon.js 1.41 built in 2015.4.7
  support IE6+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -694,19 +694,13 @@ function fixContains(root, el) {
     try { //IE6-8,游离于DOM树外的文本节点，访问parentNode有时会抛错
         while ((el = el.parentNode))
             if (el === root)
-                return true;
+                return true
         return false
     } catch (e) {
         return false
     }
 }
 avalon.contains = fixContains
-//safari5+是把contains方法放在Element.prototype上而不是Node.prototype
-if (!root.contains) {
-    Node.prototype.contains = function (arg) {
-        return !!(this.compareDocumentPosition(arg) & 16)
-    }
-}
 //IE6-11的文档对象没有contains
 if (!DOC.contains) {
     DOC.contains = function (b) {
@@ -718,8 +712,13 @@ function outerHTML() {
     return new XMLSerializer().serializeToString(this)
 }
 
-
 if (window.SVGElement) {
+    //safari5+是把contains方法放在Element.prototype上而不是Node.prototype
+    if (!DOC.createTextNode("x").contains) {
+        Node.prototype.contains = function (arg) {//IE6-8没有Node对象
+            return !!(this.compareDocumentPosition(arg) & 16)
+        }
+    }
     var svgns = "http://www.w3.org/2000/svg"
     var svg = DOC.createElementNS(svgns, "svg")
     svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="red" />'
@@ -1919,15 +1918,20 @@ var rcreate = W3C ? /[^\d\D]/ : /(<(?:script|link|style|meta|noscript))/ig
 var scriptTypes = oneObject(["", "text/javascript", "text/ecmascript", "application/ecmascript", "application/javascript"])
 var rnest = /<(?:tb|td|tf|th|tr|col|opt|leg|cap|area)/ //需要处理套嵌关系的标签
 var script = DOC.createElement("script")
+var rhtml = /<|&#?\w+;/
 avalon.parseHTML = function (html) {
+    var fragment = hyperspace.cloneNode(false)
     if (typeof html !== "string") {
-        return DOC.createDocumentFragment()
+        return fragment
+    }
+    if (!rhtml.test(html)) {
+        fragment.appendChild(DOC.createTextNode(html))
+        return fragment
     }
     html = html.replace(rxhtml, "<$1></$2>").trim()
     var tag = (rtagName.exec(html) || ["", ""])[1].toLowerCase(),
             //取得其标签名
             wrap = tagHooks[tag] || tagHooks._default,
-            fragment = hyperspace.cloneNode(false),
             wrapper = cinerator,
             firstChild, neo
     if (!W3C) { //fix IE
@@ -3281,7 +3285,9 @@ bindingExecutors.attr = function (val, elem, data) {
         var target = replace ? elem.parentNode : elem
         var scanTemplate = function (text) {
             if (loaded) {
-                text = loaded.apply(target, [text].concat(vmodels))
+                var newText = loaded.apply(target, [text].concat(vmodels))
+                if (typeof newText === "string")
+                    text = newText
             }
             if (rendered) {
                 checkScan(target, function () {

@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.41 built in 2015.4.2
+ avalon.modern.js 1.41 built in 2015.4.7
  support IE10+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -502,7 +502,8 @@ var Cache = new function() {// jshint ignore:line
 /*********************************************************************
  *                           DOM 底层补丁                             *
  **********************************************************************/
-if (!root.contains) { //safari5+是把contains方法放在Element.prototype上而不是Node.prototype
+//safari5+是把contains方法放在Element.prototype上而不是Node.prototype
+if (!DOC.contains) {
     Node.prototype.contains = function (arg) {
         return !!(this.compareDocumentPosition(arg) & 16)
     }
@@ -511,12 +512,13 @@ avalon.contains = function (root, el) {
     try {
         while ((el = el.parentNode))
             if (el === root)
-                return true;
+                return true
         return false
     } catch (e) {
         return false
     }
 }
+
 if (window.SVGElement) {
     var svgns = "http://www.w3.org/2000/svg"
     var svg = DOC.createElementNS(svgns, "svg")
@@ -1517,16 +1519,20 @@ var rtagName = /<([\w:]+)/
 var rxhtml = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/ig
 var scriptTypes = oneObject(["", "text/javascript", "text/ecmascript", "application/ecmascript", "application/javascript"])
 var script = DOC.createElement("script")
-
+var rhtml = /<|&#?\w+;/
 avalon.parseHTML = function(html) {
+    var fragment = hyperspace.cloneNode(false)
     if (typeof html !== "string" ) {
-        return DOC.createDocumentFragment()
+        return fragment
+    }
+    if (!rhtml.test(html)) {
+        fragment.appendChild(DOC.createTextNode(html))
+        return fragment
     }
     html = html.replace(rxhtml, "<$1></$2>").trim()
     var tag = (rtagName.exec(html) || ["", ""])[1].toLowerCase(),
             //取得其标签名
             wrapper = tagHooks[tag] || tagHooks._default,
-            fragment = hyperspace.cloneNode(false),
             firstChild
     wrapper.innerHTML = html
     var els = wrapper.getElementsByTagName("script")
@@ -2627,7 +2633,9 @@ bindingExecutors.attr = function (val, elem, data) {
         var target = replace ? elem.parentNode : elem
         var scanTemplate = function (text) {
             if (loaded) {
-                text = loaded.apply(target, [text].concat(vmodels))
+                var newText = loaded.apply(target, [text].concat(vmodels))
+                if (typeof newText === "string")
+                    text = newText
             }
             if (rendered) {
                 checkScan(target, function () {
