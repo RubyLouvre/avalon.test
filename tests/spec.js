@@ -270,7 +270,23 @@ define([], function () {
             })
         })
 
-        it("测试baseUrl, packages", function (done) {
+        it("测试baseUrl, packages2", function (done) {
+            setTimeout(function () {
+                require.config({
+                    baseUrl: "/avalon/src",
+                    packages: [{name:"dog1", location:"dog", main:"xxx"}]
+                })
+                var index = 0
+                require(["dog1"], function (a) {
+                    index = a
+                })
+                setTimeout(function () {
+                    expect(index).to.be(3333)
+                    done()
+                }, 300)
+            })
+        }, 300)
+       it("测试baseUrl, packages", function (done) {
             setTimeout(function () {
                 require.config({
                     baseUrl: "/avalon/src",
@@ -287,7 +303,6 @@ define([], function () {
                 }, 300)
             })
         }, 300)
-
         it("测试map", function (done) {
             setTimeout(function () {
                 require.config({
