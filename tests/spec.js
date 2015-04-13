@@ -718,6 +718,8 @@ define([], function () {
             var yyy = avalon.parseHTML("xxx").firstChild
             expect(yyy.nodeValue).to.be("xxx")
 
+            var zzz = avalon.parseHTML("").firstChild
+            expect(zzz.nodeValue).to.be("")
             setTimeout(function () {
                 expect(avalon.parseHTML.p).to.be(11)
                 delete avalon.parseHTML.p
