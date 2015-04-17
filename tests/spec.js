@@ -1812,6 +1812,7 @@ define([], function() {
             }, 300)
         })
     })
+    
     describe("双工绑定ms-duplex-checked", function() {
         it("async", function(done) {
             var div = document.createElement("div")
