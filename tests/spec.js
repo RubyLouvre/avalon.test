@@ -274,7 +274,7 @@ define([], function () {
             setTimeout(function () {
                 require.config({
                     baseUrl: "/avalon/src",
-                    packages: [{name:"dog1", location:"dog", main:"xxx"}]
+                    packages: [{name: "dog1", location: "dog", main: "xxx"}]
                 })
                 var index = 0
                 require(["dog1"], function (a) {
@@ -286,7 +286,7 @@ define([], function () {
                 }, 300)
             })
         }, 300)
-       it("测试baseUrl, packages", function (done) {
+        it("测试baseUrl, packages", function (done) {
             setTimeout(function () {
                 require.config({
                     baseUrl: "/avalon/src",
@@ -612,6 +612,51 @@ define([], function () {
                     div.innerHTML = ""
                     body.removeChild(div)
                     done()
+
+                }, 300)
+            })
+
+        })
+    })
+
+
+    describe("data-duplex-observe", function () {
+        //https://github.com/RubyLouvre/avalon/issues/668
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "data-duplex-observe",
+                q: 'aaa'
+            })
+
+            var body = document.body
+            var div = document.createElement("div")
+            var str = '<input ms-duplex="q"  ms-data-duplex-observe="q"/><span id="data-duplex-observe">{{q}}</span>'
+            div.innerHTML = str
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var aaa = div.getElementsByTagName("input")[0]
+                var el = document.getElementById("data-duplex-observe")
+                expect(vm.q).to.be("aaa")
+                aaa.value = "222"
+                setTimeout(function () {
+                    expect(el.innerHTML).to.be("222") //可以变动
+                    aaa.value = "false"
+
+                    setTimeout(function () {
+                        expect(el.innerHTML).to.be("false")//再变一次
+                        aaa.value = "123"
+                        setTimeout(function () {
+                            expect(el.innerHTML).to.be("false")
+
+                            delete avalon.vmodels["data-duplex-observe"]
+                            div.innerHTML = ""
+                            body.removeChild(div)
+                            done()
+
+                        }, 300)
+
+                    }, 300)
 
                 }, 300)
             })
@@ -2367,7 +2412,7 @@ define([], function () {
     })
 
     describe("当添加一个元素时$last会自动向后移", function () {
-    //https://github.com/RubyLouvre/avalon/issues/785
+        //https://github.com/RubyLouvre/avalon/issues/785
         it("async", function (done) {
             var model = avalon.define({
                 $id: "$last2",
