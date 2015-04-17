@@ -15,8 +15,10 @@ define([], function() {
     }
 
     function clearTest(vmName, div, fn) {
-        if (vmName) {
+        if (typeof vmName === "string") {
             delete avalon.vmodels[vmName]
+        } else if (vmName) {
+            delete avalon.vmodels[vmName.$id]
         }
         if (div) {
             div.innerHTML = ""
@@ -171,12 +173,7 @@ define([], function() {
 
                         expect(inputs[1].checked).to.be(true)
 
-                        delete avalon.vmodels["ms-duplex-checked"]
-                        div.innerHTML = ""
-                        body.removeChild(div)
-                        done()
-
-
+                        clearTest(vm, div, done)
 
                     }, 300)
 
@@ -397,9 +394,9 @@ define([], function() {
                 expect(offsetParent("offsetreabsolue2").id).to.be("offsetreabsolue")
                 expect(offsetParent("offsetreabsolue3").id).to.be("offsetreabsolue")
                 expect(offsetParent("offsetreabsolue4").id).to.be("offsetreabsolue")
-                div.innerHTML = ""
-                document.body.removeChild(div)
-                done()
+                clearTest(null, div, done)
+
+
             }, 100)
         })
     })
@@ -533,11 +530,7 @@ define([], function() {
                         expect(avalon(s[1]).val()).to.be("222")
                         expect(avalon(s[2]).val() || "").to.be("")
                         vm.filter = "5"
-                        delete avalon.vmodels.shortcircuit
-                        div.innerHTML = ""
-                        body.removeChild(div)
-                        done()
-
+                        clearTest(vm, div, done)
                     }, 150)
 
                 }, 150)
@@ -574,10 +567,8 @@ define([], function() {
                     expect(s[2].innerHTML).to.be("5")
                     expect(s[3].innerHTML).to.be("1")
                     expect(s[4].innerHTML).to.be("2")
-                    delete avalon.vmodels.shortcircuit
-                    div.innerHTML = ""
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
+
 
                 }, 150)
 
@@ -606,12 +597,7 @@ define([], function() {
                 aaa.value = "222"
                 setTimeout(function() {
                     expect(vm.q).to.be("222")
-
-                    delete avalon.vmodels["data-duplex-event"]
-                    div.innerHTML = ""
-                    body.removeChild(div)
-                    done()
-
+                    clearTest(vm, div, done)
 
 
                 }, 300)
@@ -641,10 +627,7 @@ define([], function() {
                 aaa.value = "222"
                 setTimeout(function() {
                     expect(vm.q).to.be("222")
-                    delete avalon.vmodels["input:hidden"]
-                    div.innerHTML = ""
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
 
                 }, 300)
             })
@@ -681,11 +664,7 @@ define([], function() {
                         aaa.value = "123"
                         setTimeout(function() {
                             expect(el.innerHTML).to.be("false")
-
-                            delete avalon.vmodels["data-duplex-observe"]
-                            div.innerHTML = ""
-                            body.removeChild(div)
-                            done()
+                            clearTest(vm, div, done)
 
                         }, 300)
 
@@ -754,10 +733,7 @@ define([], function() {
                         expect(s[1].checked).to.be(true)
                         expect(s[2].checked).to.be(true)
                         expect(s[3].checked).to.be(true)
-                        delete avalon.vmodels.idTypeTable
-                        div.innerHTML = ""
-                        body.removeChild(div)
-                        done()
+                        clearTest(vm, div, done)
                     }, 300)
                 }, 300)
             }, 300)
@@ -954,10 +930,7 @@ define([], function() {
             avalon.scan(div, vm)
             setTimeout(function() {
                 expect(div.innerHTML).to.be("111|222")
-                document.body.removeChild(div)
-                div.innerHTML = ""
-                delete avalon.vmodels["rstringLiteral"]
-                done()
+                clearTest(vm, div, done)
             })
 
         })
@@ -965,7 +938,7 @@ define([], function() {
 
     describe("ms-html", function() {
         it("async1", function(done) {
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "ms-html1",
                 array: ["<span>{{$index}}</span>", "<span>{{$index}}</span>", "<span>{{$index}}</span>"]
             })
@@ -973,17 +946,14 @@ define([], function() {
             div.innerHTML = '<div ms-repeat="array" ms-html="el"></div>'
             var body = document.body
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function() {
                 var spans = div.getElementsByTagName("span")
                 expect(spans.length).to.be(3)
                 expect(spans[0].innerHTML).to.be("0")
                 expect(spans[1].innerHTML).to.be("1")
                 expect(spans[2].innerHTML).to.be("2")
-                delete avalon.vmodels["ms-html1"]
-                div.innerHTML = ""
-                body.removeChild(div)
-                done()
+                clearTest(vm, div, done)
             }, 100)
         })
 
@@ -1205,7 +1175,7 @@ define([], function() {
             expect(ret.indexOf("<script")).to.be(-1)
             expect(ret.indexOf("onmousewheel")).not.to.be(-1)
 
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "multiFilter",
                 test: str
             })
@@ -1215,7 +1185,7 @@ define([], function() {
 
             var body = document.body
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function() {
                 var ret = div.innerHTML
                 expect(ret.indexOf("fix")).to.be(-1)
@@ -1233,10 +1203,7 @@ define([], function() {
                 as = div.getElementsByTagName("span")
                 expect(as.length).to.be(1)
                 expect(as[0].innerHTML).to.be("ddd")
-                delete avalon.vmodels["multiFilter"]
-                div.innerHTML = ""
-                body.removeChild(div)
-                done()
+                clearTest(vm, div, done)
             }, 100)
         })
 
@@ -1253,7 +1220,7 @@ define([], function() {
     describe("filters.truncate", function() {
         it("async", function(done) {
 
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "truncate",
                 name: "大跃进右"
             })
@@ -1263,14 +1230,11 @@ define([], function() {
 
             var body = document.body
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function() {
                 var ret = div.innerHTML
                 expect(ret).to.be("***")
-                delete avalon.vmodels["truncate"]
-                div.innerHTML = ""
-                body.removeChild(div)
-                done()
+                clearTest(vm, div, done)
             }, 100)
 
         })
@@ -1332,7 +1296,7 @@ define([], function() {
                 expect(avalon.filters.date(1373021259229, format)).to.be("2013 07 05:18:47:39")
             })
             it("async", function(done) {
-                var model = avalon.define({
+                var vm = avalon.define({
                     $id: "dateFilter",
                     test: "2014/12/24"
                 })
@@ -1340,7 +1304,7 @@ define([], function() {
                 div.innerHTML = '<p>{{test|date("yyyy MM dd:HH:mm:ss")}}</p>' + '<p>{{ 1373021259229|date("yyyy MM dd:HH:mm:ss")}}</p>' + '<p>{{ "1373021259229"|date("yyyy MM dd:HH:mm:ss")}}</p>' + '<p>{{ "2014-12-07T22:50:58+08:00" | date("yyyy MM dd:HH:mm:ss")}}</p>' + '<p>{{ "\/Date(1373021259229)\/" | date("yyyy MM dd:HH:mm:ss")}}</p>'
                 var body = document.body
                 body.appendChild(div)
-                avalon.scan(div, model)
+                avalon.scan(div, vm)
                 setTimeout(function() {
                     var ps = div.getElementsByTagName("p")
                     expect(ps[0].innerHTML).to.be("2014 12 24:00:00:00")
@@ -1348,10 +1312,7 @@ define([], function() {
                     expect(ps[2].innerHTML).to.be("2013 07 05:18:47:39")
                     expect(ps[3].innerHTML).to.be("2014 12 07:22:50:58")
                     expect(ps[4].innerHTML).to.be("2013 07 05:18:47:39")
-                    delete avalon.vmodels["dateFilter"]
-                    div.innerHTML = ""
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
                 }, 100)
             })
         })
@@ -1624,7 +1585,7 @@ define([], function() {
     })
     describe("插值表达式", function() {
         it("async", function(done) {
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "texttext",
                 x: '{{uuu}}',
                 y: '{{bbb}}',
@@ -1634,7 +1595,7 @@ define([], function() {
             var div = document.createElement("div")
             div.innerHTML = 'A：<div ms-each="arr">{{x}}</div>B：<div ms-repeat="arr">{{y}}</div>'
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function() {
                 var ps = div.getElementsByTagName("div")
                 var prop = "textContent" in div ? "textContent" : "innerText"
@@ -1643,9 +1604,8 @@ define([], function() {
                 expect(ps[1][prop]).to.be("{{bbb}}")
                 expect(ps[2][prop]).to.be("{{bbb}}")
                 expect(ps[3][prop]).to.be("{{bbb}}")
-                div.innerHTML = ""
-                body.removeChild(div)
-                done()
+
+                clearTest(vm, div, done)
 
             }, 300)
         })
@@ -1832,11 +1792,11 @@ define([], function() {
                 '<input ms-duplex-string="xxx" type="radio" value="ccc">ccc'
             document.body.appendChild(div)
 
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "ms-click-ms-duplex",
                 xxx: "bbb"
             })
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function() { //必须等扫描后才能开始测试，400ms是一个合理的数字
                 var ps = div.getElementsByTagName("input")
                 var input = ps[0]
@@ -1846,11 +1806,8 @@ define([], function() {
                     input.fireEvent("onchange")
                 }
                 setTimeout(function() {
-                    expect(model.xxx).to.be("aaa")
-                    document.body.removeChild(div)
-                    div.innerHTML = ""
-                    delete avalon.vmodels["ms-click-ms-duplex"]
-                    done()
+                    expect(vm.xxx).to.be("aaa")
+                    clearTest(vm, div, done)
                 }, 300)
             }, 300)
         })
