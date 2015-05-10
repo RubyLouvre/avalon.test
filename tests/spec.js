@@ -13,7 +13,9 @@ define([], function () {
             !el.dispatchEvent(evt);
         }
     }
-
+    function heredoc(fn) {
+        return fn.toString().replace(/^[^\/]+\/\*!?\s?/, '').replace(/\*\/[^\/]+$/, '')
+    }
     function clearTest(vmName, div, fn) {
         if (typeof vmName === "string") {
             delete avalon.vmodels[vmName]
@@ -54,11 +56,15 @@ define([], function () {
             }
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<div ms-data-aaa="bbb" ms-repeat="array" ms-css-background="color" id="scanIf1"><div>{{el}}</div></div>' +
-                    '<div ms-data-aaa="bbb" ms-each="array" ms-css-background="color" id="scanIf2"><div>{{el}}</div></div>' +
-                    '<div ms-if="toggle"  ms-data-xxx="aaa" id="scanIf3">{{bbb}}</div> {{color}}</div>' +
-                    '<div ms-if="!toggle" ms-data-xxx="aaa" id="scanIf4">{{color}}</div>' +
-                    '<div ms-widget="scandal" ms-data-scandal-s1="s1" id="scanIf5"></div>'
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div ms-data-aaa="bbb" ms-repeat="array" ms-css-background="color" id="scanIf1"><div>{{el}}</div></div>
+                 <div ms-data-aaa="bbb" ms-each="array" ms-css-background="color" id="scanIf2"><div>{{el}}</div></div>
+                 <div ms-if="toggle"  ms-data-xxx="aaa" id="scanIf3">{{bbb}}</div> 
+                 <div ms-if="!toggle" ms-data-xxx="aaa" id="scanIf4">{{color}}</div>
+                 <div ms-widget="scandal" ms-data-scandal-s1="s1" id="scanIf5"></div>
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function () {
@@ -143,10 +149,14 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '  <input type="checkbox" ms-duplex-checked="testCheck1"> {{testCheck1}}' +
-                    '<input type="checkbox" ms-duplex-checked="testCheck2"> {{testCheck2}}' +
-                    '<input type="checkbox" ms-duplex-checked="testCheck3"> {{testCheck3}}' +
-                    '<input type="text">'
+            div.innerHTML = heredoc(function(){
+                /*
+        <input type="checkbox" ms-duplex-checked="testCheck1"> {{testCheck1}}
+        <input type="checkbox" ms-duplex-checked="testCheck2"> {{testCheck2}}
+        <input type="checkbox" ms-duplex-checked="testCheck3"> {{testCheck3}}
+        <input type="text">
+                 */
+            }) 
 
             body.appendChild(div)
             avalon.scan(div, vm)
@@ -167,14 +177,9 @@ define([], function () {
                     inputs[3].focus()
                     setTimeout(function () {
                         var inputs = div.getElementsByTagName("input")
-
                         expect(inputs[1].checked).to.be(true)
-
-                        clearTest(vm, div, done)
-
+                        clearTest("ms-duplex-checked", div, done)
                     }, 300)
-
-
                 }, 300)
 
             }, 300)
@@ -1786,9 +1791,13 @@ define([], function () {
     describe("双工绑定ms-duplex-string", function () {
         it("async", function (done) {
             var div = document.createElement("div")
-            div.innerHTML = '<input ms-duplex-string="xxx" type="radio"  value="aaa">aaa' +
-                    '<input ms-duplex-string="xxx" type="radio" value="bbb">bbb' +
-                    '<input ms-duplex-string="xxx" type="radio" value="ccc">ccc'
+            div.innerHTML = heredoc(function(){
+                /*
+        <input ms-duplex-string="xxx" type="radio" value="aaa">aaa
+        <input ms-duplex-string="xxx" type="radio" value="bbb">bbb
+        <input ms-duplex-string="xxx" type="radio" value="ccc">ccc
+                 */
+            })
             document.body.appendChild(div)
 
             var vm = avalon.define({
@@ -2101,11 +2110,16 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<a href="#"  ms-on-click="click">add</a> <br>\
-            <a href="#"  ms-on-click="serialize">serialize</a> <br>\
-            <a href="#"  ms-on-click="clear">clear</a>\
-            <p  ms-repeat-el="data.list" >\
-                <input type="text"   ms-attr-hehe="$index"  ms-duplex="el"></p>'
+            div.innerHTML = heredoc(function(){
+                /*
+        <a href="#"  ms-on-click="click">add</a> <br>
+        <a href="#"  ms-on-click="serialize">serialize</a> <br>
+        <a href="#"  ms-on-click="clear">clear</a>
+        <p ms-repeat-el="data.list">
+            <input type="text" ms-attr-hehe="$index"  ms-duplex="el">
+        </p>
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div, vm)
             setTimeout(function () {
@@ -2268,8 +2282,16 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<div ms-controller="getEachProxyBUG1"><h1 ms-repeat="fruits" >{{el.a}}</h1> </div>' +
-                    '<div ms-controller="getEachProxyBUG2" id="getEachProxyBUG2"> <h1 ms-repeat="fighters" >{{el}}</h1></div>'
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div ms-controller="getEachProxyBUG1">
+                 <h1 ms-repeat="fruits">{{el.a}}</h1> 
+                 </div>
+                 <div ms-controller="getEachProxyBUG2" id="getEachProxyBUG2">
+                 <h1 ms-repeat="fighters">{{el}}</h1>
+                 </div>'
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div)
             setTimeout(function () {
@@ -2326,64 +2348,62 @@ define([], function () {
 
     describe("短路与短路或", function () {
         it("async", function (done) {
-            var vmodel = avalon.define({
-                $id: "test" + String(Math.random()).split(/0\./, ""),
+            var vm = avalon.define({
+                $id: "shortcircuit",
                 aa: {
                     b: false,
                     c: true
                 },
                 change1: function () {
-                    vmodel.aa.b = true
-                    vmodel.aa.c = true
+                    vm.aa.b = true
+                    vm.aa.c = true
                 },
                 change2: function () {
-                    vmodel.aa.b = true
-                    vmodel.aa.c = false
+                    vm.aa.b = true
+                    vm.aa.c = false
                 }
             })
             var body = document.body
             var div = document.createElement("div")
             div.innerHTML = '<div ms-if="aa.b && aa.c">{{aa.b}}</div>'
             body.appendChild(div)
-            avalon.scan(div, vmodel)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var nodes = div.getElementsByTagName("div")
                 expect(nodes.length).to.be(0)
-                vmodel.change1()
+                vm.change1()
             }, 100)
             setTimeout(function () {
                 var nodes = div.getElementsByTagName("div")
                 expect(nodes.length).to.be(1)
-                vmodel.change2()
+                vm.change2()
             }, 200)
             setTimeout(function () {
                 var nodes = div.getElementsByTagName("div")
                 expect(nodes.length).to.be(0)
-                vmodel.change1()
+                vm.change1()
             }, 300)
             setTimeout(function () {
                 var nodes = div.getElementsByTagName("div")
                 expect(nodes.length).to.be(1)
-                body.removeChild(div)
-                div.innerHTML = ""
-                delete avalon.vmodels[vmodel.$id]
-                done()
+                clearTest("shortcircuit", div, done)
             }, 400)
         })
     })
 
     describe("重写一个空对象", function () {
         it("async", function (done) {
-            var vmodel = avalon.define("overrideEmptyObject", function (vm) {
-                vm.first = {}
+            var vm = avalon.define({
+                $id: "overrideEmptyObject",
+                first: {}
             })
             var body = document.body
             var div = document.createElement("div")
             div.innerHTML = '<ul><li ms-repeat="first.array">{{el}}</li></ul><ol><li ms-repeat="first.object">{{$key}}:{{$val}}</li></ol>'
             body.appendChild(div)
-            avalon.scan(div, vmodel)
+            avalon.scan(div, vm)
             setTimeout(function () {
-                vmodel.first = {
+                vm.first = {
                     array: ["@@@", "###", "$$$", "%%%"],
                     object: {
                         grape: "葡萄",
@@ -2403,11 +2423,58 @@ define([], function () {
                     expect(lis[5].innerHTML).to.be("coconut:椰子")
                     expect(lis[6].innerHTML).to.be("pitaya:火龙果")
                     expect(lis[7].innerHTML).to.be("orange:橙子")
-                    body.removeChild(div)
-                    div.innerHTML = ""
-                    done()
+                    clearTest("overrideEmptyObject", div, done)
                 }, 300)
 
+            }, 300)
+        })
+    })
+
+    describe("select使用ms-duplex不再通过不稳定checkScan回调来设置selected", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "select-ms-duplex",
+                k: "c",
+                b: "b",
+                array: ["a", "b", "c", "d"],
+                selected: "c"
+            })
+
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <select ms-duplex="selected" ms-each="array">
+                 <option >{{el}}</option>
+                 </select>
+                 <select ms-duplex="selected">
+                 <option ms-repeat="array">{{el}}</option>
+                 </select>
+                 <select ms-duplex="selected">
+                 <option value="a">a</option>
+                 <option ms-attr-value="b">b</option>
+                 <option>{{k}}</option>
+                 <option>d</option>
+                 </select>
+                 <select ms-duplex="selected">
+                 <option>a</option>
+                 <option>c</option>
+                 <option>b</option>
+                 <option>d</option>
+                 </select>
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var ss = div.getElementsByTagName("select")
+                expect(ss[0].options.length).to.be(4)
+                expect(ss[0].options[2].selected).to.be(true)
+                expect(ss[1].options.length).to.be(4)
+                expect(ss[1].options[2].selected).to.be(true)
+                expect(ss[2].options[2].selected).to.be(true)
+                expect(ss[3].options[1].selected).to.be(true)
+                clearTest("select-ms-duplex", div, done)
             }, 300)
         })
     })
@@ -2521,7 +2588,21 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<div><ul ms-each=\"array\" data-each-rendered=\"callback\"><li>{{el}}</li></ul><ol><li ms-repeat=\"array\" data-repeat-rendered=\"callback2\">{{el}}</li></ol>\n<table border=\"1\"><tbody><tr ms-with=\"object\" data-with-sorted=\"sort\" data-with-rendered=\"callback3\"><td>{{$key}}:{{$val}}</td></tr></tbody></table></div>"
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div>
+                 <ul ms-each="array" data-each-rendered="callback">
+                 <li>{{el}}</li>
+                 </ul>
+                 <ol>
+                 <li ms-repeat="array" data-repeat-rendered="callback2">{{el}}</li>
+                 </ol>
+                 <table border="1">
+                 <tr ms-with="object" data-with-sorted="sort" data-with-rendered="callback3"><td>{{$key}}:{{$val}}</td></tr>
+                 </table>
+                 </div>
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div, model)
 
