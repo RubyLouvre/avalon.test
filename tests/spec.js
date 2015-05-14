@@ -149,14 +149,14 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = heredoc(function(){
+            div.innerHTML = heredoc(function () {
                 /*
-        <input type="checkbox" ms-duplex-checked="testCheck1"> {{testCheck1}}
-        <input type="checkbox" ms-duplex-checked="testCheck2"> {{testCheck2}}
-        <input type="checkbox" ms-duplex-checked="testCheck3"> {{testCheck3}}
-        <input type="text">
+                 <input type="checkbox" ms-duplex-checked="testCheck1"> {{testCheck1}}
+                 <input type="checkbox" ms-duplex-checked="testCheck2"> {{testCheck2}}
+                 <input type="checkbox" ms-duplex-checked="testCheck3"> {{testCheck3}}
+                 <input type="text">
                  */
-            }) 
+            })
 
             body.appendChild(div)
             avalon.scan(div, vm)
@@ -1791,11 +1791,11 @@ define([], function () {
     describe("双工绑定ms-duplex-string", function () {
         it("async", function (done) {
             var div = document.createElement("div")
-            div.innerHTML = heredoc(function(){
+            div.innerHTML = heredoc(function () {
                 /*
-        <input ms-duplex-string="xxx" type="radio" value="aaa">aaa
-        <input ms-duplex-string="xxx" type="radio" value="bbb">bbb
-        <input ms-duplex-string="xxx" type="radio" value="ccc">ccc
+                 <input ms-duplex-string="xxx" type="radio" value="aaa">aaa
+                 <input ms-duplex-string="xxx" type="radio" value="bbb">bbb
+                 <input ms-duplex-string="xxx" type="radio" value="ccc">ccc
                  */
             })
             document.body.appendChild(div)
@@ -2110,14 +2110,14 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = heredoc(function(){
+            div.innerHTML = heredoc(function () {
                 /*
-        <a href="#"  ms-on-click="click">add</a> <br>
-        <a href="#"  ms-on-click="serialize">serialize</a> <br>
-        <a href="#"  ms-on-click="clear">clear</a>
-        <p ms-repeat-el="data.list">
-            <input type="text" ms-attr-hehe="$index"  ms-duplex="el">
-        </p>
+                 <a href="#"  ms-on-click="click">add</a> <br>
+                 <a href="#"  ms-on-click="serialize">serialize</a> <br>
+                 <a href="#"  ms-on-click="clear">clear</a>
+                 <p ms-repeat-el="data.list">
+                 <input type="text" ms-attr-hehe="$index"  ms-duplex="el">
+                 </p>
                  */
             })
             body.appendChild(div)
@@ -3150,7 +3150,7 @@ define([], function () {
         //确保位置没有错乱
         it("async", function (done) {
             var test = false
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "repeaton",
                 arr: [1],
                 f1: function () {
@@ -3162,14 +3162,13 @@ define([], function () {
             div.innerHTML = '<div ms-controller="repeaton"><div ms-each="arr">' +
                     '<button ms-click="f1" type="button">测试</button></div>{{arr|html}}</div>'
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var button = div.getElementsByTagName("button")[0]
                 button.click()
                 setTimeout(function () {
                     expect(test).to.be(true)
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
                 }, 300)
             }, 100)
         })
@@ -3208,5 +3207,40 @@ define([], function () {
         })
     })
 
+    describe("select标签里使用ms-duplex并且option是用ms-repeat生成", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: 'ms-duplex-select',
+                selected: ["a", "b"],
+                array: ["a", "b", "c", "d"]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <select ms-duplex="selected" multiple><option ms-repeat="array">{{el}}</option></select>
+                 */
+            })
 
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var options = div.getElementsByTagName("option")  
+                expect(options[0].selected).to.be(true)
+                expect(options[1].selected).to.be(true)
+                expect(options[2].selected).to.be(false)
+                expect(options[3].selected).to.be(false)
+                 vm.array = ["d", "k", "a", "b"]
+                setTimeout(function () {
+                    var options = div.getElementsByTagName("option")
+                    expect(options[0].selected).to.be(false)
+                    expect(options[1].selected).to.be(false)
+                    expect(options[2].selected).to.be(true)
+                    expect(options[3].selected).to.be(true)
+                    clearTest(vm, div, done)
+
+                }, 300)
+            }, 500)
+        })
+    })
 })

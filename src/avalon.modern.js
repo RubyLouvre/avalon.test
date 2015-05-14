@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.43 built in 2015.5.12
+ avalon.modern.js 1.43 built in 2015.5.14
  support IE10+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -1769,10 +1769,15 @@ function scanNodeArray(nodes, vmodels) {
 function scanNode(node, nodeType, vmodels) {
     if (nodeType === 1) {
         scanTag(node, vmodels) //扫描元素节点
-        if(node.tagName === "SELECT" && node.duplexCallback){
-            node.duplexCallback()
+        if (node.msCallback) {
+            node.msCallback()
+            try {
+                node.msCallback()
+            } catch (e) {
+                node.msCallback = void 0
+            }
         }
-    } else if (nodeType === 3 && rexpr.test(node.data)){
+    } else if (nodeType === 3 && rexpr.test(node.data)) {
         scanText(node, vmodels) //扫描文本节点
     } else if (kernel.commentInterpolate && nodeType === 8 && !rexpr.test(node.nodeValue)) {
         scanText(node, vmodels) //扫描注释节点
@@ -3155,26 +3160,26 @@ duplexBinding.INPUT = function(element, evaluator, data) {
     callback.call(element, element.value)
 }
 duplexBinding.TEXTAREA = duplexBinding.INPUT
-duplexBinding.SELECT = function(element, evaluator, data) {
+duplexBinding.SELECT = function (element, evaluator, data) {
     var $elem = avalon(element)
 
-        function updateVModel() {
-            if ($elem.data("duplexObserve") !== false) {
-                var val = $elem.val() //字符串或字符串数组
-                if (Array.isArray(val)) {
-                    val = val.map(function(v) {
-                        return data.pipe(v, data, "get")
-                    })
-                } else {
-                    val = data.pipe(val, data, "get")
-                }
-                if (val + "" !== element.oldValue) {
-                    evaluator(val)
-                }
-                data.changed.call(element, val, data)
+    function updateVModel() {
+        if ($elem.data("duplexObserve") !== false) {
+            var val = $elem.val() //字符串或字符串数组
+            if (Array.isArray(val)) {
+                val = val.map(function (v) {
+                    return data.pipe(v, data, "get")
+                })
+            } else {
+                val = data.pipe(val, data, "get")
             }
+            if (val + "" !== element.oldValue) {
+                evaluator(val)
+            }
+            data.changed.call(element, val, data)
         }
-    data.handler = function() {
+    }
+    data.handler = function () {
         var val = evaluator()
         val = val && val.$model || val
         if (Array.isArray(val)) {
@@ -3194,13 +3199,22 @@ duplexBinding.SELECT = function(element, evaluator, data) {
         }
     }
     data.bound("change", updateVModel)
-    element.duplexCallback = function() {
+    element.msCallback = function () {
+        var options = element.getElementsByTagName("option")
+        var map = Array.prototype.map.call(options, function (el) {
+            return el.text
+        })
+//        
+         console.log(map)
+//        console.log(element.oldValue)
         registerSubscriber(data)
+//        var options = element.getElementsByTagName("option")
+//        var map = Array.prototype.map.call(options, function (el) {
+//            return el.selected
+//        })
+//        console.log(map)
+        console.log("+++++++++执行select回调+++++++++++")
         data.changed.call(element, evaluator(), data)
-        try {
-            element.duplexCallback = void 0
-            delete element.duplexCallback
-        } catch (e) {}
     }
 }
 // bindingHandlers.html 定义在if.js
@@ -3322,7 +3336,7 @@ bindingExecutors.on = function(callback, elem, data) {
         }
     }
 }
-bindingHandlers.repeat = function(data, vmodels) {
+bindingHandlers.repeat = function (data, vmodels) {
     var type = data.type
     parseExprProxy(data.value, vmodels, data, 0, 1)
     data.proxies = []
@@ -3342,7 +3356,7 @@ bindingHandlers.repeat = function(data, vmodels) {
     if (arr.length > 1) {
         arr.pop()
         var n = arr[0]
-        for (var i = 0, v; v = vmodels[i++];) {
+        for (var i = 0, v; v = vmodels[i++]; ) {
             if (v && v.hasOwnProperty(n)) {
                 var events = v[n].$events || {}
                 events[subscribers] = events[subscribers] || []
@@ -3369,7 +3383,7 @@ bindingHandlers.repeat = function(data, vmodels) {
         elem.parentNode.replaceChild(comment, elem)
     }
     data.template = avalon.parseHTML(data.template)
-    data.rollback = function() {
+    data.rollback = function () {
         var elem = data.element
         if (!elem)
             return
@@ -3393,7 +3407,7 @@ bindingHandlers.repeat = function(data, vmodels) {
         check0 = "$first"
         check1 = "$last"
     }
-    for (i = 0; v = vmodels[i++];) {
+    for (i = 0; v = vmodels[i++]; ) {
         if (v.hasOwnProperty(check0) && v.hasOwnProperty(check1)) {
             data.$outer = v
             break
@@ -3413,7 +3427,7 @@ bindingHandlers.repeat = function(data, vmodels) {
     }
 }
 
-bindingExecutors.repeat = function(method, pos, el) {
+bindingExecutors.repeat = function (method, pos, el) {
     if (method) {
         var data = this
         var end = data.element
@@ -3426,7 +3440,7 @@ bindingExecutors.repeat = function(method, pos, el) {
                 var array = data.$repeat
                 var last = array.length - 1
                 var fragments = [],
-                    fragment
+                        fragment
                 var start = locateNode(data, pos)
                 for (var i = pos; i < n; i++) {
                     var proxy = eachProxyAgent(i, data)
@@ -3434,7 +3448,7 @@ bindingExecutors.repeat = function(method, pos, el) {
                     shimController(data, transation, proxy, fragments)
                 }
                 parent.insertBefore(transation, start)
-                for (i = 0; fragment = fragments[i++];) {
+                for (i = 0; fragment = fragments[i++]; ) {
                     scanNodeArray(fragment.nodes, fragment.vmodels)
                     fragment.nodes = fragment.vmodels = null
                 }
@@ -3459,21 +3473,21 @@ bindingExecutors.repeat = function(method, pos, el) {
                 var signature = start.nodeValue
                 var rooms = []
                 var room = [],
-                    node
-                    sweepNodes(start, end, function() {
-                        room.unshift(this)
-                        if (this.nodeValue === signature) {
-                            rooms.unshift(room)
-                            room = []
-                        }
-                    })
-                    sortByIndex(proxies, pos)
-                    sortByIndex(rooms, pos)
-                    while (room = rooms.shift()) {
-                        while (node = room.shift()) {
-                            transation.appendChild(node)
-                        }
+                        node
+                sweepNodes(start, end, function () {
+                    room.unshift(this)
+                    if (this.nodeValue === signature) {
+                        rooms.unshift(room)
+                        room = []
                     }
+                })
+                sortByIndex(proxies, pos)
+                sortByIndex(rooms, pos)
+                while (room = rooms.shift()) {
+                    while (node = room.shift()) {
+                        transation.appendChild(node)
+                    }
+                }
                 parent.insertBefore(transation, end)
                 break
             case "index": //将proxies中的第pos个起的所有元素重新索引
@@ -3505,7 +3519,7 @@ bindingExecutors.repeat = function(method, pos, el) {
                         keys = keys2
                     }
                 }
-                for (i = 0; key = keys[i++];) {
+                for (i = 0; key = keys[i++]; ) {
                     if (key !== "hasOwnProperty") {
                         if (!pool[key]) {
                             pool[key] = withProxyAgent(key, data)
@@ -3516,7 +3530,7 @@ bindingExecutors.repeat = function(method, pos, el) {
                 var comment = data.$stamp = data.clone
                 parent.insertBefore(comment, end)
                 parent.insertBefore(transation, end)
-                for (i = 0; fragment = fragments[i++];) {
+                for (i = 0; fragment = fragments[i++]; ) {
                     scanNodeArray(fragment.nodes, fragment.vmodels)
                     fragment.nodes = fragment.vmodels = null
                 }
@@ -3525,17 +3539,20 @@ bindingExecutors.repeat = function(method, pos, el) {
         if (method === "clear")
             method = "del"
         var callback = data.renderedCallback || noop,
-            args = arguments
-            checkScan(parent, function() {
-                callback.apply(parent, args)
-                if (parent.oldValue && parent.tagName === "SELECT") { //fix #503
-                    avalon(parent).val(parent.oldValue.split(","))
-                }
-            }, NaN)
+                args = arguments
+        var mscb = parent.msCallback
+        parent.msCallback = function () {
+            console.log("+++++++++执行repeat回调+++++++++++")
+            mscb && mscb()
+            callback.apply(parent, args)
+            if (parent.oldValue && parent.tagName === "SELECT") { //fix #503
+                avalon(parent).val(parent.oldValue.split(","))
+            }
+        }
     }
 }
 
-"with,each".replace(rword, function(name) {
+"with,each".replace(rword, function (name) {
     bindingHandlers[name] = bindingHandlers.repeat
 })
 
@@ -3578,127 +3595,127 @@ function sweepNodes(start, end, callback) {
 var eachProxyPool = []
 var withProxyPool = []
 
-    function eachProxyFactory(name) {
-        var source = {
-            $host: [],
-            $outer: {},
-            $stamp: 1,
-            $index: 0,
-            $first: false,
-            $last: false,
-            $remove: avalon.noop
-        }
-        source[name] = {
-            get: function() {
-                var e = this.$events
-                var array = e.$index
-                e.$index = e[name] //#817 通过$index为el收集依赖
-                try {
-                    return this.$host[this.$index]
-                } finally {
-                    e.$index = array
-                }
-            },
-            set: function(val) {
-                this.$host.set(this.$index, val)
-            }
-        }
-        var second = {
-            $last: 1,
-            $first: 1,
-            $index: 1
-        }
-        var proxy = modelFactory(source, second)
-        proxy.$id = generateID("$proxy$each")
-        return proxy
+function eachProxyFactory(name) {
+    var source = {
+        $host: [],
+        $outer: {},
+        $stamp: 1,
+        $index: 0,
+        $first: false,
+        $last: false,
+        $remove: avalon.noop
     }
+    source[name] = {
+        get: function () {
+            var e = this.$events
+            var array = e.$index
+            e.$index = e[name] //#817 通过$index为el收集依赖
+            try {
+                return this.$host[this.$index]
+            } finally {
+                e.$index = array
+            }
+        },
+        set: function (val) {
+            this.$host.set(this.$index, val)
+        }
+    }
+    var second = {
+        $last: 1,
+        $first: 1,
+        $index: 1
+    }
+    var proxy = modelFactory(source, second)
+    proxy.$id = generateID("$proxy$each")
+    return proxy
+}
 
-    function eachProxyAgent(index, data) {
-        var param = data.param || "el",
+function eachProxyAgent(index, data) {
+    var param = data.param || "el",
             proxy
-        for (var i = 0, n = eachProxyPool.length; i < n; i++) {
-            var candidate = eachProxyPool[i]
-            if (candidate && candidate.hasOwnProperty(param)) {
-                proxy = candidate
-                eachProxyPool.splice(i, 1)
+    for (var i = 0, n = eachProxyPool.length; i < n; i++) {
+        var candidate = eachProxyPool[i]
+        if (candidate && candidate.hasOwnProperty(param)) {
+            proxy = candidate
+            eachProxyPool.splice(i, 1)
+        }
+    }
+    if (!proxy) {
+        proxy = eachProxyFactory(param)
+    }
+    var host = data.$repeat
+    var last = host.length - 1
+    proxy.$index = index
+    proxy.$first = index === 0
+    proxy.$last = index === last
+    proxy.$host = host
+    proxy.$outer = data.$outer
+    proxy.$stamp = data.clone.cloneNode(false)
+    proxy.$remove = function () {
+        return host.removeAt(proxy.$index)
+    }
+    return proxy
+}
+
+function withProxyFactory() {
+    var proxy = modelFactory({
+        $key: "",
+        $outer: {},
+        $host: {},
+        $val: {
+            get: function () {
+                return this.$host[this.$key]
+            },
+            set: function (val) {
+                this.$host[this.$key] = val
             }
         }
-        if (!proxy) {
-            proxy = eachProxyFactory(param)
-        }
-        var host = data.$repeat
-        var last = host.length - 1
-        proxy.$index = index
-        proxy.$first = index === 0
-        proxy.$last = index === last
-        proxy.$host = host
-        proxy.$outer = data.$outer
-        proxy.$stamp = data.clone.cloneNode(false)
-        proxy.$remove = function() {
-            return host.removeAt(proxy.$index)
-        }
-        return proxy
-    }
+    }, {
+        $val: 1
+    })
+    proxy.$id = generateID("$proxy$with")
+    return proxy
+}
 
-    function withProxyFactory() {
-        var proxy = modelFactory({
-            $key: "",
-            $outer: {},
-            $host: {},
-            $val: {
-                get: function() {
-                    return this.$host[this.$key]
-                },
-                set: function(val) {
-                    this.$host[this.$key] = val
+function withProxyAgent(key, data) {
+    var proxy = withProxyPool.pop()
+    if (!proxy) {
+        proxy = withProxyFactory()
+    }
+    var host = data.$repeat
+    proxy.$key = key
+    proxy.$host = host
+    proxy.$outer = data.$outer
+    if (host.$events) {
+        proxy.$events.$val = host.$events[key]
+    } else {
+        proxy.$events = {}
+    }
+    return proxy
+}
+
+function recycleProxies(proxies, type) {
+    var proxyPool = type === "each" ? eachProxyPool : withProxyPool
+    avalon.each(proxies, function (key, proxy) {
+        if (proxy.$events) {
+            for (var i in proxy.$events) {
+                if (Array.isArray(proxy.$events[i])) {
+                    proxy.$events[i].forEach(function (data) {
+                        if (typeof data === "object")
+                            disposeData(data)
+                    }) // jshint ignore:line
+                    proxy.$events[i].length = 0
                 }
             }
-        }, {
-            $val: 1
-        })
-        proxy.$id = generateID("$proxy$with")
-        return proxy
-    }
-
-    function withProxyAgent(key, data) {
-        var proxy = withProxyPool.pop()
-        if (!proxy) {
-            proxy = withProxyFactory()
-        }
-        var host = data.$repeat
-        proxy.$key = key
-        proxy.$host = host
-        proxy.$outer = data.$outer
-        if (host.$events) {
-            proxy.$events.$val = host.$events[key]
-        } else {
-            proxy.$events = {}
-        }
-        return proxy
-    }
-
-    function recycleProxies(proxies, type) {
-        var proxyPool = type === "each" ? eachProxyPool : withProxyPool
-        avalon.each(proxies, function(key, proxy) {
-            if (proxy.$events) {
-                for (var i in proxy.$events) {
-                    if (Array.isArray(proxy.$events[i])) {
-                        proxy.$events[i].forEach(function(data) {
-                            if (typeof data === "object")
-                                disposeData(data)
-                        }) // jshint ignore:line
-                        proxy.$events[i].length = 0
-                    }
-                }
-                proxy.$host = proxy.$outer = {}
-                if (proxyPool.unshift(proxy) > kernel.maxRepeatSize) {
-                    proxyPool.pop()
-                }
+            proxy.$host = proxy.$outer = {}
+            if (proxyPool.unshift(proxy) > kernel.maxRepeatSize) {
+                proxyPool.pop()
             }
-        })
-        if (type === "each")
-            proxies.length = 0
-    }
+        }
+    })
+    if (type === "each")
+        proxies.length = 0
+}
 /*********************************************************************
  *                         各种指令                                  *
  **********************************************************************/
