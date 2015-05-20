@@ -2709,16 +2709,23 @@ define([], function () {
 
     describe('vm.array=newArray', function () {
         it("async", function (done) {
-            var model = avalon.define("overrideArray", function (vm) {
-                vm.array = []
+            var vm = avalon.define({
+                    $id: "overrideArray",
+                    array: []
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<table  border=\"1\"><tbody><tr><td>11</td><th ms-repeat=\"array\">{{el}}</th><td>22</td></tr></tbody></table>"
+            div.innerHTML = heredoc(function(){
+                /*
+              <table>
+                 <tr><td>11</td><th ms-repeat="array">{{el}}</th><td>22</td></tr>
+             </table>
+                 */
+            }) 
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
-                model.array = ["aaa", "bbb", "ccc"]
+                vm.array = ["aaa", "bbb", "ccc"]
                 setTimeout(function () {
                     var cells = div.getElementsByTagName("tr")[0].cells
                     expect(cells[0].tagName).to.be("TD")
@@ -2726,11 +2733,47 @@ define([], function () {
                     expect(cells[2].tagName).to.be("TH")
                     expect(cells[3].tagName).to.be("TH")
                     expect(cells[4].tagName.toLowerCase()).to.be("td")
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
                 })
             }, 100)
         })
+        
+           it("async2", function (done) {
+                var vm = avalon.define({
+                    $id: "overrideArray2",
+                    array: []
+                })
+                var body = document.body
+                var div = document.createElement("div")
+                div.innerHTML = heredoc(function(){
+                    /*
+                  <table>
+                     <tr><td>11</td><th ms-repeat="array">{{el}}</th><td>22</td></tr>
+                     <tr><th ms-repeat-xx="array">{{xx}}</th><td>111</td><td>222</td></tr>
+                 </table>
+                     */
+                }) 
+                body.appendChild(div)
+                avalon.scan(div, vm)
+                setTimeout(function () {
+                    vm.array = ["aaa", "bbb", "ccc"]
+                    setTimeout(function () {
+                        var cells = div.getElementsByTagName("tr")[0].cells
+                        expect(cells[0].tagName).to.be("TD")
+                        expect(cells[1].tagName).to.be("TH")
+                        expect(cells[2].tagName).to.be("TH")
+                        expect(cells[3].tagName).to.be("TH")
+                        expect(cells[4].tagName).to.be("TD")
+                         var cells = div.getElementsByTagName("tr")[1].cells
+                        expect(cells[0].tagName).to.be("TH")
+                        expect(cells[1].tagName).to.be("TH")
+                        expect(cells[2].tagName).to.be("TH")
+                        expect(cells[3].tagName).to.be("TD")
+                        expect(cells[4].tagName).to.be("TD")
+                        clearTest(vm, div, done)
+                    })
+                }, 100)
+           })
     })
 
     describe("ms-repeat", function () {
