@@ -2009,10 +2009,15 @@ define([], function () {
                     expect(vmodel.$model.arr[1].name).to.be("yyyy")
                     var data = vmodel.arr.$events[avalon.subscribers][0]
                     var is138 = "$proxies" in vmodel.arr
+                      var is143 = "$proxy" in vmodel.arr
                     if (is138) {
                         var $proxies = vmodel.arr.$proxies
                         expect($proxies[0].el()).to.be(vmodel.arr[0])
                         expect($proxies[0].el().$model).to.be(vmodel.arr[0].$model)
+                    }else  if (is143) {
+                        var $proxies = vmodel.arr.$proxy
+                        expect($proxies[0].el).to.be(vmodel.arr[0])
+                        expect($proxies[0].el.$model).to.be(vmodel.arr[0].$model)
                     } else {
                         var $proxies = data.proxies
                         expect($proxies[0].el).to.be(vmodel.arr[0])
