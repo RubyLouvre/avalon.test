@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.43 built in 2015.5.20
+ avalon.modern.js 1.43 built in 2015.5.19
  support IE10+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -1085,6 +1085,11 @@ function objectFactory(parent, name, value, valueType) {
         return son
     } else {
         var iterators = parent.$events[name]
+        var pool = son.$events.$withProxyPool
+        if (pool) {
+            recycleProxies(pool, "with")
+            son.$events.$withProxyPool = null
+        }
         var ret = modelFactory(value)
         ret.$events[subscribers] = iterators
         midway[ret.$id] = function (data) {
