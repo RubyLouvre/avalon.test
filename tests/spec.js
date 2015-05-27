@@ -3,14 +3,23 @@ define([], function () {
     //////////    最前面的是与绑定没关的测试   /////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     function fireClick(el) {
-        if (el.click) {
-            el.click()
-        } else {
+         if(document.createEvent){
             //https://developer.mozilla.org/samples/domref/dispatchEvent.html
             var evt = document.createEvent("MouseEvents")
             evt.initMouseEvent("click", true, true, window,
                     0, 0, 0, 0, 0, false, false, false, false, 0, null);
             !el.dispatchEvent(evt);
+        }else if(el.click){
+            el.click()
+        }
+    }
+    function expect2(a){
+        return {
+            to: {
+                be: function(b){
+                    return a === b
+                }
+            }
         }
     }
     function heredoc(fn) {
@@ -2139,21 +2148,24 @@ define([], function () {
                 var as = div.getElementsByTagName("a")
                 fireClick(as[2]) //请空
                 setTimeout(function () {
-                    fireClick(as[0]) //请空
-                    fireClick(as[0]) //请空
-                    fireClick(as[0]) //请空
-                })
+                    var input = div.getElementsByTagName("input")
+                    expect(input.length).to.be(0)
+                    fireClick(as[0]) //添加3
+                    fireClick(as[0]) //添加3
+                    fireClick(as[0]) //添加3
+                 //    fireClick(as[0]) //添加3
+                }, 300)
                 setTimeout(function () {
                     var input = div.getElementsByTagName("input")
-                    input[0].value = 8 //请空
+                  input[0].value = 8 //请空
                     input[2].value = 7 //请空
-                }, 300)
+                }, 600)
 
                 setTimeout(function () {
                     expect(vm.serialize()).to.be("8,3,7")
                     clearTest("repeat-has-duplex", div, done)
-                }, 600)
-            }, 300)
+                }, 900)
+            },  300)
         })
     })
 

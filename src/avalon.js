@@ -1180,6 +1180,9 @@ function modelFactory(source, $special, $model) {
     $vmodel.$id = generateID()
     $vmodel.$model = $model
     $vmodel.$events = $events
+//    $vmodel.$reset = function (fn) {
+//        fn.call($vmodel, accessors)
+//    }
     for (i in EventBus) {
         var fn = EventBus[i]
         if (!W3C) { //在IE6-8下，VB对象的方法里的this并不指向自身，需要用bind处理一下
@@ -1248,11 +1251,11 @@ var makeComputedAccessor = function (name, options) {
         } else {
             //将依赖于自己的高层访问器或视图刷新函数（以绑定对象形式）放到自己的订阅数组中
             dependencyDetection.collectDependency(this, accessor)
-            if (accessor.dirty) {
+          //  if (accessor.dirty) {
                 accessor.depCount = accessor.curCount = 0
                 //将自己注入到低层访问器的订阅数组中
                 oldValue = computeAndInjectSubscribers(this, accessor, true)
-            }
+        //    }
             return oldValue
         }
     }
@@ -1272,11 +1275,12 @@ function computeAndInjectSubscribers(vmodel, accessor, collect) {
                 if (dependency !== accessor) {
                     var list = vm.$events[name]
                     accessor.depCount++
-                    injectSubscribers(list, function () {
+                    injectSubscribers(list, function fn() {
                         accessor.curCount++
                         accessor.dirty = true
                         //这是由低层访问器触发的$watch回调，并阻止冗余的依赖收集
-                        return  computeAndInjectSubscribers(vmodel, accessor)
+                        computeAndInjectSubscribers(vmodel, accessor)
+                        avalon.Array.remove(list, fn)
                     })
                 }
             }
@@ -1321,7 +1325,7 @@ var makeComplexAccessor = function (name, initValue, valueType) {
                 son.$proxy = $proxy
                 if (observes.length) {
                     observes.forEach(function (data) {
-                        if (data.rollback) {
+                        if (data.rollback && data.type !== "duplex") {
                             data.rollback() //还原 ms-with ms-on
                             bindingHandlers[data.type](data, data.vmodels)
                         }
@@ -1424,28 +1428,11 @@ if (!canHideOwn) {
         }
     }
     if (IEVersion) {
-        window.execScript([ // jshint ignore:line
+        var VBClass = {}
+        window.execScript([// jshint ignore:line
             "Function parseVB(code)",
             "\tExecuteGlobal(code)",
-            "End Function",
-            "Dim VBClassBodies",
-            "Set VBClassBodies=CreateObject(\"Scripting.Dictionary\")",
-            "Function findOrDefineVBClass(name,body)",
-            "\tDim found",
-            "\tfound=\"\"",
-            "\tFor Each key in VBClassBodies",
-            "\t\tIf body=VBClassBodies.Item(key) Then",
-            "\t\t\tfound=key",
-            "\t\t\tExit For",
-            "\t\tEnd If",
-            "\tnext",
-            "\tIf found=\"\" Then",
-            "\t\tparseVB(\"Class \" + name + body)",
-            "\t\tVBClassBodies.Add name, body",
-            "\t\tfound=name",
-            "\tEnd If",
-            "\tfindOrDefineVBClass=found",
-            "End Function"
+            "End Function" //转换一段文本为VB代码
         ].join("\n"), "VBScript")
         function VBMediator(instance, accessors, name, value) {// jshint ignore:line
             var accessor = accessors[name]
@@ -1456,8 +1443,8 @@ if (!canHideOwn) {
             }
         }
         defineProperties = function (name, accessors, properties) {
-            var className = "VBClass" + setTimeout("1"),// jshint ignore:line
-                    buffer = []
+            // jshint ignore:line
+            var buffer = []
             buffer.push(
                     "\r\n\tPrivate [__data__], [__proxy__]",
                     "\tPublic Default Function [__const__](d, p)",
@@ -1498,9 +1485,12 @@ if (!canHideOwn) {
             }
 
             buffer.push("End Class")
-            var code = buffer.join("\r\n"),
-                    realClassName = window['findOrDefineVBClass'](className, code) //如果该VB类已定义，返回类名。否则用className创建一个新类。
-            if (realClassName === className) {
+            var body = buffer.join("\r\n")
+            var className = "VBClass" + setTimeout("1")
+            if (VBClass[body]) {
+                className = VBClass[body]
+            } else {
+                window.parseVB("Class " + className + body)
                 window.parseVB([
                     "Function " + className + "Factory(a, b)", //创建实例并传入两个关键的参数
                     "\tDim o",
@@ -1508,8 +1498,9 @@ if (!canHideOwn) {
                     "\tSet " + className + "Factory = o",
                     "End Function"
                 ].join("\r\n"))
+                VBClass[body] = className
             }
-            var ret = window[realClassName + "Factory"](accessors, VBMediator) //得到其产品
+            var ret = window[className + "Factory"](accessors, VBMediator) //得到其产品
             return ret //得到其产品
         }
     }
@@ -2265,7 +2256,8 @@ function scanAttr(elem, vmodels, match) {
                             element: elem,
                             name: name,
                             value: value,
-                            priority: type in priorityMap ? priorityMap[type] : type.charCodeAt(0) * 10 + (Number(param) || 0)
+                             //chrome与firefox下Number(param)得到的值不一样 #855
+                            priority:  (priorityMap[type] || type.charCodeAt(0) * 10 )+ (Number(param.replace(/\D/g, "")) || 0)
                         }
                         if (type === "html" || type === "text") {
                             var token = getToken(value)
@@ -3686,7 +3678,7 @@ var duplexBinding = bindingHandlers.duplex = function(data, vmodels) {
             }
             var old = data.rollback
             data.rollback = function() {
-               elem.avalonSetter = null
+                elem.avalonSetter = null
                 avalon.unbind(elem, type, callback)
                 old && old()
             }
@@ -4333,7 +4325,7 @@ bindingExecutors.repeat = function (method, pos, el) {
 "with,each".replace(rword, function (name) {
     bindingHandlers[name] = bindingHandlers.repeat
 })
-
+avalon.pool = eachProxyPool
 function shimController(data, transation, proxy, fragments) {
     var content = data.template.cloneNode(true)
     var nodes = avalon.slice(content.childNodes)
