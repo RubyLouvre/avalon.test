@@ -3,20 +3,20 @@ define([], function () {
     //////////    最前面的是与绑定没关的测试   /////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     function fireClick(el) {
-         if(document.createEvent){
+        if (document.createEvent) {
             //https://developer.mozilla.org/samples/domref/dispatchEvent.html
             var evt = document.createEvent("MouseEvents")
             evt.initMouseEvent("click", true, true, window,
                     0, 0, 0, 0, 0, false, false, false, false, 0, null);
             !el.dispatchEvent(evt);
-        }else if(el.click){
+        } else if (el.click) {
             el.click()
         }
     }
-    function expect2(a){
+    function expect2(a) {
         return {
             to: {
-                be: function(b){
+                be: function (b) {
                     return a === b
                 }
             }
@@ -1453,7 +1453,7 @@ define([], function () {
 
         })
 
-        it("sync", function () {
+        it("依赖项触发计算属性变动", function () {
             var model = avalon.define({
                 $id: "computed4",
                 test1: "test1",
@@ -1468,7 +1468,74 @@ define([], function () {
             expect(model.$model.test2).to.be("test@@@")
             delete avalon.vmodels.computed4
         })
+        it("多个依赖变动时，延迟计算属性的$watch回调", function (done) {
+            var vm = avalon.define({
+                $id: "computed5",
+                a: 1,
+                b: 2,
+                c: {
+                    get: function () {
+                        return this.a + " " + this.b
+                    },
+                    set: function (v) {
+                        var arr = v.split(" ")
+                        this.a = arr[0] || ""
+                        this.b = arr[1]
+                    }
+                }
+            });
+            var index = 0
+            vm.$watch("c", function () {
+                index++
+            })
+            expect(vm.c).to.be("1 2")
+            vm.a = "xx"
+            vm.b = "yy"
+            expect(vm.c).to.be("xx yy")
+            expect(index).to.be(0)
+            setTimeout(function () {
+                expect(index).to.be(1)
+                delete avalon.vmodels.computed5
+                done()
+            }, 300)
+        })
 
+        it("计算属性与依赖项的$watch回调顺序", function (done) {
+            var vm = avalon.define({
+                $id: "computed6",
+                a: 10,
+                b: 20,
+                c: {
+                    get: function () {
+                        return this.a + " " + this.b
+                    },
+                    set: function (v) {
+                        var arr = v.split(" ")
+                        this.a = arr[0] || ""
+                        this.b = arr[1]
+                    }
+                }
+            });
+            var arr = []
+            vm.$watch("a", function () {
+                arr.push("a")
+            })
+            vm.$watch("b", function () {
+                arr.push("b")
+            })
+            vm.$watch("c", function () {
+                arr.push("c")
+            })
+            expect(vm.c).to.be("10 20")
+            vm.c = "30 40"
+            expect(vm.a).to.be("30")
+            expect(vm.b).to.be("40")
+            setTimeout(function () {
+                expect(arr.join(" ")).to.be("a b c")
+                delete avalon.vmodels.computed6
+                done()
+            }, 300)
+        })
     });
 
     describe("属性绑定", function () {
@@ -2153,11 +2220,11 @@ define([], function () {
                     fireClick(as[0]) //添加3
                     fireClick(as[0]) //添加3
                     fireClick(as[0]) //添加3
-                 //    fireClick(as[0]) //添加3
+                    //    fireClick(as[0]) //添加3
                 }, 300)
                 setTimeout(function () {
                     var input = div.getElementsByTagName("input")
-                  input[0].value = 8 //请空
+                    input[0].value = 8 //请空
                     input[2].value = 7 //请空
                 }, 600)
 
@@ -2165,7 +2232,7 @@ define([], function () {
                     expect(vm.serialize()).to.be("8,3,7")
                     clearTest("repeat-has-duplex", div, done)
                 }, 900)
-            },  300)
+            }, 300)
         })
     })
 
