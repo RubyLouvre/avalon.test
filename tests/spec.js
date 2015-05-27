@@ -823,6 +823,7 @@ define([], function () {
                 var spans = div.getElementsByTagName("span")
                 expect(spans.length).to.be(1)
                 expect(avalon[id]).to.be(id)
+
                 delete avalon[id]
 
                 body.removeChild(div)
@@ -1328,10 +1329,11 @@ define([], function () {
 
     describe("计算属性", function () {
         it("async", function () {
-            var model = avalon.define("computed", function (vm) {
-                vm.firstName = "司徒";
-                vm.lastName = "正美"
-                vm.fullName = {
+            var vm = avalon.define({
+                $id: "computed",
+                firstName: "司徒",
+                lastName: "正美",
+                fullName: {
                     set: function (val) {
                         var array = val.split(" ")
                         this.firstName = array[0]
@@ -1341,16 +1343,16 @@ define([], function () {
                         return this.firstName + " " + this.lastName;
                     }
                 }
-                vm.$watch("fullName", function (a) {
-                    expect(a).to.be("清风 火羽")
-                })
-
+            })
+            vm.$watch("fullName", function (a) {
+                expect(a).to.be("清风 火羽")
             })
 
-            expect(model.fullName).to.be("司徒 正美")
-            model.fullName = "清风 火羽"
-            expect(model.firstName).to.be("清风")
-            expect(model.lastName).to.be("火羽")
+
+            expect(vm.fullName).to.be("司徒 正美")
+            vm.fullName = "清风 火羽"
+            expect(vm.firstName).to.be("清风")
+            expect(vm.lastName).to.be("火羽")
         })
 
         it("async2", function (done) {
@@ -1436,9 +1438,7 @@ define([], function () {
                     expect(model.test1).to.be(true)
                     expect(model.test2).to.be(true)
                     expect(model.msg).to.be("ok！！")
-                    delete avalon.vmodels.computed3
-                    body.removeChild(div)
-                    done()
+                    clearTest(model, div, done)
                 })
             }, 100)
 
@@ -2009,12 +2009,12 @@ define([], function () {
                     expect(vmodel.$model.arr[1].name).to.be("yyyy")
                     var data = vmodel.arr.$events[avalon.subscribers][0]
                     var is138 = "$proxies" in vmodel.arr
-                      var is143 = "$proxy" in vmodel.arr
+                    var is143 = "$proxy" in vmodel.arr
                     if (is138) {
                         var $proxies = vmodel.arr.$proxies
                         expect($proxies[0].el()).to.be(vmodel.arr[0])
                         expect($proxies[0].el().$model).to.be(vmodel.arr[0].$model)
-                    }else  if (is143) {
+                    } else if (is143) {
                         var $proxies = vmodel.arr.$proxy
                         expect($proxies[0].el).to.be(vmodel.arr[0])
                         expect($proxies[0].el.$model).to.be(vmodel.arr[0].$model)
@@ -2404,11 +2404,12 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<ul><li ms-repeat="first.array">{{el}}</li></ul><ol><li ms-repeat="first.object">{{$key}}:{{$val}}</li></ol>'
+            div.innerHTML = '<input ms-duplex="first.duplex"><ul><li ms-repeat="first.array">{{el}}</li></ul><ol><li ms-repeat="first.object">{{$key}}:{{$val}}</li></ol>'
             body.appendChild(div)
             avalon.scan(div, vm)
             setTimeout(function () {
                 vm.first = {
+                    duplex: 444,
                     array: ["@@@", "###", "$$$", "%%%"],
                     object: {
                         grape: "葡萄",
@@ -2418,6 +2419,8 @@ define([], function () {
                     }
                 }
                 setTimeout(function () {
+                    var input = div.getElementsByTagName("input")[0]
+                    expect(input.value).to.be("444")
                     var lis = div.getElementsByTagName("li")
                     expect(lis.length).to.be(8)
                     expect(lis[0].innerHTML).to.be("@@@")
@@ -2428,7 +2431,7 @@ define([], function () {
                     expect(lis[5].innerHTML).to.be("coconut:椰子")
                     expect(lis[6].innerHTML).to.be("pitaya:火龙果")
                     expect(lis[7].innerHTML).to.be("orange:橙子")
-                    clearTest("overrideEmptyObject", div, done)
+                    clearTest(vm, div, done)
                 }, 300)
 
             }, 300)
@@ -2710,18 +2713,18 @@ define([], function () {
     describe('vm.array=newArray', function () {
         it("async", function (done) {
             var vm = avalon.define({
-                    $id: "overrideArray",
-                    array: []
+                $id: "overrideArray",
+                array: []
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = heredoc(function(){
+            div.innerHTML = heredoc(function () {
                 /*
-              <table>
+                 <table>
                  <tr><td>11</td><th ms-repeat="array">{{el}}</th><td>22</td></tr>
-             </table>
+                 </table>
                  */
-            }) 
+            })
             body.appendChild(div)
             avalon.scan(div, vm)
             setTimeout(function () {
@@ -2737,43 +2740,43 @@ define([], function () {
                 })
             }, 100)
         })
-        
-           it("async2", function (done) {
-                var vm = avalon.define({
-                    $id: "overrideArray2",
-                    array: []
-                })
-                var body = document.body
-                var div = document.createElement("div")
-                div.innerHTML = heredoc(function(){
-                    /*
-                  <table>
-                     <tr><td>11</td><th ms-repeat="array">{{el}}</th><td>22</td></tr>
-                     <tr><th ms-repeat-xx="array">{{xx}}</th><td>111</td><td>222</td></tr>
+
+        it("async2", function (done) {
+            var vm = avalon.define({
+                $id: "overrideArray2",
+                array: []
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <table>
+                 <tr><td>11</td><th ms-repeat="array">{{el}}</th><td>22</td></tr>
+                 <tr><th ms-repeat-xx="array">{{xx}}</th><td>111</td><td>222</td></tr>
                  </table>
-                     */
-                }) 
-                body.appendChild(div)
-                avalon.scan(div, vm)
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                vm.array = ["aaa", "bbb", "ccc"]
                 setTimeout(function () {
-                    vm.array = ["aaa", "bbb", "ccc"]
-                    setTimeout(function () {
-                        var cells = div.getElementsByTagName("tr")[0].cells
-                        expect(cells[0].tagName).to.be("TD")
-                        expect(cells[1].tagName).to.be("TH")
-                        expect(cells[2].tagName).to.be("TH")
-                        expect(cells[3].tagName).to.be("TH")
-                        expect(cells[4].tagName).to.be("TD")
-                         var cells = div.getElementsByTagName("tr")[1].cells
-                        expect(cells[0].tagName).to.be("TH")
-                        expect(cells[1].tagName).to.be("TH")
-                        expect(cells[2].tagName).to.be("TH")
-                        expect(cells[3].tagName).to.be("TD")
-                        expect(cells[4].tagName).to.be("TD")
-                        clearTest(vm, div, done)
-                    })
-                }, 100)
-           })
+                    var cells = div.getElementsByTagName("tr")[0].cells
+                    expect(cells[0].tagName).to.be("TD")
+                    expect(cells[1].tagName).to.be("TH")
+                    expect(cells[2].tagName).to.be("TH")
+                    expect(cells[3].tagName).to.be("TH")
+                    expect(cells[4].tagName).to.be("TD")
+                    var cells = div.getElementsByTagName("tr")[1].cells
+                    expect(cells[0].tagName).to.be("TH")
+                    expect(cells[1].tagName).to.be("TH")
+                    expect(cells[2].tagName).to.be("TH")
+                    expect(cells[3].tagName).to.be("TD")
+                    expect(cells[4].tagName).to.be("TD")
+                    clearTest(vm, div, done)
+                })
+            }, 100)
+        })
     })
 
     describe("ms-repeat", function () {
@@ -3273,12 +3276,12 @@ define([], function () {
             body.appendChild(div)
             avalon.scan(div, vm)
             setTimeout(function () {
-                var options = div.getElementsByTagName("option")  
+                var options = div.getElementsByTagName("option")
                 expect(options[0].selected).to.be(true)
                 expect(options[1].selected).to.be(true)
                 expect(options[2].selected).to.be(false)
                 expect(options[3].selected).to.be(false)
-                 vm.array = ["d", "k", "a", "b"]
+                vm.array = ["d", "k", "a", "b"]
                 setTimeout(function () {
                     var options = div.getElementsByTagName("option")
                     expect(options[0].selected).to.be(false)
