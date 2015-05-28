@@ -1468,6 +1468,39 @@ define([], function () {
             expect(model.$model.test2).to.be("test@@@")
             delete avalon.vmodels.computed4
         })
+        it("在对象绑定里输出索引值", function (done) {
+            var count = 0;
+            var vm = avalon.define({
+                $id: "test",
+                list: {
+                    a: 'a',
+                    b: 'b',
+                    c: 'c'
+                },
+                getIndex: function () {
+                    return count++;
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /**
+                 <h3>演示如何在对象绑定里输出索引值</h3>
+                 <div ms-repeat="list">{{getIndex()}}-{{$val}}</div>
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var divs = div.getElementsByTagName("div")
+                expect(divs[0].innerHTML).to.be("0-a")
+                expect(divs[1].innerHTML).to.be("1-b")
+                expect(divs[2].innerHTML).to.be("2-c")
+                clearTest(vm, div, done)
+            })
+
+        })
+
         it("多个依赖变动时，延迟计算属性的$watch回调", function (done) {
             var vm = avalon.define({
                 $id: "computed5",
@@ -1541,23 +1574,26 @@ define([], function () {
     describe("属性绑定", function () {
 
         it("async", function (done) {
-            var model = avalon.define("ms-attr-*", function (vm) {
-                vm.aaa = "new"
-                vm.active = "ok"
+            var vm = avalon.define({
+                $id: "ms-attr-*",
+                aaa: "new",
+                active: "ok"
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<div ms-controller=\"ms-attr-*\"><input ms-attr-value='aaa' ms-attr-class='active' value='old'></div>"
+            div.innerHTML = heredoc(function () {
+                /*
+                 <input ms-attr-value='aaa' ms-attr-class='active' value='old'>
+                 */
+            })
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var input = div.getElementsByTagName("input")[0]
 
                 expect(input.value).to.be("new")
                 expect(input.className).to.be("ok")
-
-                body.removeChild(div)
-                done()
+                clearTest(vm, div, done)
             }, 100)
         })
 
@@ -2269,7 +2305,7 @@ define([], function () {
                 expect(tds[10].innerHTML.trim()).to.be("2.2.33")
                 expect(tds[11].innerHTML.trim()).to.be("2.3.44")
                 clearTest("$outertest", div, done)
-            }, 300)
+            }, 400)
         })
     })
 
