@@ -5,8 +5,8 @@ define([], function () {
     function fireClick(el) {
         if (el.click) {
             el.click()
-        }else{
-              //https://developer.mozilla.org/samples/domref/dispatchEvent.html
+        } else {
+            //https://developer.mozilla.org/samples/domref/dispatchEvent.html
             var evt = document.createEvent("MouseEvents")
             evt.initMouseEvent("click", true, true, window,
                     0, 0, 0, 0, 0, false, false, false, false, 0, null);
@@ -579,15 +579,47 @@ define([], function () {
                     expect(s[3].innerHTML).to.be("1")
                     expect(s[4].innerHTML).to.be("2")
                     clearTest(vm, div, done)
-
-
                 }, 150)
 
             }, 150)
 
         })
     })
-
+    describe("ms-repeat与非监听数组或对象", function () {
+        it("async", function (done) {
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div ms-repeat="$array">{{el}},{{$first}},{{$last}},{{$index}}</div>
+                 <div ms-repeat="$object">{{$key}}--{{$val}}</div>
+                 */
+            })
+            body.appendChild(div)
+            var vm = avalon.define({
+                $id: "$array",
+                $array: [4, 5, 6, 7],
+                $object: {
+                    a: 22,
+                    b: 33,
+                    c: 44
+                }
+            });
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var s = div.getElementsByTagName("div")
+                expect(s.length).to.be(7)
+                expect(s[0].innerHTML).to.be("4,true,false,0")
+                expect(s[1].innerHTML).to.be("5,false,false,1")
+                expect(s[2].innerHTML).to.be("6,false,false,2")
+                expect(s[3].innerHTML).to.be("7,false,true,3")
+                expect(s[4].innerHTML).to.be("a--22")
+                expect(s[5].innerHTML).to.be("b--33")
+                expect(s[6].innerHTML).to.be("c--44")
+                clearTest(vm, div, done)
+            }, 150)
+        })
+    })
     describe("data-duplex-event='change'", function () {
         //https://github.com/RubyLouvre/avalon/issues/668
         it("async", function (done) {

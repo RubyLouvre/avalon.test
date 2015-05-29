@@ -1577,6 +1577,7 @@ function removeSubscribers(data) {
                 var lists = data.lists
                 for (var k = 0, list; list = lists[k++]; ) {
                     avalon.Array.remove(lists, list)
+                    avalon.Array.remove(list, data)
                 }
                 disposeData(data)
             }
@@ -1603,7 +1604,7 @@ function shouldDispose(el) {
         return true
     }
 
-   return el.msRetain ? 0 : (el.nodeType === 1 ? !root.contains(el) : !avalon.contains(root, el))
+    return el.msRetain ? 0 : (el.nodeType === 1 ? !root.contains(el) : !avalon.contains(root, el))
 }
 
 /************************************************************************
@@ -3509,6 +3510,17 @@ bindingHandlers.repeat = function (data, vmodels) {
     var check0 = "$key"
     var check1 = "$val"
     if (Array.isArray($repeat)) {
+        if (!$repeat.$map) {
+            $repeat.$map = {
+                el: 1
+            }
+            var m = $repeat.length
+            var $proxy = []
+            for ( i = 0; i < m; i++) {//生成代理VM
+                $proxy.push(eachProxyAgent(i, $repeat))
+            }
+            $repeat.$proxy = $proxy
+        }
         $repeat.$map[data.param || "el"] = 1
         check0 = "$first"
         check1 = "$last"
