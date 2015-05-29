@@ -3,14 +3,14 @@ define([], function () {
     //////////    最前面的是与绑定没关的测试   /////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     function fireClick(el) {
-        if (document.createEvent) {
-            //https://developer.mozilla.org/samples/domref/dispatchEvent.html
+        if (el.click) {
+            el.click()
+        }else{
+              //https://developer.mozilla.org/samples/domref/dispatchEvent.html
             var evt = document.createEvent("MouseEvents")
             evt.initMouseEvent("click", true, true, window,
                     0, 0, 0, 0, 0, false, false, false, false, 0, null);
             !el.dispatchEvent(evt);
-        } else if (el.click) {
-            el.click()
         }
     }
     function expect2(a) {
