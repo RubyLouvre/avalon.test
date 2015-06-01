@@ -3437,8 +3437,43 @@ define([], function () {
                     expect(options[3].selected).to.be(true)
                     clearTest(vm, div, done)
 
-                }, 300)
+                }, 400)
             }, 500)
         })
     })
+    describe("removeAll处理重复元素的数组", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "test",
+                array: ["c", "r", "c", "c", "m", "c", "c", "v", "b"]
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div ms-repeat="array">{{el}}</div>
+                 */
+            })
+
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var s = div.getElementsByTagName("div")
+                expect(s.length).to.be(9)
+                vm.array.removeAll(["c"])
+                setTimeout(function () {
+                    var s = div.getElementsByTagName("div")
+                    expect(s.length).to.be(4)
+                    expect(s[0].innerHTML).to.be("r")
+                    expect(s[1].innerHTML).to.be("m")
+                    expect(s[2].innerHTML).to.be("v")
+                    expect(s[3].innerHTML).to.be("b")
+                     clearTest(vm, div, done)
+                }, 300)
+
+            }, 300)
+
+        })
+    })
+
 })
