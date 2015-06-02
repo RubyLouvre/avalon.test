@@ -995,22 +995,23 @@ define([], function () {
             avalon.scan(div, vm)
             setTimeout(function () {
                 var spans = div.getElementsByTagName("span")
+                console.log(div.innerHTML+"!")
                 expect(spans.length).to.be(3)
                 expect(spans[0].innerHTML).to.be("0")
                 expect(spans[1].innerHTML).to.be("1")
                 expect(spans[2].innerHTML).to.be("2")
                 clearTest(vm, div, done)
-            }, 100)
+            }, 300)
         })
 
         it("async2", function (done) {
             var div = document.createElement("div")
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "ms-html2",
                 toggle: false,
-                html: "<span>11</span><strong>222</strong><span>333</span><strong>444</strong><span>555</span><strong>666</strong>",
+                html: "<span>11</span><strong>222</strong><span>333</span><strong>444</strong><span>555</span>",
                 show: function () {
-                    model.toggle = true
+                    vm.toggle = true
                 },
                 scan: function () {
                     avalon.scan(div)
@@ -1020,26 +1021,22 @@ define([], function () {
             div.innerHTML = '<div ms-if="toggle">%%%%{{html|html}}%%%%</div>'
             var body = document.body
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var divs = div.getElementsByTagName("div")
                 expect(divs.length).to.be(0)
-                model.scan()
+                vm.scan()
                 setTimeout(function () {
-                    model.show()
+                    vm.show()
                     setTimeout(function () {
-                        model.show()
                         var spans = div.getElementsByTagName("span")
                         var strongs = div.getElementsByTagName("strong")
-                        expect(spans.length).to.be(3)
-                        expect(strongs.length).to.be(3)
-                        delete avalon.vmodels["ms-html2"]
-                        div.innerHTML = ""
-                        body.removeChild(div)
-                        done()
-                    }, 100)
-                }, 100)
-            }, 100)
+                        expect("span"+spans.length).to.be("span3")
+                        expect(strongs.length).to.be(2)
+                        clearTest(vm, div, done)
+                    }, 300)
+                }, 300)
+            }, 300)
         })
     })
 
@@ -3127,7 +3124,8 @@ define([], function () {
             avalon.scan(div, model)
 
             setTimeout(function () {
-                expect(div.innerHTML.trim()).to.be("正确{{aaa}}——{{y}}——bbb")
+
+                expect(div.innerHTML.trim().replace(/<!--[\w\:]+-->/g, "")).to.be("正确{{aaa}}——{{y}}——bbb")
                 body.removeChild(div)
                 done()
             }, 100)
@@ -3468,7 +3466,7 @@ define([], function () {
                     expect(s[1].innerHTML).to.be("m")
                     expect(s[2].innerHTML).to.be("v")
                     expect(s[3].innerHTML).to.be("b")
-                     clearTest(vm, div, done)
+                    clearTest(vm, div, done)
                 }, 300)
 
             }, 300)
