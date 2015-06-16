@@ -995,7 +995,7 @@ define([], function () {
             avalon.scan(div, vm)
             setTimeout(function () {
                 var spans = div.getElementsByTagName("span")
-                console.log(div.innerHTML+"!")
+                console.log(div.innerHTML + "!")
                 expect(spans.length).to.be(3)
                 expect(spans[0].innerHTML).to.be("0")
                 expect(spans[1].innerHTML).to.be("1")
@@ -1031,7 +1031,7 @@ define([], function () {
                     setTimeout(function () {
                         var spans = div.getElementsByTagName("span")
                         var strongs = div.getElementsByTagName("strong")
-                        expect("span"+spans.length).to.be("span3")
+                        expect("span" + spans.length).to.be("span3")
                         expect(strongs.length).to.be(2)
                         clearTest(vm, div, done)
                     }, 300)
@@ -3439,6 +3439,38 @@ define([], function () {
             }, 500)
         })
     })
+    describe("对空对象进行替换后,再修改新属性不生效", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "test",
+                obj: {}
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <h1>{{obj.aaa}}</h1>
+                 */
+            })
+
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                vm.obj = {
+                    aaa: 222
+                }
+                setTimeout(function () {
+                    vm.obj.aaa = 444
+                    setTimeout(function () {
+                        var h1 = div.getElementsByTagName("h1")[0]
+                        expect(h1.innerHTML).to.be("444")
+                        clearTest(vm, div, done)
+                    }, 200)
+                }, 100)
+            }, 300)
+
+        })
+    })
     describe("removeAll处理重复元素的数组", function () {
         it("async", function (done) {
             var vm = avalon.define({
@@ -3478,41 +3510,41 @@ define([], function () {
 
 /**
  * 
-   <div ms-with="object"><strong 
-                ms-if-loop="$val>2">{{$key}}-{{$val}} </strong></div>
-   
-    <button ms-click="change">change</button>
-                        
-   var vm = avalon.define({
-    $id: 'test',
-    array: [1, 2, 3, 4, 5],
-    depth: [
-        [1, 2, 3],
-        ["a", "b", "c"]
-    ],
-    object: {
-        a: 1,
-        b: 2,
-        c: 3,
-        d: 4,
-        e: 5
-    },
-
-    over: function() {
-        console.log(arguments)
-    },
-
-    change: function() {
-    	var randomNum = Math.random()
-
-    	vm.array = [1 + randomNum, 2 + randomNum, 3 + randomNum, 4 + randomNum, 5 + randomNum]
-        vm.object.a = vm.array[0]
-        vm.object.b = vm.array[1]
-        vm.object.c = vm.array[2]
-        vm.object.d = vm.array[3]
-        vm.object.e = vm.array[4]
-    }
-})
+ <div ms-with="object"><strong 
+ ms-if-loop="$val>2">{{$key}}-{{$val}} </strong></div>
+ 
+ <button ms-click="change">change</button>
+ 
+ var vm = avalon.define({
+ $id: 'test',
+ array: [1, 2, 3, 4, 5],
+ depth: [
+ [1, 2, 3],
+ ["a", "b", "c"]
+ ],
+ object: {
+ a: 1,
+ b: 2,
+ c: 3,
+ d: 4,
+ e: 5
+ },
+ 
+ over: function() {
+ console.log(arguments)
+ },
+ 
+ change: function() {
+ var randomNum = Math.random()
+ 
+ vm.array = [1 + randomNum, 2 + randomNum, 3 + randomNum, 4 + randomNum, 5 + randomNum]
+ vm.object.a = vm.array[0]
+ vm.object.b = vm.array[1]
+ vm.object.c = vm.array[2]
+ vm.object.d = vm.array[3]
+ vm.object.e = vm.array[4]
+ }
+ })
  * 
  * 
  */
