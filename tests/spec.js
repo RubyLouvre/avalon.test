@@ -17,7 +17,7 @@ define([], function () {
         return {
             to: {
                 be: function (b) {
-                    return a === b
+                    console.log(a,b, a === b)
                 }
             }
         }
