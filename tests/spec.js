@@ -748,11 +748,15 @@ define([], function () {
 
             var body = document.body
             var div = document.createElement("div")
-            var str = '<ul>' +
-                    '<li ms-repeat="data">' +
-                    '     <input type="checkbox" ms-attr-value="el.Code" ms-duplex-string="selectedArr">{{el.Title}}' +
-                    '</li>' +
-                    '</ul>'
+            var str = heredoc(function () {
+                /*
+                 <ul>
+                 <li ms-repeat="data">
+                 <input type="checkbox" ms-attr-value="el.Code" ms-duplex-string="selectedArr">{{el.Title}}
+                 </li>
+                 </ul>
+                 */
+            })
             div.innerHTML = str
             body.appendChild(div)
             avalon.scan(div, vm)
@@ -3471,6 +3475,59 @@ define([], function () {
 
         })
     })
+    describe("重置一个监控数组时,ms-duplex的错误没有被吞掉", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "test",
+                nums: [{num: 1}, {num: 2}, {num: 3}],
+                ids: [{id: "a"}, {id: "b"}, {id: "c"}],
+                totalNum: {
+                    get: function () {
+                        var num = 0;
+                        for (var i = 0; i < this.nums.length; i++) {
+                            num += this.nums[i].num;
+                        }
+                        return num;
+                    }
+                },
+                changeArray: function () {
+                    vm.ids = [{id: "x"}, {id: "y"}, {id: "z"}];
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <p ms-repeat-item="nums"><input type="text" ms-duplex="ids[$index].id" /></p>
+                 <p>{{totalNum}}</p>
+                 */
+            })
+
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var s = div.getElementsByTagName("p")
+                expect(s.length).to.be(4)
+                var i = div.getElementsByTagName("input")
+                expect(i[0].value).to.be("a")
+                expect(i[1].value).to.be("b")
+                expect(i[2].value).to.be("c")
+                vm.changeArray()
+                setTimeout(function () {
+                    var i = div.getElementsByTagName("input")
+                    expect(i[0].value).to.be("x")
+                    expect(i[1].value).to.be("y")
+                    expect(i[2].value).to.be("z")
+                    expect(s[3].innerHTML).to.be("6")
+                    clearTest(vm, div, done)
+                }, 300)
+
+            }, 300)
+
+        })
+    })
+
+
     describe("removeAll处理重复元素的数组", function () {
         it("async", function (done) {
             var vm = avalon.define({
