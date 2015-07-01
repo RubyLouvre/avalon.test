@@ -636,15 +636,12 @@ define([], function () {
             avalon.scan(div, vm)
             setTimeout(function () {
                 var aaa = div.getElementsByTagName("input")[0]
-
                 aaa.value = "222"
                 setTimeout(function () {
+                    
                     expect(vm.q).to.be("222")
                     clearTest(vm, div, done)
-
-
                 }, 300)
-
 
             })
 
@@ -1554,9 +1551,18 @@ define([], function () {
             vm.a = "xx"
             vm.b = "yy"
             expect(vm.c).to.be("xx yy")
-            expect(index).to.be(0)
+            if(avalon.version <= 1.44){
+                expect(index).to.be(0)
+            }else{
+                expect(index).to.be(2)
+            }
+            
             setTimeout(function () {
-                expect(index).to.be(1)
+                if(avalon.version <= 1.44){
+                    expect(index).to.be(1)
+                }else{
+                    expect(index).to.be(2)
+                }
                 delete avalon.vmodels.computed5
                 done()
             }, 300)
