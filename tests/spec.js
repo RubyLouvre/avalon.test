@@ -3511,6 +3511,44 @@ define([], function () {
 
         })
     })
+    
+    describe("1.4.4 ms-with, ms-repeat对对象不断重复赋值时，元素节点与当前对象的键值对个数不符", function () {
+           it("async", function (done) {
+            var vm = avalon.define({
+                $id: "test",
+                data : {a:1, b:2, c:3}
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <ul>
+                  <li ms-repeat="data" ms-text="$val"></li>
+                </ul>
+                 */
+            })
+
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function(){ //第一次变换值，没问题
+                vm.data = {a:4, b:5, c:6}
+             }, 300);
+
+             setTimeout(function(){//第二次变换值，上一次ms-repeat循环出来的4,5,6还在，li的数量变成了6个
+                vm.data = {a:7, b:8, c:9}
+             }, 600);
+
+             setTimeout(function(){//第三次变换值，也有同样的问题
+                vm.data = {a:10, b:11, c:12}
+             }, 900);
+             setTimeout(function(){//第三次变换值，也有同样的问题
+                var lis = div.getElementsByTagName("li")
+                expect(lis.length).to.be(3)
+                clearTest(vm, div, done)
+             }, 1100);
+          
+           })
+      })
 
 })
 
