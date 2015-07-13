@@ -3512,6 +3512,37 @@ define([], function () {
         })
     })
     
+    describe("1.4.5 由于对ms-repeat进行优化，TD元素可能没有插入DOM就进行取值, 导致赋予display:block发生换行问题", function () {
+        it("async", function(done){
+            var vm = avalon.define({
+		$id : "demo",
+		head:[{code:'a',hidden:false},{code:'b',hidden:false}],
+		data:[{a:"a",b:"b",c:true},{a:"a1",b:"b1",c:true}]
+	    });
+            var body = document.body
+            var div = document.createElement("div")
+         
+            div.innerHTML = heredoc(function () {
+                /*
+               	<table border=1>
+	 	<tr ms-repeat-body="data">
+	            <td ms-repeat-head="head" ms-visible="!head.hidden">{{body[head.code]}}</td>
+	 	</tr>
+	        </table>
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function(){
+                var tds = div.getElementsByTagName("td")
+                expect(tds.length).to.be(4)
+                expect(avalon(tds[0]).css("visible")).not.to.be("block")
+                clearTest(vm, div, done)
+            }, 500)
+
+        })
+    })
+    
     describe("1.4.4 ms-with, ms-repeat对对象不断重复赋值时，元素节点与当前对象的键值对个数不符", function () {
            it("async", function (done) {
             var vm = avalon.define({
