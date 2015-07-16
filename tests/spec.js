@@ -1,12 +1,12 @@
 define([], function () {
-    ////////////////////////////////////////////////////////////////////////
-    //////////    最前面的是与绑定没关的测试   /////////////////////////////
-    ////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//////////    最前面的是与绑定没关的测试   /////////////////////////////
+////////////////////////////////////////////////////////////////////////
     function fireClick(el) {
         if (el.click) {
             el.click()
         } else {
-            //https://developer.mozilla.org/samples/domref/dispatchEvent.html
+//https://developer.mozilla.org/samples/domref/dispatchEvent.html
             var evt = document.createEvent("MouseEvents")
             evt.initMouseEvent("click", true, true, window,
                     0, 0, 0, 0, 0, false, false, false, false, 0, null);
@@ -17,7 +17,7 @@ define([], function () {
         return {
             to: {
                 be: function (b) {
-                    console.log(a,b, a === b)
+                    console.log(a, b, a === b)
                 }
             }
         }
@@ -638,7 +638,7 @@ define([], function () {
                 var aaa = div.getElementsByTagName("input")[0]
                 aaa.value = "222"
                 setTimeout(function () {
-                    
+
                     expect(vm.q).to.be("222")
                     clearTest(vm, div, done)
                 }, 300)
@@ -1018,7 +1018,6 @@ define([], function () {
                     avalon.scan(div)
                 }
             });
-
             div.innerHTML = '<div ms-if="toggle">%%%%{{html|html}}%%%%</div>'
             var body = document.body
             body.appendChild(div)
@@ -1555,16 +1554,16 @@ define([], function () {
             vm.a = "xx"
             vm.b = "yy"
             expect(vm.c).to.be("xx yy")
-            if(avalon.version <= 1.44){
+            if (avalon.version <= 1.44) {
                 expect(index).to.be(0)
-            }else{
+            } else {
                 expect(index).to.be(2)
             }
-            
+
             setTimeout(function () {
-                if(avalon.version <= 1.44){
+                if (avalon.version <= 1.44) {
                     expect(index).to.be(1)
-                }else{
+                } else {
                     expect(index).to.be(2)
                 }
                 delete avalon.vmodels.computed5
@@ -1609,7 +1608,6 @@ define([], function () {
             }, 300)
         })
     });
-
     describe("属性绑定", function () {
 
         it("async", function (done) {
@@ -3568,44 +3566,69 @@ define([], function () {
 
         })
     })
-    
-    describe("1.4.4 ms-with, ms-repeat对对象不断重复赋值时，元素节点与当前对象的键值对个数不符", function () {
-           it("async", function (done) {
+    describe("1.4.5 html过滤正则BUG", function () {
+        it("async", function (done) {
+             avalon.filters.html2 = function (str) {
+                if (!str) {
+                    return '';
+                }
+                return str.replace(/\n/g, '<br/>');
+            }
             var vm = avalon.define({
                 $id: "test",
-                data : {a:1, b:2, c:3}
+                a: "sss\ndddd"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 {{a|html2|html}}
+                 */
+            })
+
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () { //第一次变换值，没问题
+                var n = div.getElementsByTagName("br").length
+                expect(n).to.be(1)
+                clearTest(vm, div, done)
+            }, 300);
+        })
+    })
+    describe("1.4.4 ms-with, ms-repeat对对象不断重复赋值时，元素节点与当前对象的键值对个数不符", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "test",
+                data: {a: 1, b: 2, c: 3}
             })
             var body = document.body
             var div = document.createElement("div")
             div.innerHTML = heredoc(function () {
                 /*
                  <ul>
-                  <li ms-repeat="data" ms-text="$val"></li>
-                </ul>
+                 <li ms-repeat="data" ms-text="$val"></li>
+                 </ul>
                  */
             })
 
             body.appendChild(div)
             avalon.scan(div, vm)
-            setTimeout(function(){ //第一次变换值，没问题
-                vm.data = {a:4, b:5, c:6}
-             }, 300);
-
-             setTimeout(function(){//第二次变换值，上一次ms-repeat循环出来的4,5,6还在，li的数量变成了6个
-                vm.data = {a:7, b:8, c:9}
-             }, 600);
-
-             setTimeout(function(){//第三次变换值，也有同样的问题
-                vm.data = {a:10, b:11, c:12}
-             }, 900);
-             setTimeout(function(){//第三次变换值，也有同样的问题
+            setTimeout(function () { //第一次变换值，没问题
+                vm.data = {a: 4, b: 5, c: 6}
+            }, 300);
+            setTimeout(function () {//第二次变换值，上一次ms-repeat循环出来的4,5,6还在，li的数量变成了6个
+                vm.data = {a: 7, b: 8, c: 9}
+            }, 600);
+            setTimeout(function () {//第三次变换值，也有同样的问题
+                vm.data = {a: 10, b: 11, c: 12}
+            }, 900);
+            setTimeout(function () {//第三次变换值，也有同样的问题
                 var lis = div.getElementsByTagName("li")
                 expect(lis.length).to.be(3)
                 clearTest(vm, div, done)
-             }, 1100);
-          
-           })
-      })
+            }, 1100);
+        })
+    })
 
 })
 
