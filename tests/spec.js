@@ -3568,7 +3568,7 @@ define([], function () {
     })
     describe("1.4.5 html过滤正则BUG", function () {
         it("async", function (done) {
-             avalon.filters.html2 = function (str) {
+            avalon.filters.html2 = function (str) {
                 if (!str) {
                     return '';
                 }
@@ -3592,6 +3592,119 @@ define([], function () {
                 var n = div.getElementsByTagName("br").length
                 expect(n).to.be(1)
                 clearTest(vm, div, done)
+            }, 300);
+        })
+    })
+    describe("1.4.5 对 对象进行增删重排 ", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "test",
+                object: {
+                    a: 1,
+                    b: 1,
+                    c: 1,
+                    d: 1
+                },
+                text: "初始状态"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <p>{{text}}实验</p>
+                 <ul>
+                 <li ms-repeat="object">{{$key}}:<strong>{{$val}}</strong></li>
+                 </ul>
+                 <ol ms-with="object">
+                 <li>{{$key}}:<strong>{{$val}}</strong></li>
+                 </ol>
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            var text = div.innerText ? "innerText" : "textContent"
+            setTimeout(function () { //第一次变换值，没问题
+                var lis = div.getElementsByTagName("li")
+                expect(lis.length).to.be(8)
+                expect(lis[0][text]).to.be("a:1")
+                expect(lis[1][text]).to.be("b:1")
+                expect(lis[2][text]).to.be("c:1")
+                expect(lis[3][text]).to.be("d:1")
+                expect(lis[4][text]).to.be("a:1")
+                expect(lis[5][text]).to.be("b:1")
+                expect(lis[6][text]).to.be("c:1")
+                expect(lis[7][text]).to.be("d:1")
+                vm.text = "修改"
+                vm.object = {
+                    a: 2,
+                    b: 2,
+                    c: 2,
+                    d: 2
+                }
+                setTimeout(function () { //第一次变换值，没问题
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis.length).to.be(8)
+                    expect(lis[0][text]).to.be("a:2")
+                    expect(lis[1][text]).to.be("b:2")
+                    expect(lis[2][text]).to.be("c:2")
+                    expect(lis[3][text]).to.be("d:2")
+                    expect(lis[4][text]).to.be("a:2")
+                    expect(lis[5][text]).to.be("b:2")
+                    expect(lis[6][text]).to.be("c:2")
+                    expect(lis[7][text]).to.be("d:2")
+                    vm.text = "移除"
+                    vm.object = {
+                        a: 3,
+                        b: 3
+                    }
+                    setTimeout(function () { //第一次变换值，没问题
+                        var lis = div.getElementsByTagName("li")
+                        expect(lis.length).to.be(4)
+                        expect(lis[0][text]).to.be("a:3")
+                        expect(lis[1][text]).to.be("b:3")
+                        expect(lis[2][text]).to.be("a:3")
+                        expect(lis[3][text]).to.be("b:3")
+                        vm.text = "添加"
+                        vm.object = {
+                            a: 3,
+                            b: 3,
+                            f: 4,
+                            g: 4
+                        }
+                        setTimeout(function () { //第一次变换值，没问题
+                            var lis = div.getElementsByTagName("li")
+                            expect(lis.length).to.be(8)
+                            expect(lis[0][text]).to.be("a:3")
+                            expect(lis[1][text]).to.be("b:3")
+                            expect(lis[2][text]).to.be("f:4")
+                            expect(lis[3][text]).to.be("g:4")
+                            expect(lis[4][text]).to.be("a:3")
+                            expect(lis[5][text]).to.be("b:3")
+                            expect(lis[6][text]).to.be("f:4")
+                            expect(lis[7][text]).to.be("g:4")
+                            vm.text = "排序"
+                            vm.object = {
+                                g: 4,
+                                f: 4,
+                                b: 3,
+                                a: 3
+                            }
+                            setTimeout(function () { //第一次变换值，没问题
+                                var lis = div.getElementsByTagName("li")
+                                expect(lis.length).to.be(8)
+                                expect(lis[0][text]).to.be("g:4")
+                                expect(lis[1][text]).to.be("f:4")
+                                expect(lis[2][text]).to.be("b:3")
+                                expect(lis[3][text]).to.be("a:3")
+                                expect(lis[4][text]).to.be("g:4")
+                                expect(lis[5][text]).to.be("f:4")
+                                expect(lis[6][text]).to.be("b:3")
+                                expect(lis[7][text]).to.be("a:3")
+                                clearTest(vm, div, done)
+                            }, 300);
+                        }, 300);
+                    }, 300);
+                }, 300);
             }, 300);
         })
     })
