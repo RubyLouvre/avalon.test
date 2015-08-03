@@ -232,7 +232,7 @@ define([], function () {
                     aa: 444
                 }
             }, 200)
-            
+
             setTimeout(function () {
                 expect(a).to.be("11")
                 clearTest(vm, 0, done)
@@ -1710,13 +1710,85 @@ define([], function () {
                         }
 
                         expect(vmodel.$model.arr[0]).to.be(vmodel.arr[0].$model)
-                        clearTest("observableArray$model", div, done)
+                        clearTest(vmodel, div, done)
                     }, 300)
 
                 }, 300)
             })
 
         })
+    })
+
+    describe("演示对象循环的对象被整个替换掉的效果", function () {
+        //https://github.com/RubyLouvre/avalon/issues/950
+        it("async", function (done) {
+            var model = avalon.define({
+                $id: "145bug",
+                object: {
+                    a: 1,
+                    b: 1,
+                    c: 1,
+                    d: 1
+                },
+                text: "初始状态"
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <li ms-repeat="object">{{$key}}:{{$val}}</li>
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, model)
+            setTimeout(function () {
+                model.text = "修改"
+                model.object = {
+                    a: 2,
+                    b: 2,
+                    c: 2,
+                    d: 2
+                }
+            }, 200)
+            setTimeout(function () {
+                model.text = "移除"
+                model.object = {
+                    a: 3,
+                    b: 3
+                }
+            }, 400)
+            setTimeout(function () {
+                model.text = "添加"
+
+                model.object = {
+                    a: 1,
+                    b: 1,
+                    c: 1,
+                    d: 1
+                }
+            }, 600)
+            setTimeout(function () {
+                model.text = "排序"
+                model.object = {
+                    g: 100,
+                    f: 50,
+                    b: 25,
+                    a: 5
+                }
+            }, 800)
+            setTimeout(function () {
+                var lis = div.getElementsByTagName("li")
+                var prop = "innerText" in div ? "innerText" : "textContent"
+                expect(lis[0][prop]).to.be("g:100")
+                expect(lis[1][prop]).to.be("f:50")
+                expect(lis[2][prop]).to.be("b:25")
+                expect(lis[3][prop]).to.be("a:5")
+                clearTest(model, div, done)
+
+            }, 1000)
+
+        })
+
     })
 
     describe("属性绑定", function () {
@@ -2209,16 +2281,17 @@ define([], function () {
 
     describe("对象数组全部删光再添加,确保ms-duplex还可以用#403", function () {
         it("async", function (done) {
-            var vmodel = avalon.define("recycleEachProxy", function (vm) {
-                vm.array = [{
+            var vm = avalon.define({
+                $id: "recycleEachProxy",
+                array: [{
                         a: 1
                     }, {
                         a: 2
                     }, {
                         a: 3
-                    }]
-                vm.add = function () {
-                    vmodel.array.push({
+                    }],
+                add: function () {
+                    vm.array.push({
                         a: 4
                     })
                 }
@@ -2227,11 +2300,12 @@ define([], function () {
             var div = document.createElement("div")
             div.innerHTML = '<ul><li ms-repeat="array" ms-click="$remove"><input ms-duplex="el.a">{{el.a}}</li></ul><button ms-click="add" type="button">add</button>'
             body.appendChild(div)
-            avalon.scan(div, vmodel)
+            avalon.scan(div, vm)
             var prop = "innerText" in div ? "innerText" : "textContent"
             setTimeout(function () {
+                console.log(div.innerHTML, "+++")
                 var lis = div.getElementsByTagName("li")
-                expect(lis.length).to.be(3)
+                expect(lis.length + "!").to.be("3!")
                 expect(lis[0][prop].trim()).to.be("1")
                 expect(lis[1][prop].trim()).to.be("2")
                 expect(lis[2][prop].trim()).to.be("3")
@@ -2255,9 +2329,9 @@ define([], function () {
                         expect(lis[2][prop].trim()).to.be("4")
 
                         setTimeout(function () {
-                            vmodel.array[2].a = 5
+                            vm.array[2].a = 5
                             expect(lis[2][prop].trim()).to.be("5")
-                            clearTest("recycleEachProxy", div, done)
+                            clearTest(vm, div, done)
                         }, 300)
 
                     }, 300)
@@ -2265,7 +2339,7 @@ define([], function () {
                 }, 300)
 
 
-            }, 300)
+            }, 400)
 
         })
     })

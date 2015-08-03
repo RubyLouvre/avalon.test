@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.45 built in 2015.7.17
+ avalon.modern.js 1.46 built in 2015.8.4
  support IE10+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -269,7 +269,7 @@ function _number(a, len) { //用于模拟slice, splice的效果
 avalon.mix({
     rword: rword,
     subscribers: subscribers,
-    version: 1.45,
+    version: 1.46,
     ui: {},
     log: log,
     slice: function(nodes, start, end) {
@@ -691,6 +691,8 @@ var plugins = {
             if (cinerator.innerHTML !== test && cinerator.innerHTML.indexOf("&lt;") > -1) {
                 throw new SyntaxError("此定界符不合法")
             }
+            kernel.openTag = openTag
+            kernel.closeTag = closeTag
             cinerator.innerHTML = ""
         }
         var o = escapeRegExp(openTag),
@@ -893,7 +895,8 @@ function modelFactory(source, $special, $model) {
                 accessor = makeComputedAccessor(name, val)
                 computed.push(accessor)
             } else if (rcomplexType.test(valueType)) {
-                accessor = makeComplexAccessor(name, val, valueType, $events[name])
+                // issue #940 解决$model层次依赖丢失 https://github.com/RubyLouvre/avalon/issues/940
+                accessor = makeComplexAccessor(name, val, valueType, $events[name], $model)
             } else {
                 accessor = makeSimpleAccessor(name, val)
             }
@@ -912,7 +915,7 @@ function modelFactory(source, $special, $model) {
     $vmodel.$id = generateID()
     $vmodel.$model = $model
     $vmodel.$events = $events
-    $vmodel.$propertyNames = names.sort().join("&shy;")
+    $vmodel.$propertyNames = names.join("&shy;")
     for (i in EventBus) {
         $vmodel[i] = EventBus[i]
     }
@@ -1019,7 +1022,7 @@ function makeComputedAccessor(name, options) {
 
 
 //创建一个复杂访问器
-function makeComplexAccessor(name, initValue, valueType, list) {
+function makeComplexAccessor(name, initValue, valueType, list, parentModel) {
     function accessor(value) {
         var oldValue = accessor._value
         var son = accessor._vmodel
@@ -1044,13 +1047,13 @@ function makeComplexAccessor(name, initValue, valueType, list) {
                 delete a.$lock
                 a._fire("set")
             } else if (valueType === "object") {
-                var newPropertyNames = Object.keys(value).sort().join("&shy;")
+                var newPropertyNames = Object.keys(value).join("&shy;")
                 if (son.$propertyNames === newPropertyNames) {
                     for (i in value) {
                         son[i] = value[i]
                     }
                 } else {
-                    var sson = accessor._vmodel = modelFactory(value)
+                    var sson = accessor._vmodel = modelFactory(value, 0, son.$model)
                     var sevent = sson.$events
                     var oevent = son.$events
                     for (var i in sevent) {
@@ -1073,7 +1076,12 @@ function makeComplexAccessor(name, initValue, valueType, list) {
         }
     }
     accessorFactory(accessor, name)
-    var son = accessor._vmodel = modelFactory(initValue)
+    if (Array.isArray(initValue)) {
+        parentModel[name] = initValue
+    } else {
+        parentModel[name] = parentModel[name] || {}
+    }
+    var son = accessor._vmodel = modelFactory(initValue, 0, parentModel[name])
     son.$events[subscribers] = list
     return accessor
 }
@@ -1420,6 +1428,9 @@ avalon.injectBinding = function (data) {
     if (valueFn) { //如果是求值函数
         dependencyDetection.begin({
             callback: function (vmodel, dependency) {
+                if(data.signature){
+                    console.log(data.$repeat,"array")
+                }
                 injectDependency(vmodel.$events[dependency._name], data)
             }
         })
@@ -1430,7 +1441,7 @@ avalon.injectBinding = function (data) {
             }
             data.handler(value, data.element, data)
         } catch (e) {
-            //log("warning:exception throwed in [avalon.injectBinding] " + e)
+            log("warning:exception throwed in [avalon.injectBinding] " , e)
             delete data.evaluator
             var node = data.element
             if (node.nodeType === 3) {
@@ -1882,7 +1893,7 @@ var prefixes = ["", "-webkit-", "-moz-", "-ms-"] //去掉opera-15的支持
 var cssMap = {
     "float": "cssFloat"
 }
-avalon.cssNumber = oneObject("columnCount,order,fillOpacity,fontWeight,lineHeight,opacity,orphans,widows,zIndex,zoom")
+avalon.cssNumber = oneObject("columnCount,order,flex,flexGrow,flexShrink,fillOpacity,fontWeight,lineHeight,opacity,orphans,widows,zIndex,zoom")
 
 avalon.cssName = function(name, host, camelCase) {
     if (cssMap[name]) {
@@ -3537,17 +3548,12 @@ bindingExecutors.repeat = function (method, pos, el) {
                     proxies.splice(i, 0, proxy)
                     shimController(data, transation, proxy, fragments)
                 }
-                var now = new Date() - 0
-                avalon.optimize = avalon.optimize || now
+                parent.insertBefore(transation, comments[pos] || end)
                 for (i = 0; fragment = fragments[i++]; ) {
                     scanNodeArray(fragment.nodes, fragment.vmodels)
                     fragment.nodes = fragment.vmodels = null
                 }
-                if (avalon.optimize === now) {
-                    avalon.optimize = null
-                }
-                parent.insertBefore(transation, comments[pos] || end)
-                avalon.profile("插入操作花费了 " + (new Date - now))
+
                 break
             case "del": //将pos后的el个元素删掉(pos, el都是数字)
                 sweepNodes(comments[pos], comments[pos + el] || end)
@@ -3606,14 +3612,13 @@ bindingExecutors.repeat = function (method, pos, el) {
                 var object = data.$repeat //原来第2参数， 被循环对象
                 var oldProxy = object.$proxy   //代理对象组成的hash
                 var keys = []
-                now = new Date() - 0
-                avalon.optimize = avalon.optimize || now
+              
                 if (flag === "update") {
                     if (!data.evaluator) {
                         parseExprProxy(data.value, data.vmodels, data, 0, 1)
                     }
                     object = data.$repeat = data.evaluator.apply(0, data.args || [])
-                    object.$proxy = oldProxy 
+                    object.$proxy = oldProxy
                 }
                 var pool = object.$proxy || {}
                 removed = []
@@ -3633,7 +3638,7 @@ bindingExecutors.repeat = function (method, pos, el) {
                 var indexNode = [], item
                 var keyIndex = data.keyIndex || (data.keyIndex = {})
                 //将现有的节点全部移出DOM树
-                for ( i = 0; i < removed.length; i++) {
+                for (i = 0; i < removed.length; i++) {
                     el = removed[i]
                     if (el.nodeValue === data.signature) {
                         item = avalonFragment.cloneNode(false)
@@ -3646,7 +3651,6 @@ bindingExecutors.repeat = function (method, pos, el) {
                 for (var key in object) { //当前对象的所有键名
                     if (object.hasOwnProperty(key) && key !== "hasOwnProperty" && key !== "$proxy") {
                         keys.push(key)
-                      
                     }
                 }
 
@@ -3658,7 +3662,7 @@ bindingExecutors.repeat = function (method, pos, el) {
                     }
                 }
 
-                for ( key in pool) {
+                for (key in pool) {
                     if (keys.indexOf(key) === -1) {//删除没用的代理VM
                         proxyRecycler(pool[key], withProxyPool) //去掉之前的代理VM
                         delete pool[key]
@@ -3676,7 +3680,7 @@ bindingExecutors.repeat = function (method, pos, el) {
 
                 for (i = 0; i < renderKeys.length; i++) {
                     key = renderKeys[i]
-                    if (typeof keyIndex[key] === "number") {
+                    if (indexNode[keyIndex[key]]) {
                         transation.appendChild(indexNode[keyIndex[key]])
                         fragments.push({})
                     } else {
@@ -3687,18 +3691,14 @@ bindingExecutors.repeat = function (method, pos, el) {
                 for (i = 0; i < renderKeys.length; i++) {
                     keyIndex[renderKeys[i]] = i
                 }
-
+                parent.insertBefore(transation, end)
                 for (i = 0; fragment = fragments[i++]; ) {
                     if (fragment.nodes) {
                         scanNodeArray(fragment.nodes, fragment.vmodels)
                         fragment.nodes = fragment.vmodels = null
                     }
                 }
-                if (avalon.optimize === now) {
-                    avalon.optimize = null
-                }
-                parent.insertBefore(transation, end)
-                avalon.profile("插入操作花费了 " + (new Date - now))
+
                 break
         }
         if (!data.$repeat || data.$repeat.hasOwnProperty("$lock")) //IE6-8 VBScript对象会报错, 有时候data.$repeat不存在
@@ -3733,10 +3733,10 @@ function shimController(data, transation, proxy, fragments) {
 function getComments(data) {
     var ret = []
     var nodes = data.element.parentNode.childNodes
-    for(var i= 0, node; node = nodes[i++];){
-        if(node.nodeValue === data.signature){
-            ret.push( node )
-        }else if(node.nodeValue === data.signature+":end"){
+    for (var i = 0, node; node = nodes[i++]; ) {
+        if (node.nodeValue === data.signature) {
+            ret.push(node)
+        } else if (node.nodeValue === data.signature + ":end") {
             break
         }
     }
@@ -3931,18 +3931,19 @@ function parseDisplay(nodeName, val) {
 
 avalon.parseDisplay = parseDisplay
 
-bindingHandlers.visible = function(data, vmodels) {
-    var elem = data.element
-    var display = elem.style.display
-    if(display === "none"){
-        display = parseDisplay(elem.nodeName)
-    }
-    data.display = display
+bindingHandlers.visible = function (data, vmodels) {
     parseExprProxy(data.value, vmodels, data)
 }
 
-bindingExecutors.visible = function(val, elem, data) {
-    elem.style.display = val ? data.display : "none"
+bindingExecutors.visible = function (val, elem, binding) {
+    if (val) {
+        elem.style.display = binding.display || ""
+        if (avalon(elem).css("display") === "none") {
+            elem.style.display = binding.display = parseDisplay(elem.nodeName)
+        }
+    } else {
+        elem.style.display = "none"
+    }
 }
 bindingHandlers.widget = function(data, vmodels) {
     var args = data.value.match(rword)
