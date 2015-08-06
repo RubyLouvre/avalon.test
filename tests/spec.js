@@ -136,6 +136,46 @@ define([], function () {
             body.removeChild(div)
         })
     })
+
+    describe("赋值时额外属性导致子列表失效 #957", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: 'page',
+                b: {name: 'B', list: []}
+
+            });
+
+            function SwitchB() {
+                vm.b = {
+                    xxx: 123, //多赋值了一个属性就不行了?
+                    name: '新对象B',
+                    list: [1, 2, 3]
+                };
+            }
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <ul ms-each="b.list">
+                 <li>{{el}}</li>
+                 </ul>
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var lis = div.getElementsByTagName("li")
+                expect(lis.length).to.be(0)
+                SwitchB()
+                setTimeout(function () {
+                    var lis = div.getElementsByTagName("li")
+                    expect(lis.length).to.be(3)
+                      clearTest(vm, div, done)
+                }, 200)
+            }, 200)
+
+        })
+    })
     describe("custom.filter", function () {
 
         it("async", function (done) {
@@ -1723,7 +1763,7 @@ define([], function () {
                         expect(lis[5][prop]).to.be("b:2")
                         expect(lis[6][prop]).to.be("c:2")
                         expect(lis[7][prop]).to.be("h:3")
-                         clearTest(vm, div, done)
+                        clearTest(vm, div, done)
                     }, 200)
                 }, 600)
             })
@@ -2026,17 +2066,27 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<p ms-class='aaa {{b}} ccc: toggle'></p><p ms-class='aaa bbb ccc: !toggle'></p>"
+            div.innerHTML = heredoc(function(){
+                /*
+                <p ms-class='aaa {{b}} ccc: toggle'></p>
+                <p ms-class="{{toggle ? 'xxx': 'yyy'}}"></p>
+                <p ms-class='aaa bbb ccc: !toggle'></p>
+                <p ms-class-1="abc:toggle" >1111</p>
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div, model)
             setTimeout(function () {
                 var ps = div.getElementsByTagName("p")
                 expect(ps[0].className).to.be("aaa xxx ccc")
-                expect(ps[1].className).to.be("")
+                expect(ps[1].className).to.be("xxx")
+                expect(ps[2].className).to.be("")
+                expect(ps[3].className).to.be("abc")
                 model.toggle = false
                 setTimeout(function () {
                     expect(ps[0].className).to.be("")
-                    expect(ps[1].className).to.be("aaa bbb ccc")
+                    expect(ps[1].className).to.be("yyy")
+                    expect(ps[2].className).to.be("aaa bbb ccc")
                     body.removeChild(div)
                     done()
                 }, 300)
