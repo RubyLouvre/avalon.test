@@ -87,7 +87,7 @@ define([], function () {
                 /*
                  <div ms-data-aaa="bbb" ms-repeat="array" ms-css-background="color" id="scanIf1"><div>{{el}}</div></div>
                  <div ms-data-aaa="bbb" ms-each="array" ms-css-background="color" id="scanIf2"><div>{{el}}</div></div>
-                 <div ms-if="toggle"  ms-data-xxx="aaa" id="scanIf3">{{bbb}}</div> 
+                 <div ms-if="toggle"  ms-data-xxx="aaa" id="scanIf3">{{bbb}}</div>
                  <div ms-if="!toggle" ms-data-xxx="aaa" id="scanIf4">{{color}}</div>
                  <div ms-widget="scandal" ms-data-scandal-s1="s1" id="scanIf5"></div>
                  */
@@ -113,7 +113,7 @@ define([], function () {
                 setTimeout(function () {
                     clearTest(null, div, done)
                 })
-            }, 100)
+            }, 200)
         })
     })
 
@@ -1617,7 +1617,7 @@ define([], function () {
                 vm.b = "yy"
                 expect(vm.c).to.be("xx yy")
                 var v = avalon.version
-                if (v <= 1.44 || v > 1.5) {
+                if (v <= 1.44 || avalon.directive) {
                     expect(index).to.be(0)
                 } else {
                     expect(index).to.be(2)
@@ -1626,7 +1626,7 @@ define([], function () {
                 setTimeout(function () {
                     if (v <= 1.44) {
                         expect(index).to.be(1)
-                    } else if (v > 1.5) {
+                    } else if (avalon.directive) {
                         expect(index).to.be(0)
                     } else {
                         expect(index).to.be(2)
@@ -2059,7 +2059,7 @@ define([], function () {
     })
     describe("类名绑定", function () {
         it("async", function (done) {
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "ms-class-test",
                 b: "xxx",
                 toggle: true
@@ -2075,20 +2075,19 @@ define([], function () {
                  */
             })
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var ps = div.getElementsByTagName("p")
                 expect(ps[0].className).to.be("aaa xxx ccc")
                 expect(ps[1].className).to.be("xxx")
                 expect(ps[2].className).to.be("")
                 expect(ps[3].className).to.be("abc")
-                model.toggle = false
+                vm.toggle = false
                 setTimeout(function () {
                     expect(ps[0].className).to.be("")
                     expect(ps[1].className).to.be("yyy")
                     expect(ps[2].className).to.be("aaa bbb ccc")
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
                 }, 300)
             }, 300)
         })
@@ -2661,7 +2660,7 @@ define([], function () {
             div.innerHTML = heredoc(function () {
                 /*
                  <div ms-controller="getEachProxyBUG1">
-                 <h1 ms-repeat="fruits">{{el.a}}</h1> 
+                 <h1 ms-repeat="fruits">{{el.a}}</h1>
                  </div>
                  <div ms-controller="getEachProxyBUG2" id="getEachProxyBUG2">
                  <h1 ms-repeat="fighters">{{el}}</h1>
@@ -3969,12 +3968,12 @@ define([], function () {
 })
 
 /**
- * 
- <div ms-with="object"><strong 
+ *
+ <div ms-with="object"><strong
  ms-if-loop="$val>2">{{$key}}-{{$val}} </strong></div>
- 
+
  <button ms-click="change">change</button>
- 
+
  var vm = avalon.define({
  $id: 'test',
  array: [1, 2, 3, 4, 5],
@@ -3989,14 +3988,14 @@ define([], function () {
  d: 4,
  e: 5
  },
- 
+
  over: function() {
  console.log(arguments)
  },
- 
+
  change: function() {
  var randomNum = Math.random()
- 
+
  vm.array = [1 + randomNum, 2 + randomNum, 3 + randomNum, 4 + randomNum, 5 + randomNum]
  vm.object.a = vm.array[0]
  vm.object.b = vm.array[1]
@@ -4005,6 +4004,6 @@ define([], function () {
  vm.object.e = vm.array[4]
  }
  })
- * 
- * 
+ *
+ *
  */
