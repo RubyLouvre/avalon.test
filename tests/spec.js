@@ -170,7 +170,7 @@ define([], function () {
                 setTimeout(function () {
                     var lis = div.getElementsByTagName("li")
                     expect(lis.length).to.be(3)
-                      clearTest(vm, div, done)
+                    clearTest(vm, div, done)
                 }, 200)
             }, 200)
 
@@ -298,15 +298,23 @@ define([], function () {
         //确保位置没有错乱
         it("普通加载", function (done) {
             var a = 1
+            var flag = false
             require(["./mmRequest"], function () {
                 a = 2
-            })
-            setTimeout(function () {
+                flag = true
                 expect(typeof avalon.ajax).to.be("function")
                 expect(typeof avalon.Promise).to.be("function")
                 expect(a).to.be(2)
                 done()
-            }, 500)
+            })
+//            setTimeout(function () {
+//                if (!flag) {
+//                    expect(typeof avalon.ajax).to.be("function")
+//                    expect(typeof avalon.Promise).to.be("function")
+//                    expect(a).to.be(2)
+//                    done()
+//                }
+//            }, 500)
         })
         it("测试baseUrl, paths, shim", function (done) {
             setTimeout(function () {
@@ -443,8 +451,9 @@ define([], function () {
     describe("确保数组的$model与它的元素的$model是共通的(1.5+改动!)", function () {
         //确保位置没有错乱
         it("sync", function () {
-            var test = avalon.define("array$model", function (vm) {
-                vm.array = [{
+            var test = avalon.define({
+                $id: "array$model",
+                array: [{
                         id: 1
                     }, {
                         id: 2
@@ -459,6 +468,7 @@ define([], function () {
             } else {
                 expect(test.array.$model[0]).to.eql(test.array[0].$model)
             }
+            delete avalon.vmodels.array$model
         })
     })
     //  }
@@ -2066,12 +2076,12 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = heredoc(function(){
+            div.innerHTML = heredoc(function () {
                 /*
-                <p ms-class='aaa {{b}} ccc: toggle'></p>
-                <p ms-class="{{toggle ? 'xxx': 'yyy'}}"></p>
-                <p ms-class='aaa bbb ccc: !toggle'></p>
-                <p ms-class-1="abc:toggle" >1111</p>
+                 <p ms-class='aaa {{b}} ccc: toggle'></p>
+                 <p ms-class="{{toggle ? 'xxx': 'yyy'}}"></p>
+                 <p ms-class='aaa bbb ccc: !toggle'></p>
+                 <p ms-class-1="abc:toggle" >1111</p>
                  */
             })
             body.appendChild(div)
@@ -2457,11 +2467,11 @@ define([], function () {
 
                         setTimeout(function () {
                             vm.array[2].a = 5
-                            if(!avalon.config.async ){
-                                 expect(lis[2][prop].trim()).to.be("5")
-                                 clearTest(vm, div, done)
-                            }else{
-                                setTimeout(function(){
+                            if (!avalon.config.async) {
+                                expect(lis[2][prop].trim()).to.be("5")
+                                clearTest(vm, div, done)
+                            } else {
+                                setTimeout(function () {
                                     expect(lis[2][prop].trim()).to.be("5")
                                     clearTest(vm, div, done)
                                 })
@@ -3170,8 +3180,9 @@ define([], function () {
 
     describe("ms-repeat", function () {
         it("async", function (done) {
-            var model = avalon.define("ms-repeat", function (vm) {
-                vm.object = {
+            var vm = avalon.define({
+                $id: "ms-repeat",
+                object: {
                     "kkk": "vvv",
                     "kkk2": "vvv2",
                     "kkk3": "vvv3"
@@ -3179,9 +3190,14 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = "<div><ul><li ms-repeat=\"object\">{{$key}}:{{$val}}</li></ul><ol ms-with=\"object\"><li>{{$key}}:{{$val}}</li></ol></div>"
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div><ul><li ms-repeat="object">{{$key}}:{{$val}}</li></ul>
+                 <ol ms-with="object"><li>{{$key}}:{{$val}}</li></ol></div>
+                 */
+            })
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var ul = div.getElementsByTagName("ul")[0]
                 var lis = ul.getElementsByTagName("li")
@@ -3195,7 +3211,7 @@ define([], function () {
                 expect(lis[0].innerHTML).to.be("kkk:vvv")
                 expect(lis[1].innerHTML).to.be("kkk2:vvv2")
                 expect(lis[2].innerHTML).to.be("kkk3:vvv3")
-                model.object = {
+                vm.object = {
                     a: 22,
                     b: 33,
                     c: 44,
@@ -3209,10 +3225,8 @@ define([], function () {
                     expect(lis[1].innerHTML).to.be("b:33")
                     expect(lis[2].innerHTML).to.be("c:44")
                     expect(lis[3].innerHTML).to.be("d:55")
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
                 }, 300)
-
 
             }, 100)
         })
@@ -3986,9 +4000,9 @@ define([], function () {
  *
  <div ms-with="object"><strong
  ms-if-loop="$val>2">{{$key}}-{{$val}} </strong></div>
-
+ 
  <button ms-click="change">change</button>
-
+ 
  var vm = avalon.define({
  $id: 'test',
  array: [1, 2, 3, 4, 5],
@@ -4003,14 +4017,14 @@ define([], function () {
  d: 4,
  e: 5
  },
-
+ 
  over: function() {
  console.log(arguments)
  },
-
+ 
  change: function() {
  var randomNum = Math.random()
-
+ 
  vm.array = [1 + randomNum, 2 + randomNum, 3 + randomNum, 4 + randomNum, 5 + randomNum]
  vm.object.a = vm.array[0]
  vm.object.b = vm.array[1]

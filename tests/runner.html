@@ -16,6 +16,7 @@
     <body>
         <div id="mocha"></div>
         <script>
+            avalon.config.async = false;
             (function() {
                 mocha.ui('bdd')
                 mocha.setup({timeout: 100000});
