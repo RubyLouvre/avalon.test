@@ -2417,12 +2417,20 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = '<ul><li ms-repeat="array" ms-click="$remove"><input ms-duplex="el.a">{{el.a}}</li></ul><button ms-click="add" type="button">add</button>'
+            div.innerHTML = heredoc(function () {
+                /*
+                 <ul>
+                 <li ms-repeat="array" ms-click="$remove"/>
+                 <input ms-duplex="el.a">{{el.a}}
+                 </li>
+                 </ul>
+                 <button ms-click="add" type="button">add</button>
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div, vm)
             var prop = "innerText" in div ? "innerText" : "textContent"
             setTimeout(function () {
-                console.log(div.innerHTML, "+++")
                 var lis = div.getElementsByTagName("li")
                 expect(lis.length + "!").to.be("3!")
                 expect(lis[0][prop].trim()).to.be("1")
@@ -2449,16 +2457,23 @@ define([], function () {
 
                         setTimeout(function () {
                             vm.array[2].a = 5
-                            expect(lis[2][prop].trim()).to.be("5")
-                            clearTest(vm, div, done)
-                        }, 300)
+                            if(!avalon.config.async ){
+                                 expect(lis[2][prop].trim()).to.be("5")
+                                 clearTest(vm, div, done)
+                            }else{
+                                setTimeout(function(){
+                                    expect(lis[2][prop].trim()).to.be("5")
+                                    clearTest(vm, div, done)
+                                })
+                            }
+                        }, 200)
 
-                    }, 300)
+                    }, 200)
 
-                }, 300)
+                }, 200)
 
 
-            }, 400)
+            }, 200)
 
         })
     })
