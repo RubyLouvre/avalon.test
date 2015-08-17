@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.modern.js 1.46 built in 2015.8.12
+ avalon.modern.js 1.46 built in 2015.8.17
  support IE10+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -129,7 +129,6 @@ avalon.profile = function () {
 avalon.nextTick = new function () {// jshint ignore:line
     var tickImmediate = window.setImmediate
     var tickObserver = window.MutationObserver
-    var tickPost = W3C && window.postMessage
     if (tickImmediate) {//IE10 \11 edage
         return tickImmediate.bind(window)
     }
@@ -152,23 +151,8 @@ avalon.nextTick = new function () {// jshint ignore:line
         }
     }
 
-    if (tickPost) {
-        window.addEventListener("message", function (e) {
-            var source = e.source
-            if ((source === window || source === null) && e.data === "process-tick") {
-                e.stopPropagation()
-                callback()
-            }
-        })
-
-        return function (fn) {
-            queue.push(fn)
-            window.postMessage('process-tick', '*')
-        }
-    }
-
     if (window.VBArray) {
-        return function () {
+        return function (fn) {
             queue.push(fn)
             var node = DOC.createElement("script")
             node.onreadystatechange = function () {
@@ -2926,7 +2910,7 @@ bindingHandlers["class"] = function (binding, vmodels) {
         }
         binding.expr = "[" + className + "," + rightExpr + "]"
     } else {
-        binding.expr = '[' + quote(oldStyle) + "," + binding.expr + "]"
+        binding.expr = '[' + quote(oldStyle) + "," + text + "]"
         binding.oldStyle = oldStyle
     }
     var method = binding.type

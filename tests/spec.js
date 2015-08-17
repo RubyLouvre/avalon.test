@@ -2082,6 +2082,8 @@ define([], function () {
                  <p ms-class="{{toggle ? 'xxx': 'yyy'}}"></p>
                  <p ms-class='aaa bbb ccc: !toggle'></p>
                  <p ms-class-1="abc:toggle" >1111</p>
+                 <p ms-class-xxx-yyy="toggle" >1111</p>
+                 <p ms-class-xxx-yyy="!toggle" >1111</p>
                  */
             })
             body.appendChild(div)
@@ -2092,11 +2094,16 @@ define([], function () {
                 expect(ps[1].className).to.be("xxx")
                 expect(ps[2].className).to.be("")
                 expect(ps[3].className).to.be("abc")
+                expect(ps[4].className).to.be("xxx-yyy")
+                expect(ps[5].className).to.be("")
                 vm.toggle = false
                 setTimeout(function () {
                     expect(ps[0].className).to.be("")
                     expect(ps[1].className).to.be("yyy")
                     expect(ps[2].className).to.be("aaa bbb ccc")
+                    expect(ps[3].className).to.be("")
+                    expect(ps[4].className).to.be("")
+                    expect(ps[5].className).to.be("xxx-yyy")
                     clearTest(vm, div, done)
                 }, 300)
             }, 300)
