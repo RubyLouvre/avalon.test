@@ -51,7 +51,7 @@ define([], function () {
                     keys.push(i)
                 }
             }
-            // var keys = Object.keys(vm.object)
+// var keys = Object.keys(vm.object)
             expect(keys).to.eql(["A", "B", "C", "D", "E"])
             delete avalon.vmodels.testx
         })
@@ -144,7 +144,6 @@ define([], function () {
                 b: {name: 'B', list: []}
 
             });
-
             function SwitchB() {
                 vm.b = {
                     xxx: 123, //多赋值了一个属性就不行了?
@@ -263,9 +262,17 @@ define([], function () {
                     aa: 333
                 }
             })
-            vm.postData.$watch('venue', function (val) {
-                a = val
-            })
+
+            if (avalon.directive) {
+                vm.$watch('postData.venue', function (val) {
+                    a = val
+                })
+            } else {
+                vm.postData.$watch('venue', function (val) {
+                    a = val
+                })
+
+            }
             setTimeout(function () {
                 vm.postData = {
                     venue: '11',
@@ -1215,8 +1222,9 @@ define([], function () {
     describe("vm.array = vm.array", function () {
         //确保位置没有错乱
         it("async", function (done) {
-            var a = avalon.define("vm.array", function (vm) {
-                vm.array = [1, 2, 3]
+            var a = avalon.define({
+                $id: "vm.array",
+                array: [1, 2, 3]
             });
             setTimeout(function () {
                 a.array = a.array
@@ -1234,13 +1242,22 @@ define([], function () {
         it("async", function (done) {
             var count = 1,
                     length
-            var model = avalon.define("arrlength", function (vm) {
-                vm.arr = [1, 2, 3]
+            var model = avalon.define({
+                $id: "arrlength",
+                arr: [1, 2, 3]
             });
-            model.arr.$watch('length', function (a) {
-                length = a
-                ++count
-            });
+            if (avalon.directive) {
+                model.$watch('arr.length', function (a) {
+                    length = a
+                    ++count
+                });
+            } else {
+                model.arr.$watch('length', function (a) {
+                    length = a
+                    ++count
+                });
+            }
+
             var hehe = model.arr;
             setTimeout(function () {
                 model.arr = [1, 2, 3, 4, 5, 6, 7]
@@ -1466,44 +1483,44 @@ define([], function () {
             })
 
             it("async2", function (done) {
-                var model = avalon.define("computed2", function (vm) {
-                    vm.test0 = false;
-                    vm.test1 = {
+                var vm = avalon.define({
+                    $id: "computed2",
+                    test0: false,
+                    test1: {
                         set: function (val) {
                             this.test0 = val;
                         },
                         get: function () {
                             return this.test0;
                         }
-                    };
-                    vm.test2 = false;
-                    vm.$watch('test1', function (val) {
-                        vm.test2 = val;
-                    });
-                    vm.one = function () {
+                    },
+                    test2: false,
+                    one: function () {
                         vm.test1 = !vm.test1;
-                    };
-                    vm.two = function () {
+                    },
+                    two: function () {
                         vm.test0 = !vm.test0;
-                    };
+                    }
+                });
+                vm.$watch('test1', function (val) {
+                    vm.test2 = val;
                 });
                 var body = document.body
                 var div = document.createElement("div")
                 div.innerHTML = "<div > <button ms-click=\"one\" type=\"button\">\u6D4B\u8BD51</button> <button ms-click=\"two\" type=\"button\">\u6D4B\u8BD52</button> <br>test1: {{test1}} <br>test2: {{test2}}</div>"
                 body.appendChild(div)
-                avalon.scan(div, model)
+                avalon.scan(div, vm)
                 setTimeout(function () {
                     var buttons = div.getElementsByTagName("button")
                     buttons[0].click()
-                    expect(model.test0).to.be(true)
-                    expect(model.test1).to.be(true)
+                    expect(vm.test0).to.be(true)
+                    expect(vm.test1).to.be(true)
                     setTimeout(function () {
                         buttons[1].click()
-                        expect(model.test0).to.be(false)
-                        expect(model.test1).to.be(false)
-                        delete avalon.vmodels.computed2
-                        body.removeChild(div)
-                        done()
+                        expect(vm.test0).to.be(false)
+                        expect(vm.test1).to.be(false)
+                        clearTest(vm, div, done)
+
                     }, 100)
 
                 }, 100)
@@ -1511,44 +1528,46 @@ define([], function () {
             })
 
             it("async3", function (done) {
-                var model = avalon.define("computed3", function (vm) {
-                    vm.test0 = false;
-                    vm.test1 = false;
-                    vm.test2 = false;
-                    vm.msg = '';
-                    vm.$watch('test0', function (val) {
-                        if (val) {
-                            vm.msg += 'test0-';
-                            vm.test1 = true;
-                            if (vm.test2) {
-                                vm.msg = 'ok';
-                            }
-                            vm.msg += '！！';
-                        }
-                    });
-                    vm.$watch('test1', function (val) {
-                        if (val) {
-                            vm.msg += 'test1-';
-                            vm.test2 = true;
-                        }
-                    });
-                    vm.one = function () {
+                var vm = avalon.define({
+                    $id: "computed3",
+                    test0: false,
+                    test1: false,
+                    test2: false,
+                    msg: '',
+                    one: function () {
                         vm.test0 = true;
-                    };
+                    }
+                })
+                vm.$watch('test0', function (val) {
+                    if (val) {
+                        vm.msg += 'test0-';
+                        vm.test1 = true;
+                        if (vm.test2) {
+                            vm.msg = 'ok';
+                        }
+                        vm.msg += '！！';
+                    }
                 });
+                vm.$watch('test1', function (val) {
+                    if (val) {
+                        vm.msg += 'test1-';
+                        vm.test2 = true;
+                    }
+                });
+
                 var body = document.body
                 var div = document.createElement("div")
                 div.innerHTML = "<div type=\"button\"><button ms-click=\"one\">\u6D4B\u8BD51</button><br>test0: {{test0}}<br>test1: {{test1}}<br>test2: {{test2}}<br>msg: {{msg}}</div>"
                 body.appendChild(div)
-                avalon.scan(div, model)
+                avalon.scan(div, vm)
                 setTimeout(function () {
                     div.getElementsByTagName("button")[0].click()
                     setTimeout(function () {
-                        expect(model.test0).to.be(true)
-                        expect(model.test1).to.be(true)
-                        expect(model.test2).to.be(true)
-                        expect(model.msg).to.be("ok！！")
-                        clearTest(model, div, done)
+                        expect(vm.test0).to.be(true)
+                        expect(vm.test1).to.be(true)
+                        expect(vm.test2).to.be(true)
+                        expect(vm.msg).to.be("ok！！")
+                        clearTest(vm, div, done)
                     })
                 }, 100)
 
@@ -1627,8 +1646,10 @@ define([], function () {
                 vm.b = "yy"
                 expect(vm.c).to.be("xx yy")
                 var v = avalon.version
-                if (v <= 1.44 || avalon.directive) {
+                if (v <= 1.44) {
                     expect(index).to.be(0)
+                } else if (avalon.directive && !avalon.config.async) {
+                    expect(index).to.be(2)
                 } else {
                     expect(index).to.be(2)
                 }
@@ -1636,8 +1657,8 @@ define([], function () {
                 setTimeout(function () {
                     if (v <= 1.44) {
                         expect(index).to.be(1)
-                    } else if (avalon.directive) {
-                        expect(index).to.be(0)
+                    } else if (avalon.directive && !avalon.config.async) {
+                        expect(index).to.be(2)
                     } else {
                         expect(index).to.be(2)
                     }
@@ -1677,7 +1698,11 @@ define([], function () {
                 expect(vm.a).to.be("30")
                 expect(vm.b).to.be("40")
                 setTimeout(function () {
-                    expect(arr.join(" ")).to.be("a b c")
+                    if (avalon.directive) {
+                        expect(arr.join(" ")).to.be("a c b c")
+                    } else {
+                        expect(arr.join(" ")).to.be("a b c")
+                    }
                     delete avalon.vmodels.computed6
                     done()
                 }, 300)
@@ -1686,21 +1711,23 @@ define([], function () {
         describe("双工绑定与$model", function () {
             //检测值的同步
             it("async", function (done) {
-                var model = avalon.define("ms-duplex-select", function (vm) {
-                    vm.array = ["aaa", "bbb", "ccc", "ddd"]
-                    vm.selected = "ddd"
-                    vm.$watch("selected", function (a, b) {
-                        expect(model.$model.selected).to.be("bbb")
-                        expect(a).to.be("bbb")
-                        expect(b).to.be("ddd")
-                        clearTest("ms-duplex-select", div, done)
-                    })
+                var vm = avalon.define({
+                    $id: "ms-duplex-select",
+                    array: ["aaa", "bbb", "ccc", "ddd"],
+                    selected: "ddd"
                 })
+                vm.$watch("selected", function (a, b) {
+                    expect(vm.$model.selected).to.be("bbb")
+                    expect(a).to.be("bbb")
+                    expect(b).to.be("ddd")
+                    clearTest("ms-duplex-select", div, done)
+                })
+
                 var body = document.body
                 var div = document.createElement("div")
                 div.innerHTML = "<div><select ms-duplex=\"selected\"><option ms-repeat=\"array\" ms-attr-value=\"el\">{{el}}</option></select></div>"
                 body.appendChild(div)
-                avalon.scan(div, model)
+                avalon.scan(div, vm)
 
                 function fireEvent(element, type) {
                     if (document.createEvent) {
@@ -1806,7 +1833,9 @@ define([], function () {
                         expect(vmodel.$model.arr[0].name).to.be("xxxx")
                         expect(vmodel.arr[1].$model.name).to.be("yyyy")
                         expect(vmodel.$model.arr[1].name).to.be("yyyy")
-                        var data = vmodel.arr.$events[avalon.subscribers][0]
+                        var data = avalon.directive ?
+                                vmodel.$events.arr[0] :
+                                vmodel.arr.$events[avalon.subscribers][0]
                         var is138 = "$proxies" in vmodel.arr
                         var is143 = "$proxy" in vmodel.arr
                         if (is138) {
@@ -1819,10 +1848,8 @@ define([], function () {
                             expect($proxies[0].el.$model).to.be(vmodel.arr[0].$model)
                         } else {
                             var $proxies = data.proxies
-                            console.log("11111")
                             expect($proxies[0].el).to.be(vmodel.arr[0])
                             expect($proxies[0].el.$model).to.eql(vmodel.arr[0].$model)
-                            console.log("9999")
                         }
 
                         expect(vmodel.$model.arr[0]).to.eql(vmodel.arr[0].$model)
@@ -1971,8 +1998,9 @@ define([], function () {
         //移除操作分别在parseExprProxy与executeBindings里
         it("async", function (done) {
             var val = false
-            var model = avalon.define('onclick', function (vm) {
-                vm.f1 = function () {
+            var vm = avalon.define({
+                $id: "onclick",
+                f1: function () {
                     val = true
                 }
             })
@@ -1980,15 +2008,15 @@ define([], function () {
             var div = document.createElement("div")
             div.innerHTML = "<button type='button' ms-click='f1'>click me</button>"
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
 
             setTimeout(function () {
                 var test = div.getElementsByTagName("button")[0]
                 test.click()
                 setTimeout(function () {
                     expect(val).to.be(true)
-                    body.removeChild(div)
-                    done()
+                    clearTest(vm, div, done)
+
                 }, 300)
             })
         })
@@ -2122,13 +2150,14 @@ define([], function () {
         })
 
         it("async", function (done) {
-            var model = avalon.define("ms-duplex-regexp", function (vm) {
-                vm.aaa = {
+            var model = avalon.define({
+                $id: "ms-duplex-regexp",
+                aaa: {
                     xxx: "444",
                     yyy: "555"
-                }
-                vm.bbb = "yyy"
-                vm.ccc = "text";
+                },
+                bbb: "yyy",
+                ccc: "text"
             })
             var body = document.body
             var div = document.createElement("div")
@@ -2150,9 +2179,8 @@ define([], function () {
                 model.ccc = "change"
                 setTimeout(function () {
                     expect(ps[0].innerHTML).to.be("change")
-                    body.removeChild(div)
-                    delete avalon.vmodels["ms-duplex-regexp"]
-                    done()
+                    clearTest(model, div, done)
+
                 })
             })
 
@@ -2197,9 +2225,12 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = ['<input ms-duplex-boolean="aaa" type="radio" value="true">',
-                '<input ms-duplex-boolean="aaa" type="radio" value="false">'
-            ].join("")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <input ms-duplex-boolean="aaa" type="radio" value="true">
+                 <input ms-duplex-boolean="aaa" type="radio" value="false">
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div, model)
 
@@ -2248,7 +2279,7 @@ define([], function () {
                 setTimeout(function () {
                     expect(model.aaa).to.be(888)
                     expect(model.bbb).to.be(999)
-                    clearTest("ms-duplex-number", div, done)
+                    clearTest(model, div, done)
 
                 }, 100)
 
@@ -2296,9 +2327,10 @@ define([], function () {
                     '<input ms-duplex-checked="yyy" type="radio" id="ms-duplex-checked-r" >'
             document.body.appendChild(div)
 
-            var model = avalon.define("ms-duplex-checked", function (vm) {
-                vm.xxx = false
-                vm.yyy = false
+            var model = avalon.define({
+                $id: "ms-duplex-checked",
+                xxx: false,
+                yyy: false
             })
             avalon.scan(div, model)
             setTimeout(function () { //必须等扫描后才能开始测试，400ms是一个合理的数字
@@ -2327,8 +2359,9 @@ define([], function () {
     describe("确保不会误删元素", function () {
 
         it("sync", function () {
-            var model = avalon.define("removeArray", function (vm) {
-                vm.array = [1, 2, 3, 4]
+            var model = avalon.define({
+                $id: "removeArray",
+                array: [1, 2, 3, 4]
             })
             expect(model.array.remove(5)).to.eql([])
             expect(model.array.removeAt(-1)).to.eql([])
@@ -2340,16 +2373,17 @@ define([], function () {
     describe("array.size()", function () {
 
         it("async", function (done) {
-            var model = avalon.define("array-size", function (vm) {
-                vm.array = [1, 2, 3, 4]
+            var vm = avalon.define({
+                $id: "array-size",
+                array: [1, 2, 3, 4]
             })
             var div = document.createElement("div")
             div.innerHTML = '{{array.size()}}'
             document.body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 expect(div.innerHTML).to.eql("4")
-                clearTest("array-size", div, done)
+                clearTest(vm, div, done)
             })
 
 
@@ -2646,8 +2680,9 @@ define([], function () {
     })
     describe("ms-each同时循环两行", function () {
         it("async", function (done) {
-            var vmodel = avalon.define("ms-each-double", function (vm) {
-                vm.data = {
+            var vm = avalon.define({
+                $id: "ms-each-double",
+                data: {
                     list: [1, 2, 3, 4, 5, 6, 7]
                 }
             })
@@ -2655,7 +2690,7 @@ define([], function () {
             var div = document.createElement("div")
             div.innerHTML = '<h2>ms-each同时循环两行</h2><ul  ms-each-el="data.list"><li ms-if="$index ==  0">Name: {{el}}</li><li ms-if="$index !==  0" class="test">Name:{{el}}</li></ul>'
             body.appendChild(div)
-            avalon.scan(div, vmodel)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var ul = div.getElementsByTagName("ul")[0]
                 var lis = ul.getElementsByTagName("li")
@@ -2667,7 +2702,7 @@ define([], function () {
                 expect(lis[4].innerHTML).to.be("Name:5")
                 expect(lis[5].innerHTML).to.be("Name:6")
                 expect(lis[6].innerHTML).to.be("Name:7")
-                clearTest("ms-each-double", div, done)
+                clearTest(vm, div, done)
             }, 300)
         })
     })
@@ -3244,8 +3279,9 @@ define([], function () {
     describe("ms-src", function () {
         //检测值的同步
         it("async", function (done) {
-            var model = avalon.define("ms-src", function (vm) {
-                vm.data = {
+            var model = avalon.define({
+                $id: "ms-src",
+                data: {
                     path: 'http://su.bdimg.com/static/superplus/img/logo_white.png'
                 }
             })
@@ -3402,8 +3438,9 @@ define([], function () {
     describe('ms-repeat nest-object', function () {
         //确保位置没有错乱
         it("async", function (done) {
-            var model = avalon.define("nest-object", function (vm) {
-                vm.list = {
+            var model = avalon.define({
+                $id: "nest-object",
+                list: {
                     a: {
                         str: 444
                     },
