@@ -781,46 +781,6 @@ define([], function () {
     })
 
 
-    describe("data-duplex-observe", function () {
-        //https://github.com/RubyLouvre/avalon/issues/668
-        it("async", function (done) {
-            var vm = avalon.define({
-                $id: "data-duplex-observe",
-                q: 'aaa'
-            })
-
-            var body = document.body
-            var div = document.createElement("div")
-            var str = '<input ms-duplex="q"  ms-data-duplex-observe="q"/><span id="data-duplex-observe">{{q}}</span>'
-            div.innerHTML = str
-            body.appendChild(div)
-            avalon.scan(div, vm)
-            setTimeout(function () {
-                var aaa = div.getElementsByTagName("input")[0]
-                var el = document.getElementById("data-duplex-observe")
-                expect(vm.q).to.be("aaa")
-                aaa.value = "222"
-                setTimeout(function () {
-                    expect(el.innerHTML).to.be("222") //可以变动
-                    aaa.value = "false"
-
-                    setTimeout(function () {
-                        expect(el.innerHTML).to.be("false") //再变一次
-                        aaa.value = "123"
-                        setTimeout(function () {
-                            expect(el.innerHTML).to.be("false")
-                            clearTest(vm, div, done)
-
-                        }, 300)
-
-                    }, 300)
-
-                }, 300)
-            })
-
-        })
-    })
-
     describe("array.clear() + checkbox ms-duplex-string", function () {
         //https://github.com/RubyLouvre/avalon/issues/668
         it("async", function (done) {
@@ -2161,13 +2121,16 @@ define([], function () {
             })
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = ['<input ms-duplex="aaa[\'xxx\']">',
-                '<input ms-duplex="aaa[bbb]">',
-                '<input ms-duplex="ccc"/>',
-                '<p>{{ccc}}</p>',
-                '<p>{{aaa.xxx}}</p>',
-                '<p>{{aaa.yyy}}</p>'
-            ].join('')
+            div.innerHTML = heredoc(function () {
+                /*
+                 <input ms-duplex="aaa['xxx']">
+                 <input ms-duplex="aaa[bbb]">
+                 <input ms-duplex="ccc"/>
+                 <p>{{ccc}}</p>
+                 <p>{{aaa.xxx}}</p>
+                 <p>{{aaa.yyy}}</p>
+                 */
+            })
             body.appendChild(div)
             avalon.scan(div, model)
 
@@ -2180,8 +2143,7 @@ define([], function () {
                 setTimeout(function () {
                     expect(ps[0].innerHTML).to.be("change")
                     clearTest(model, div, done)
-
-                })
+                },100)
             })
 
         })
@@ -2543,7 +2505,7 @@ define([], function () {
                     vm.data.list = []
                 },
                 serialize: function () {
-                    return vm.data.list.$model + ""
+                    return vm.data.list + ""
                 }
             })
             var body = document.body
@@ -2567,7 +2529,7 @@ define([], function () {
             }, 100)
             setTimeout(function () {
                 expect(vm.serialize()).to.be("2")
-            }, 200)
+            }, 250)
             setTimeout(function () {
                 var as = div.getElementsByTagName("a")
                 fireClick(as[2]) //请空
