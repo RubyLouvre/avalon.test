@@ -68,19 +68,7 @@ define([], function () {
                 toggle: false,
                 s1: "组件第一行"
             })
-            avalon.ui.scandal = function (element, data) {
-                return avalon.define(data.scandalId, function (vm) {
-                    avalon.mix(vm, data.scandalOptions)
-                    vm.s2 = "组件第二行"
-                    vm.$init = function (continueScan) {
-                        element.innerHTML = "<p>{{s1}}</p><p>{{s2}}</p>"
-                        continueScan()
-                    }
-                    vm.$remove = function () {
-                        element.innerHTML = ""
-                    }
-                })
-            }
+
             var body = document.body
             var div = document.createElement("div")
             div.innerHTML = heredoc(function () {
@@ -89,7 +77,6 @@ define([], function () {
                  <div ms-data-aaa="bbb" ms-each="array" ms-css-background="color" id="scanIf2"><div>{{el}}</div></div>
                  <div ms-if="toggle"  ms-data-xxx="aaa" id="scanIf3">{{bbb}}</div>
                  <div ms-if="!toggle" ms-data-xxx="aaa" id="scanIf4">{{color}}</div>
-                 <div ms-widget="scandal" ms-data-scandal-s1="s1" id="scanIf5"></div>
                  */
             })
             body.appendChild(div)
@@ -105,11 +92,7 @@ define([], function () {
                 expect(scanIf3.getAttribute("ms-data-xxx")).to.be("aaa")
                 expect(scanIf3.getAttribute("ms-if")).to.be("toggle")
                 expect(get("scanIf4").getAttribute("data-xxx")).to.be("yyy")
-                expect(get("scanIf5").getAttribute("data-scandal-s1")).to.be("组件第一行")
-                var ps = get("scanIf5").getElementsByTagName("p")
-                expect(ps.length).to.be(2)
-                expect(ps[0].innerHTML).to.be("组件第一行")
-                expect(ps[1].innerHTML).to.be("组件第二行")
+
                 setTimeout(function () {
                     clearTest(null, div, done)
                 })
@@ -683,6 +666,41 @@ define([], function () {
                     expect(s[2].innerHTML).to.be("5")
                     expect(s[3].innerHTML).to.be("1")
                     expect(s[4].innerHTML).to.be("2")
+                    clearTest(vm, div, done)
+                }, 150)
+
+            }, 150)
+
+        })
+    })
+     describe("duplex+checkbox", function () {
+        it("async", function (done) {
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function(){
+                /*
+    <label><input ms-duplex-string="val" value="w1" type="checkbox"/> item1</label>
+    <label><input ms-duplex-string="val" value="w2" type="checkbox"/> item2</label>
+    <label><input ms-duplex-string="val" value="w3" type="checkbox"/> item3</label>
+                */
+            })
+            body.appendChild(div)
+            var vm = avalon.define({
+                $id: "checkboxduplex",
+                val: [ "w1","w3"]
+            });
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                var s = div.getElementsByTagName("input")
+                expect(s[0].checked).to.be(true)
+                expect(s[1].checked).to.be(false)
+                expect(s[2].checked).to.be(true)
+                fireClick(s[1])
+                setTimeout(function () {
+                    expect(s[1].checked).to.be(true)
+                    expect(vm.val[0]).to.be("w1")
+                    expect(vm.val[1]).to.be("w3")
+                    expect(vm.val[2]).to.be("w2")
                     clearTest(vm, div, done)
                 }, 150)
 
@@ -2143,7 +2161,7 @@ define([], function () {
                 setTimeout(function () {
                     expect(ps[0].innerHTML).to.be("change")
                     clearTest(model, div, done)
-                },100)
+                }, 100)
             })
 
         })
@@ -3999,46 +4017,64 @@ define([], function () {
             }, 1100);
         })
     })
+    describe("1.4.5 new watch", function () {
+        it("async", function (done) {
+            if (avalon.directive) {
+                var vm = avalon.define({
+                    $id: "test",
+                    array: [1, 2, 3],
+                    arr: [{a: 1}, {a: 2}, {a: 3}],
+                    obj: {
+                        a: 1,
+                        b: 2
+                    },
+                    a: {
+                        b: {
+                            c: {
+                                d: 33
+                            }
+                        }
+                    }
+                })
+                var i = 0
+                vm.$watch("array.*", function (a, b) {
+                    i++
+                    expect(a).to.be(6)
+                    expect(b).to.be(2)
+                })
+                vm.$watch("arr.*.a", function (a, b) {
+                    i++
+                    expect(a).to.be(99)
+                    expect(b).to.be(1)
+                })
+                vm.$watch("obj.*", function (a, b, c) {
+                    i++
+                    expect(a).to.be(111)
+                    expect(b).to.be(1)
+                })
+                vm.$watch("a.*.c.d", function (a, b, c) {
+                    i++
+                    expect(a).to.be(88)
+                    expect(b).to.be(33)
+                })
+                setTimeout(function () {
 
+                    vm.array.set(1, 6)
+                    vm.arr[0].a = 99
+                    vm.obj.a = 111
+                    vm.a.b.c.d = 88
+                    setTimeout(function () {
+                        expect(i).to.be(4)
+                        clearTest(vm, null, done)
+                    }, 100)
+                }, 100)
+            } else {
+
+                clearTest(vm, null, done)
+
+            }
+
+        })
+    })
 })
 
-/**
- *
- <div ms-with="object"><strong
- ms-if-loop="$val>2">{{$key}}-{{$val}} </strong></div>
- 
- <button ms-click="change">change</button>
- 
- var vm = avalon.define({
- $id: 'test',
- array: [1, 2, 3, 4, 5],
- depth: [
- [1, 2, 3],
- ["a", "b", "c"]
- ],
- object: {
- a: 1,
- b: 2,
- c: 3,
- d: 4,
- e: 5
- },
- 
- over: function() {
- console.log(arguments)
- },
- 
- change: function() {
- var randomNum = Math.random()
- 
- vm.array = [1 + randomNum, 2 + randomNum, 3 + randomNum, 4 + randomNum, 5 + randomNum]
- vm.object.a = vm.array[0]
- vm.object.b = vm.array[1]
- vm.object.c = vm.array[2]
- vm.object.d = vm.array[3]
- vm.object.e = vm.array[4]
- }
- })
- *
- *
- */

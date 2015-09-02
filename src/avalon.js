@@ -5,7 +5,7 @@
  http://weibo.com/jslouvre/
  
  Released under the MIT license
- avalon.js 1.5 built in 2015.8.26
+ avalon.js 1.5 built in 2015.9.2
  support IE6+ and other browsers
  ==================================================*/
 (function(global, factory) {
@@ -1244,7 +1244,7 @@ function observeObject(source, options) {
     //必须设置了$active,$events
     simple.forEach(function (name) {
         var val = $vmodel[name] = source[name]
-        if (typeof val === "object") {
+        if (val && typeof val === "object") {
             val.$up = $vmodel
             val.$pathname = name
         }
@@ -2762,10 +2762,14 @@ function parser(input) {
             }
         }
     };
+    var total = input.length
     do {
         var ch = input.charCodeAt(i)
         if (ch !== ch) { //void 0 --> NaN
             getWordContent()
+            break
+        }
+        if (total-- === 0) {
             break
         }
         var cw = input.charAt(i)
@@ -2833,7 +2837,7 @@ function addAssign(vars, vmodel, name, binding) {
         while (a = arr.shift()) {
             if (vmodel.hasOwnProperty(a)) {
                 ret.push(first + prefix + first)
-             
+
                 binding.observers.push({
                     v: vmodel,
                     p: prop
@@ -2864,9 +2868,9 @@ function parseExpr(expr, vmodels, binding) {
     if (binding.filters && !binding._filters) {
         binding._filters = parseFilter(binding.filters)
     }
-
+    
     var vars = getVars(expr)
-   
+
     var expose = new Date() - 0
     var assigns = []
     var names = []
@@ -2893,7 +2897,7 @@ function parseExpr(expr, vmodels, binding) {
         }
         return binding.getter = getter
     }
-    
+
     if (!assigns.length) {
         assigns.push("fix" + expose)
     }
@@ -3183,16 +3187,17 @@ function scanAttr(elem, vmodels, match) {
             }
             for (i = 0; binding = bindings[i]; i++) {
                 type = binding.type
-                if (rnoscanAttrBinding.test(type)) {
+                if (rnoscanAttrBinding.test(type) ) {
                     return executeBindings(bindings.slice(0, i + 1), vmodels)
                 } else if (scanNode) {
-                    scanNode = !rnoscanNodeBinding.test(type)
+                    scanNode = !rnoscanNodeBinding.test(type) 
                 }
             }
+           
             executeBindings(bindings, vmodels)
         }
     }
-    if (scanNode && !stopScan[elem.tagName]) {
+    if (scanNode && !stopScan[elem.tagName] && (isWidget(elem) ? elem.msResolved : 1)) {
         mergeTextNodes && mergeTextNodes(elem)
         scanNodeList(elem, vmodels) //扫描子孙元素
 
@@ -3253,20 +3258,18 @@ function scanNodeList(parent, vmodels) {
     var nodes = avalon.slice(parent.childNodes)
     scanNodeArray(nodes, vmodels)
 }
-var renderedCallbacks = []
+
 
 function scanNodeArray(nodes, vmodels) {
     for (var i = 0, node; node = nodes[i++]; ) {
         switch (node.nodeType) {
             case 1:
+                var elem = node, fn
+
                 scanTag(node, vmodels) //扫描元素节点
 
-                var elem = node
-
                 if (!elem.msResolved && elem.parentNode && elem.parentNode.nodeType === 1) {
-
                     var library = isWidget(elem)
-
                     if (library && avalon.libraries[library]) {
                         var widget = elem.localName ? elem.localName.replace(library + ":", "") : elem.nodeName
                         var fullName = library + ":" + camelize(widget)
@@ -3279,7 +3282,6 @@ function scanNodeArray(nodes, vmodels) {
                             name: "widget"
                         })
                         if (avalon.components[fullName]) {
-                            //   avalon.clearHTML(elem)
                             avalon.component(fullName)
                         }
                     }
@@ -3289,6 +3291,7 @@ function scanNodeArray(nodes, vmodels) {
                         bubble: node.msHasEvent
                     })
                 }
+
                 break
             case 3:
                 if (rexpr.test(node.nodeValue)) {
@@ -3296,215 +3299,9 @@ function scanNodeArray(nodes, vmodels) {
                 }
                 break
         }
+
     }
 }
-
-var componentQueue = []
-var componentHooks = {
-    $construct: function () {
-        return avalon.mix.apply(null, arguments)
-    },
-    $ready: noop,
-    $init: noop,
-    $dispose: noop,
-    $childReady: noop,
-    $container: null,
-    $replace: false,
-    $extends: null,
-    $$template: function (str) {
-        return str
-    }
-}
-
-
-avalon.components = {}
-avalon.component = function (name, opts) {
-    if (opts) {
-        avalon.components[name] = avalon.mix({}, componentHooks, opts)
-    }
-    for (var i = 0, obj; obj = componentQueue[i]; i++) {
-        if (name === obj.fullName) {
-            componentQueue.splice(i, 1)
-            i--;
-
-            (function (host, hooks, elem, widget) {
-
-                var dependencies = 1
-                var library = host.library
-                var global = avalon.libraries[library]
-                //===========收集各种配置=======
-                //从vmodels中得到业务数据
-                var vmOpts = getOptionsFromVM(host.vmodels, elem.getAttribute("configs") || host.fullName)
-                //从element的data-pager-xxx辅助指令中得到该组件的专有数据
-                var elemOpts = avalon.getWidgetData(elem, widget)
-                var parentDefinition
-                if (hooks.$extends) {
-                    var parentHooks = avalon.components[hooks.$extends]
-                    if (parentHooks) {
-                        parentDefinition = parentHooks.$construct({}, hooks, vmOpts)
-                    }
-                }
-                var componentDefinition = avalon.components[name].$construct({},
-                        parentDefinition || hooks, vmOpts, elemOpts)
-
-                componentDefinition.$refs = {}
-                componentDefinition.$id = elem.getAttribute("identifier") || generateID(widget)
-
-
-                //==========构建VM=========
-                var vmodel = avalon.define(componentDefinition) || {}
-                elem.msResolved = 1
-                vmodel.$init(vmodel)
-                global.$init(vmodel)
-                var nodes = elem.childNodes
-                //收集插入点
-                var slots = {}, snode
-                for (var s = 0, el; el = nodes[s++]; ) {
-                    var type = el.nodeType === 1 && el.getAttribute("slot") || componentDefinition.$slot
-                    if (type) {
-                        if (slots[type]) {
-                            slots[type].push(el)
-                        } else {
-                            slots[type] = [el]
-                        }
-                    }
-                }
-                avalon.clearHTML(elem)
-                elem.innerHTML = vmodel.$$template(vmodel.$template)
-
-                for (s in slots) {
-                    if (vmodel.hasOwnProperty(s)) {
-                        var ss = slots[s]
-                        if (ss.length) {
-                            var fragment = avalonFragment.cloneNode(true)
-                            for (var ns = 0; snode = ss[ns++]; ) {
-                                fragment.appendChild(snode)
-                            }
-                            vmodel[s] = fragment
-                        }
-                        slots[s] = null
-                    }
-                }
-                slots = null
-                var child = elem.firstChild
-                if (vmodel.$replace) {
-                    child = elem.firstChild
-                    elem.parentNode.replaceChild(child, elem)
-                    child.msResolved = 1
-                    elem = host.element = child
-                }
-                if (vmodel.$container) {
-                    vmodel.$container.appendChild(elem)
-                }
-                avalon.fireDom(elem.parentNode, "datasetchanged", {dependency: 1, library: library, vm: vmodel})
-                var removeFn = avalon.bind(elem, "datasetchanged", function (e) {
-                    if (isFinite(e.dependency) && e.library === library) {
-                        dependencies += e.dependency
-                        if (vmodel !== e.vm) {
-                            vmodel.$refs[e.vm.$id] = e.vm
-                            vmodel.$childReady(vmodel)
-                            global.$childReady(vmodel)
-                            e.stopPropagation()
-                        }
-                    }
-
-                    if (dependencies === 0) {
-                        vmodel.$ready(vmodel)
-                        global.$ready(vmodel)
-                        avalon.unbind(elem, "datasetchanged", removeFn)
-                        //==================
-                        host.rollback = function () {
-                            try {
-                                vmodel.$dispose(vmodel)
-                                global.$dispose(vmodel)
-                            } catch (e) {
-                            }
-                            delete avalon.vmodels[vmodel.$id]
-                        }
-                        injectDisposeQueue(host, widgetList)
-                        if (window.chrome) {
-                            elem.addEventListener("DOMNodeRemovedFromDocument", function () {
-                                setTimeout(rejectDisposeQueue)
-                            })
-                        }
-
-                    }
-                })
-                avalon.scan(elem, [vmodel].concat(host.vmodels))
-
-                avalon.vmodels[vmodel.$id] = vmodel
-                if (!elem.childNodes.length) {
-                    avalon.fireDom(elem, "datasetchanged", {dependency: -1, library: library, vm: vmodel})
-                } else {
-                    renderedCallbacks.push(function () {
-                        avalon.fireDom(elem, "datasetchanged", {dependency: -1, library: library, vm: vmodel})
-                    })
-                }
-
-
-            })(obj, avalon.components[name], obj.element, obj.widget)// jshint ignore:line
-
-
-        }
-    }
-}
-
-avalon.fireDom = function (elem, type, opts) {
-    if (DOC.createEvent) {
-        var hackEvent = DOC.createEvent("Events");
-        hackEvent.initEvent(type, true, true, opts)
-        avalon.mix(hackEvent, opts)
-
-        elem.dispatchEvent(hackEvent)
-    } else if(root.contains(elem)){//IE6-8触发事件必须保证在DOM树中,否则报"SCRIPT16389: 未指明的错误"
-        hackEvent = DOC.createEventObject()
-        avalon.mix(hackEvent, opts)
-        elem.fireEvent("on" + type, hackEvent)
-    }
-}
-
-
-function getOptionsFromVM(vmodels, pre) {
-    if (pre) {
-        for (var i = 0, v; v = vmodels[i++]; ) {
-            if (v.hasOwnProperty(pre) && typeof v[pre] === "object") {
-                var vmOptions = v[pre]
-                return vmOptions.$model || vmOptions
-                break
-            }
-        }
-    }
-    return {}
-}
-
-
-avalon.libraries = []
-avalon.library = function (name, opts) {
-    if (DOC.namespaces) {
-        DOC.namespaces.add(name, 'http://www.w3.org/1999/xhtml');
-    }
-    avalon.libraries[name] = avalon.mix({
-        $init: noop,
-        $childReady: noop,
-        $ready: noop,
-        $dispose: noop
-    }, opts || {})
-}
-
-avalon.library("ms")
-
-function isWidget(el) { //如果为自定义标签,返回UI库的名字
-    if (el.scopeName) {
-        return el.scopeName
-    }
-    var fullName = el.localName
-    var index = fullName && fullName.indexOf(":")
-    if (index > 0) {
-        return fullName.slice(0, index)
-    }
-}
-//各种MVVM框架在大型表格下的性能测试
-// https://github.com/RubyLouvre/avalon/issues/859
 
 
 function scanTag(elem, vmodels, node) {
@@ -3652,6 +3449,237 @@ Buffer.prototype = {
 }
 
 var buffer = new Buffer()
+var componentQueue = []
+var componentHooks = {
+    $construct: function () {
+        return avalon.mix.apply(null, arguments)
+    },
+    $ready: noop,
+    $init: noop,
+    $dispose: noop,
+    $container: null,
+    $childReady: noop,
+    $replace: false,
+    $extends: null,
+    $$template: function (str) {
+        return str
+    }
+}
+
+
+avalon.components = {}
+avalon.component = function (name, opts) {
+    if (opts) {
+        avalon.components[name] = avalon.mix({}, componentHooks, opts)
+    }
+    for (var i = 0, obj; obj = componentQueue[i]; i++) {
+        if (name === obj.fullName) {
+            componentQueue.splice(i, 1)
+            i--;
+
+            (function (host, hooks, elem, widget) {
+
+                var dependencies = 1
+                var library = host.library
+                var global = avalon.libraries[library]
+
+                //===========收集各种配置=======
+                //从vmodels中得到业务数据
+                var vmOpts = getOptionsFromVM(host.vmodels, elem.getAttribute("configs") || host.fullName)
+                //从element的data-pager-xxx辅助指令中得到该组件的专有数据
+                var elemOpts = avalon.getWidgetData(elem, widget)
+                var componentDefinition = {}
+
+               
+                var parentHooks = avalon.components[hooks.$extends]
+                if (parentHooks) {
+                    avalon.mix(true, componentDefinition, parentHooks)
+                    componentDefinition = parentHooks.$construct.call(elem, componentDefinition, {}, {})
+                } else {
+                    avalon.mix(true, componentDefinition, hooks)
+                }
+                componentDefinition = avalon.components[name].$construct.call(elem, componentDefinition, vmOpts, elemOpts)
+
+                componentDefinition.$refs = {}
+                componentDefinition.$id = elem.getAttribute("identifier") || generateID(widget)
+
+                //==========构建VM=========
+                var keepSolt = componentDefinition.$slot
+                var keepReplace = componentDefinition.$replace
+                var keepContainer = componentDefinition.$container
+                var keepTemplate = componentDefinition.$template
+                delete componentDefinition.$slot
+                delete componentDefinition.$replace
+                delete componentDefinition.$container
+                delete componentDefinition.$template
+                delete componentDefinition.$construct
+
+                var vmodel = avalon.define(componentDefinition) || {}
+                elem.msResolved = 1
+                vmodel.$init(vmodel, elem)
+                global.$init(vmodel, elem)
+                var nodes = elem.childNodes
+                //收集插入点
+                var slots = {}, snode
+
+                for (var s = 0, el; el = nodes[s++]; ) {
+                    var type = el.nodeType === 1 && el.getAttribute("slot") || keepSolt
+                    if (type) {
+                        if (slots[type]) {
+                            slots[type].push(el)
+                        } else {
+                            slots[type] = [el]
+                        }
+                    }
+                }
+
+
+                if (vmodel.$$template) {
+                    avalon.clearHTML(elem)
+                    elem.innerHTML = vmodel.$$template(keepTemplate)
+                }
+                for (s in slots) {
+                    if (vmodel.hasOwnProperty(s)) {
+                        var ss = slots[s]
+                        if (ss.length) {
+                            var fragment = avalonFragment.cloneNode(true)
+                            for (var ns = 0; snode = ss[ns++]; ) {
+                                fragment.appendChild(snode)
+                            }
+                            vmodel[s] = fragment
+                        }
+                        slots[s] = null
+                    }
+                }
+                slots = null
+                var child = elem.firstChild
+                if (keepReplace) {
+                    child = elem.firstChild
+                    elem.parentNode.replaceChild(child, elem)
+                    child.msResolved = 1
+                    elem = host.element = child
+                }
+                if (keepContainer) {
+                    keepContainer.appendChild(elem)
+                }
+                avalon.fireDom(elem, "datasetchanged",
+                        {library: library, vm: vmodel, childReady: 1})
+                var children = 0
+                var removeFn = avalon.bind(elem, "datasetchanged", function (e) {
+                    if (e.childReady && e.library === library) {
+                        dependencies += e.childReady
+                        if (vmodel !== e.vm) {
+                            vmodel.$refs[e.vm.$id] = e.vm
+                            if (e.childReady === -1) {
+                                children++
+                                vmodel.$childReady(vmodel, elem, e)
+                            }
+                            e.stopPropagation()
+                        }
+                    }
+
+                    if (dependencies === 0) {
+                        var id1 = setTimeout(function () {
+                            clearTimeout(id1)
+                            vmodel.$ready(vmodel, elem)
+                            global.$ready(vmodel, elem)
+                        }, children ? Math.max(children * 17, 100) : 17)
+                        avalon.unbind(elem, "datasetchanged", removeFn)
+                        //==================
+                        host.rollback = function () {
+                            try {
+                                vmodel.$dispose(vmodel, elem)
+                                global.$dispose(vmodel, elem)
+                            } catch (e) {
+                            }
+                            delete avalon.vmodels[vmodel.$id]
+                        }
+                        injectDisposeQueue(host, widgetList)
+                        if (window.chrome) {
+                            elem.addEventListener("DOMNodeRemovedFromDocument", function () {
+                                setTimeout(rejectDisposeQueue)
+                            })
+                        }
+
+                    }
+                })
+
+                scanTag(elem, [vmodel].concat(host.vmodels))
+                avalon.vmodels[vmodel.$id] = vmodel
+                if (!elem.childNodes.length) {
+                    avalon.fireDom(elem, "datasetchanged", {library: library, vm: vmodel, childReady: -1})
+                } else {
+                    var id2 = setTimeout(function () {
+                        clearTimeout(id2)
+                        avalon.fireDom(elem, "datasetchanged", {library: library, vm: vmodel, childReady: -1})
+                    }, 17)
+                }
+
+
+            })(obj, avalon.components[name], obj.element, obj.widget)// jshint ignore:line
+
+
+        }
+    }
+}
+
+avalon.fireDom = function (elem, type, opts) {
+    if (DOC.createEvent) {
+        var hackEvent = DOC.createEvent("Events");
+        hackEvent.initEvent(type, true, true, opts)
+        avalon.mix(hackEvent, opts)
+
+        elem.dispatchEvent(hackEvent)
+    } else if (root.contains(elem)) {//IE6-8触发事件必须保证在DOM树中,否则报"SCRIPT16389: 未指明的错误"
+        hackEvent = DOC.createEventObject()
+        avalon.mix(hackEvent, opts)
+        elem.fireEvent("on" + type, hackEvent)
+    }
+}
+
+
+function getOptionsFromVM(vmodels, pre) {
+    if (pre) {
+        for (var i = 0, v; v = vmodels[i++]; ) {
+            if (v.hasOwnProperty(pre) && typeof v[pre] === "object") {
+                var vmOptions = v[pre]
+                return vmOptions.$model || vmOptions
+                break
+            }
+        }
+    }
+    return {}
+}
+
+
+avalon.libraries = []
+avalon.library = function (name, opts) {
+    if (DOC.namespaces) {
+        DOC.namespaces.add(name, 'http://www.w3.org/1999/xhtml');
+    }
+    avalon.libraries[name] = avalon.mix({
+        $init: noop,
+        $ready: noop,
+        $dispose: noop
+    }, opts || {})
+}
+
+avalon.library("ms")
+
+function isWidget(el) { //如果为自定义标签,返回UI库的名字
+    if (el.scopeName) {
+        return el.scopeName
+    }
+    var fullName = el.localName
+    var index = fullName && fullName.indexOf(":")
+    if (index > 0) {
+        return fullName.slice(0, index)
+    }
+}
+//各种MVVM框架在大型表格下的性能测试
+// https://github.com/RubyLouvre/avalon/issues/859
+
+
 var bools = ["autofocus,autoplay,async,allowTransparency,checked,controls",
     "declare,disabled,defer,defaultChecked,defaultSelected",
     "contentEditable,isMap,loop,multiple,noHref,noResize,noShade",
@@ -3763,6 +3791,7 @@ var attrDir = avalon.directive("attr", {
 avalon.directive("class", {
     init: function (binding) {
         var oldStyle = binding.param
+        var method = binding.type
         if (!oldStyle || isFinite(oldStyle)) {
             binding.param = "" //去掉数字
             directives.effect.init(binding)
@@ -3771,8 +3800,6 @@ avalon.directive("class", {
             binding.expr = '[' + quote(oldStyle) + "," + binding.expr + "]"
             binding.oldStyle = oldStyle
         }
-
-        var method = binding.type
         if (method === "hover" || method === "active") { //确保只绑定一次
             if (!binding.hasBindEvent) {
                 var elem = binding.element
@@ -3952,7 +3979,7 @@ var duplexBinding = avalon.directive("duplex", {
             case "checkbox":
                 binding.bound(W3C ? "change" : "click", function () {
                     var method = elem.checked ? "ensure" : "remove"
-                    var array = binding.getter()
+                    var array = binding.getter.apply(0, binding.vmodels)
                     if (!Array.isArray(array)) {
                         log("ms-duplex应用于checkbox上要对应一个数组")
                         array = [array]
@@ -4857,6 +4884,7 @@ var onDir = avalon.directive("on", {
             var fn = binding.getter || noop
             return fn.apply(this, binding.args.concat(e))
         }
+        
         var eventType = binding.param.replace(/-\d+$/, "") // ms-on-mousemove-10
         if (eventType === "scan") {
             callback.call(elem, {
@@ -5336,18 +5364,21 @@ function parseDisplay(nodeName, val) {
 avalon.parseDisplay = parseDisplay
 
 avalon.directive("visible", {
+    init: function (binding) {
+    },
     update: function (val) {
         var elem = this.element,
-            binding = this,
-            init = typeof arguments[1] === "undefined",
-            stamp = binding.stamp = + new Date()
+                binding = this,
+                stamp = binding.stamp = +new Date()
         if (val) {
             elem.style.display = "none"
             avalon.effect.apply(elem, 1, function () {
-                if(stamp !== binding.stamp) return
+                if (stamp !== binding.stamp)
+                    return
                 var data = elem.getAttribute("data-effect-driver") || "a"
                 if (/^[atn]/.test(data)) {
-                 //   elem.style.display = ""//这里jQuery会自动处理
+                    if (!this.effectName)
+                        elem.style.display = ""//这里jQuery会自动处理
                     if (avalon(elem).css("display") === "none") {
                         elem.style.display = parseDisplay(elem.nodeName)
                     }
@@ -5355,7 +5386,8 @@ avalon.directive("visible", {
             })
         } else {
             avalon.effect.apply(elem, 0, function () {
-                if(stamp !== binding.stamp) return
+                if (stamp !== binding.stamp)
+                    return
                 elem.style.display = "none"
             })
 
