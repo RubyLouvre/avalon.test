@@ -235,6 +235,32 @@ define([], function () {
 
         })
     })
+    
+    describe("ms-if 在处理子对象的属性不存在时，应该移除节点",function(){
+         it("async", function (done) {
+          
+            var vm = avalon.define({
+                $id: 'testvv',
+                txt: "avalon",
+                eee:{}
+            })
+           var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                <div ms-if="eee.aaa" ms-text="txt">xxxx</div>
+                */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function(){
+                expect(div.getElementsByTagName("div").length).to.be(0)
+                clearTest("ms-duplex-checked", div, done)
+            },300)
+
+
+        })
+    })
     describe("$watch对象的子属性", function () {
         it("async", function (done) {
             var a = 111
