@@ -158,6 +158,38 @@ define([], function () {
 
         })
     })
+    describe("多次触发过滤器", function () {
+        it("async", function (done) {
+
+            avalon.filters.ccc = function (str) {
+                return tt[str];
+            }
+            var tt = ['222', '3333']
+            var vm = avalon.define({
+                $id: "mfilter",
+                obj: {
+                    a: 1,
+                    b: 2
+                }
+            })
+
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = '{{obj.a | ccc}}'
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                expect(div.innerHTML).to.be("3333")
+                vm.obj.a = 0
+                setTimeout(function () {
+                    expect(div.innerHTML).to.be("222")
+                    clearTest(vm, div, done)
+                }, 300)
+            }, 300)
+
+        })
+
+    })
     describe("custom.filter", function () {
 
         it("async", function (done) {
@@ -235,28 +267,28 @@ define([], function () {
 
         })
     })
-    
-    describe("ms-if 在处理子对象的属性不存在时，应该移除节点",function(){
-         it("async", function (done) {
-          
+
+    describe("ms-if 在处理子对象的属性不存在时，应该移除节点", function () {
+        it("async", function (done) {
+
             var vm = avalon.define({
                 $id: 'testvv',
                 txt: "avalon",
-                eee:{}
+                eee: {}
             })
-           var body = document.body
+            var body = document.body
             var div = document.createElement("div")
             div.innerHTML = heredoc(function () {
                 /*
-                <div ms-if="eee.aaa" ms-text="txt">xxxx</div>
-                */
+                 <div ms-if="eee.aaa" ms-text="txt">xxxx</div>
+                 */
             })
             body.appendChild(div)
             avalon.scan(div, vm)
-            setTimeout(function(){
+            setTimeout(function () {
                 expect(div.getElementsByTagName("div").length).to.be(0)
                 clearTest("ms-duplex-checked", div, done)
-            },300)
+            }, 300)
 
 
         })
@@ -575,34 +607,140 @@ define([], function () {
     describe('newparser', function () {
         //确保位置没有错乱
         it("sync", function () {
+            var keyMap = {}
+            var keys = ["break,case,catch,continue,debugger,default,delete,do,else,false",
+                "finally,for,function,if,in,instanceof,new,null,return,switch,this",
+                "throw,true,try,typeof,var,void,while,with", /* 关键字*/
+                "abstract,boolean,byte,char,class,const,double,enum,export,extends",
+                "final,float,goto,implements,import,int,interface,long,native",
+                "package,private,protected,public,short,static,super,synchronized",
+                "throws,transient,volatile", /*保留字*/
+                "arguments,let,yield,undefined,true,false"].join(",")
+            keys.replace(/\w+/g, function (a) {
+                keyMap[a] = true
+            })
+            var ridentStart = /[a-z_$]/i
+            function getIdent(input, lastIndex) {
+                var result = []
+                var subroutine = !!lastIndex
+                lastIndex = lastIndex || 0
 
-            var str = 'bbb["a\aa"]'
-
-            var rcomments = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg // form http://jsperf.com/remove-comments
-            var rbracketstr = /\[(['"])[^'"]+\1\]/g
-            var rspareblanks = /\s*(\.|'|")\s*/g
-            var rvariable = /"(?:[^"\\]|\\[\s\S])*"|'(?:[^'\\]|\\[\s\S])*'|\.?[a-z_$]\w*/ig
-            var rexclude = /^['".]/
-
-            function getVariables(code) {
-                var match = code
-                        .replace(rcomments, "") //移除所有注释
-                        .replace(rbracketstr, "") //将aaa["xxx"]转换为aaa 去掉子属性
-                        .replace(rspareblanks, "$1") //将"' aaa .  bbb'"转换为"'aaa.ddd'"
-                        .match(rvariable) || []
-                var vars = [],
-                        unique = {}
-                for (var i = 0; i < match.length; ++i) {
-                    var variable = match[i]
-                    if (!rexclude.test(variable) && !unique[variable]) {
-                        unique[variable] = vars.push(variable)
+                //将表达式中的标识符抽取出来
+                var state = "unknown"
+                var variable = ""
+                for (var i = 0; i < input.length; i++) {
+                    var c = input.charAt(i)
+                    if (c === "'" || c === '"') {//字符串开始
+                        if (state === "unknown") {
+                            state = c
+                        } else if (state === c) {//字符串结束
+                            state = "unknown"
+                        }
+                    } else if (c === "\\") {
+                        if (state === "'" || state === '"') {
+                            i++
+                        }
+                    } else if (ridentStart.test(c)) {//碰到标识符
+                        if (state === "unknown") {
+                            state = "variable"
+                            variable = c
+                        } else if (state === "maybePath") {
+                            variable = result.pop()
+                            variable += "." + c
+                            state = "variable"
+                        } else if (state === "variable") {
+                            variable += c
+                        }
+                    } else if (/\w/.test(c)) {
+                        if (state === "variable") {
+                            variable += c
+                        }
+                    } else if (c === ".") {
+                        if (state === "variable") {
+                            if (variable) {
+                                result.push(variable)
+                                variable = ""
+                                state = "maybePath"
+                            }
+                        }
+                    } else if (c === "[") {
+                        if (state === "variable" || state === "maybePath") {
+                            if (variable) {//如果前面存在变量,收集它
+                                result.push(variable)
+                                variable = ""
+                            }
+                            var lastLength = result.length
+                            var last = result[lastLength - 1]
+                            var innerResult = getIdent(input.slice(i), i)
+                            if (innerResult.length) {//如果括号中存在变量,那么这里添加通配符
+                                result[lastLength - 1] = last + ".*"
+                                result = innerResult.concat(result)
+                            } else { //如果括号中的东西是确定的,直接转换为其子属性
+                                var content = input.slice(i + 1, innerResult.i)
+                                try {
+                                    var text = (Function("return " + content))()
+                                    result[lastLength - 1] = last + "." + text
+                                } catch (e) {
+                                }
+                            }
+                            state = "maybePath"//]后面可能还接东西
+                            i = innerResult.i
+                        }
+                    } else if (c === "]") {
+                        if (subroutine) {
+                            result.i = i + lastIndex
+                            addVar(result, variable)
+                            return result
+                        }
+                    } else if (/[\s\uFEFF\xA0]/.test(c) && c !== "\r" && c !== "\n") {
+                        if (state === "variable") {
+                            if (addVar(result, variable)) {
+                                state = "maybePath" // aaa . bbb 这样的情况
+                            }
+                            variable = ""
+                        }
+                    } else {
+                        addVar(result, variable)
+                        state = "unknown"
+                        variable = ""
                     }
                 }
-                return vars
+                addVar(result, variable)
+                return result
             }
-            var arr = getVariables(str)
-            expect(arr.length).to.be(1)
-            expect(arr[0]).to.be("bbb")
+            function addVar(array, element) {
+                if (element && !keyMap[element]) {
+                    array.push(element)
+                    return true
+                }
+            }
+
+            function expect2(a, b) {
+                return expect(getIdent(a).sort().join(",")).to.be(b)
+            }
+
+            expect2("aaa,bbb,ccc", "aaa,bbb,ccc")
+            expect2("aaa+bbb", "aaa,bbb")
+            expect2("aaa-bbb", "aaa,bbb")
+            expect2("[aaa,bbb]", "aaa,bbb")
+            expect2("aaa[bbb.ddd.eee]+ccc", "aaa.*,bbb.ddd.eee,ccc")
+            expect2("aaa.eee.kkk", "aaa.eee.kkk")
+            expect2("aaa[el.id]", "aaa.*,el.id")
+            expect2("aaa?bbb:ccc", "aaa,bbb,ccc")
+            expect2("aaa['ccc']['ddd']", "aaa.ccc.ddd")
+            expect2("aaa['ccc'].ddd", "aaa.ccc.ddd")
+            expect2("aaa[1+'ccc']['ddd']", "aaa.1ccc.ddd")
+            expect2("aaa[bbb][ddd.eee]+ccc", "aaa.*.*,bbb,ccc,ddd.eee")
+            expect2("aaa[bbb][ddd]+'kkk'", "aaa.*.*,bbb,ddd")
+            expect2("xxx['yyy']['zzz']['aaa']", "xxx.yyy.zzz.aaa")
+            expect2("xxx[yyy+1][zzz+2]", "xxx.*.*,yyy,zzz")
+            expect2("xxx[111][222]", "xxx.111.222")
+
+            expect2("xxx||true||false", "xxx")
+            expect2("aaa[bbb[ccc+1]+2]", "aaa.*,bbb.*,ccc")
+
+            expect2("aaa\n\
+bbb", "aaa,bbb")
         })
     })
 
@@ -699,21 +837,21 @@ define([], function () {
 
         })
     })
-     describe("duplex+checkbox", function () {
+    describe("duplex+checkbox", function () {
         it("async", function (done) {
             var body = document.body
             var div = document.createElement("div")
-            div.innerHTML = heredoc(function(){
+            div.innerHTML = heredoc(function () {
                 /*
-    <label><input ms-duplex-string="val" value="w1" type="checkbox"/> item1</label>
-    <label><input ms-duplex-string="val" value="w2" type="checkbox"/> item2</label>
-    <label><input ms-duplex-string="val" value="w3" type="checkbox"/> item3</label>
-                */
+                 <label><input ms-duplex-string="val" value="w1" type="checkbox"/> item1</label>
+                 <label><input ms-duplex-string="val" value="w2" type="checkbox"/> item2</label>
+                 <label><input ms-duplex-string="val" value="w3" type="checkbox"/> item3</label>
+                 */
             })
             body.appendChild(div)
             var vm = avalon.define({
                 $id: "checkboxduplex",
-                val: [ "w1","w3"]
+                val: ["w1", "w3"]
             });
             avalon.scan(div, vm)
             setTimeout(function () {
@@ -1240,7 +1378,39 @@ define([], function () {
             }, 100)
         })
     })
+    describe("ms-include2", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "ms-include2",
+                page: 'a.html'
+            })
+            avalon.templateCache["a.html"] = "<div>ddddd</div>"
+            avalon.templateCache["b.html"] = "<div>eeeee</div>"
+            setTimeout(function () {
+                vm.page = 'b.html';
+            }, 500);
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div ms-include-src="page" class="animated"></div>
+                 */
+            })
 
+            var body = document.body
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            var prop = 'textContext' in div ? "textContext" : "innerText"
+            setTimeout(function () {
+                var el = div.getElementsByTagName("div")[0]
+                expect(el[prop]).to.be("ddddd")
+            }, 300)
+            setTimeout(function () {
+                var el = div.getElementsByTagName("div")[0]
+                expect(el[prop]).to.be("eeeee")
+                clearTest(vm, div, done)
+            }, 800)
+        })
+    })
     describe("vm.array被重置后$watch机制还有效", function () {
         //确保位置没有错乱
         it("async", function (done) {
@@ -1253,6 +1423,7 @@ define([], function () {
             if (avalon.directive) {
                 model.$watch('arr.length', function (a) {
                     length = a
+                    expect(this).to.be(model)
                     ++count
                 });
             } else {
@@ -2287,9 +2458,9 @@ define([], function () {
                     expect(model.bbb).to.be(999)
                     clearTest(model, div, done)
 
-                }, 100)
+                }, 300)
 
-            }, 100)
+            }, 300)
         })
     })
 
@@ -3285,7 +3456,7 @@ define([], function () {
     describe("ms-src", function () {
         //检测值的同步
         it("async", function (done) {
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "ms-src",
                 data: {
                     path: 'http://su.bdimg.com/static/superplus/img/logo_white.png'
@@ -3295,12 +3466,12 @@ define([], function () {
             var div = document.createElement("div")
             div.innerHTML = "<div ms-controller=\"ms-src\"><img ms-src=\"data.path\"/></div>"
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var el = div.getElementsByTagName("img")[0]
                 expect(el.src).to.be("http://su.bdimg.com/static/superplus/img/logo_white.png")
-                body.removeChild(div)
-                done()
+                clearTest(vm, div, done)
+
             }, 300)
         })
     })
@@ -3308,7 +3479,7 @@ define([], function () {
     describe("filters.html", function () {
         //确保位置没有错乱
         it("async", function (done) {
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "html-filter",
                 yyy: "<li >1</li><li>2</li><li>3</li><li>4</li>"
             })
@@ -3316,12 +3487,12 @@ define([], function () {
             var div = document.createElement("div")
             div.innerHTML = "<ul>{{yyy|html}}<li class=\"last\">last</li></ul>"
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 var lis = div.getElementsByTagName("li")
                 expect(lis[0].className).to.be("")
                 expect(lis.length).to.be(5)
-                model.yyy = "<li>X</li><li>Y</li><li>Z</li><li>A</li><li>B</li><li>C</li>"
+                vm.yyy = "<li>X</li><li>Y</li><li>Z</li><li>A</li><li>B</li><li>C</li>"
                 setTimeout(function () {
                     var lis = div.getElementsByTagName("li")
                     expect(lis[0].innerHTML).to.be("X")
@@ -3329,9 +3500,8 @@ define([], function () {
                     expect(lis[2].innerHTML).to.be("Z")
                     expect((lis[6] || {}).innerHTML).to.be("last")
                     expect(lis.length).to.be(7)
-                    body.removeChild(div)
-                    delete avalon.vmodels["html-filter"]
-                    done()
+                    clearTest(vm, div, done)
+
                 }, 100)
 
 
@@ -3341,7 +3511,7 @@ define([], function () {
 
     describe("filters.uppercase", function () {
         it("async", function (done) {
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "uppercase",
                 aaa: "aaa"
             })
@@ -3349,19 +3519,17 @@ define([], function () {
             var div = document.createElement("div")
             div.innerHTML = "{{aaa|uppercase}}"
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 expect(div.innerHTML).to.be("AAA")
-                delete avalon.vmodels["uppercase"]
-                body.removeChild(div)
-                done()
-            }, 100)
+                clearTest(vm, div, done)
+            }, 300)
         })
     })
 
     describe("filters.lowercase", function () {
         it("async", function (done) {
-            var model = avalon.define({
+            var vm = avalon.define({
                 $id: "lowercase",
                 aaa: "AAA"
             })
@@ -3369,12 +3537,40 @@ define([], function () {
             var div = document.createElement("div")
             div.innerHTML = "{{aaa|lowercase}}"
             body.appendChild(div)
-            avalon.scan(div, model)
+            avalon.scan(div, vm)
             setTimeout(function () {
                 expect(div.innerHTML).to.be("aaa")
-                delete avalon.vmodels["lowercase"]
-                body.removeChild(div)
-                done()
+                clearTest(vm, div, done)
+
+            }, 100)
+        })
+    })
+
+    describe("1.5.2 使用数组clear方法清空数组后，再push元素报错", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: 'g2015',
+                arr: [{'name': 'shanghai'}, {'name': 'hangzhou'}, {'name': 'suzhou'}],
+                add: function () {
+                    vm.arr.clear();
+                    vm.arr.push({'name': 'beijing'});
+                    setTimeout(function () {
+                        expect(vm.arr.length).to.be(1)
+                        expect(div[prop].trim()).to.be("beijing")
+                        clearTest(vm, div, done)
+                    }, 300)
+
+                }
+            });
+
+            var body = document.body
+            var div = document.createElement("div")
+            var prop = "innerText" in div ? "innerText" : "textContent"
+            div.innerHTML = "<div ms-repeat='arr' ms-text='el.name' ms-click='add'></div>"
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                vm.add()
             }, 100)
         })
     })
