@@ -287,7 +287,7 @@ define([], function () {
             avalon.scan(div, vm)
             setTimeout(function () {
                 expect(div.getElementsByTagName("div").length).to.be(0)
-                clearTest("ms-duplex-checked", div, done)
+                clearTest(vm, div, done)
             }, 300)
 
 
@@ -519,7 +519,44 @@ define([], function () {
             delete avalon.vmodels.array$model
         })
     })
-    //  }
+    describe("ms-if BUG", function () {
+        it("async", function (done) {
+            var div = document.createElement("div")
+            var vm = avalon.define({
+                $id: '/global',
+                more: 0,
+                var3: 'Var3',
+                var4: '',
+                var5: '',
+                var6: 'Var6'
+            })
+
+            div.innerHTML = heredoc(function () {
+                /*
+                 <div ms-if="var3">{{var3}}</div>
+                 <div ms-if="var4">{{var4}}</div>
+                 <div><u>if not show var4</u></div>
+                 <div ms-if="more">
+                 <div ms-if="var5">{{var5}}</div>
+                 <div ms-if="var6">{{var6}}</div>
+                 </div>
+                 */
+            })
+            document.body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                vm.more = 1;
+                vm.var4 = 'Var4';
+                vm.var5 = 'Var5';
+                setTimeout(function () {
+                    expect((div.innerText || div.textContext).replace(/\r?\n/g, "")).
+                            to.be("Var3Var4if not show var4Var5Var6")
+                    clearTest(vm, div, done)
+                },300)
+            }, 300)
+
+        })
+    })
     describe("offsetParent", function () {
         //确保位置没有错乱
         it("async", function (done) {
