@@ -259,12 +259,49 @@ define([], function () {
                     setTimeout(function () {
                         var inputs = div.getElementsByTagName("input")
                         expect(inputs[1].checked).to.be(true)
-                        clearTest("ms-duplex-checked", div, done)
+                        clearTest(vm, div, done)
                     }, 300)
                 }, 300)
 
             }, 300)
 
+        })
+    })
+
+
+
+    describe("ms-duplex-checked2", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: 'ms-duplex-checked2',
+                a: false
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <input type="checkbox" ms-duplex-checked="a"> {{a}}
+                 */
+            })
+
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                expect(div.children[0].checked).to.be(false)
+                vm.a = true
+                setTimeout(function () {
+                    expect(div.children[0].checked).to.be(true)
+                    vm.a = false
+                    setTimeout(function () {
+                        expect(div.children[0].checked).to.be(false)
+                        vm.a = true
+                        setTimeout(function () {
+                            expect(div.children[0].checked).to.be(true)
+                            clearTest(vm, div, done)
+                        }, 300)
+                    }, 300)
+                }, 300)
+            }, 300)
         })
     })
 
@@ -290,6 +327,33 @@ define([], function () {
                 clearTest(vm, div, done)
             }, 300)
 
+
+        })
+    })
+    describe("子级数组在被替换时没有清空原来的元素", function () {
+        it("async", function (done) {
+            var vm = avalon.define({
+                $id: "sublist",
+                obj: {
+                    list: [1, 2]
+                }
+            })
+            var body = document.body
+            var div = document.createElement("div")
+            div.innerHTML = heredoc(function () {
+                /*
+                 <span ms-repeat='obj.list'>test</span>
+                 */
+            })
+            body.appendChild(div)
+            avalon.scan(div, vm)
+            setTimeout(function () {
+                vm.obj = {list: [3, 4, 5], a: 3}
+                setTimeout(function () {
+                    expect(div.getElementsByTagName("span").length).to.be(3)
+                    clearTest(vm, div, done)
+                }, 300)
+            }, 300)
 
         })
     })
@@ -552,7 +616,7 @@ define([], function () {
                     expect((div.innerText || div.textContext).replace(/\r?\n/g, "")).
                             to.be("Var3Var4if not show var4Var5Var6")
                     clearTest(vm, div, done)
-                },300)
+                }, 300)
             }, 300)
 
         })
