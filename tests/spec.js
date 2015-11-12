@@ -1500,14 +1500,14 @@ bbb", "aaa,bbb")
             var body = document.body
             body.appendChild(div)
             avalon.scan(div, vm)
-            var prop = 'textContext' in div ? "textContext" : "innerText"
+            var prop = 'textContent' in div ? "textContent" : "innerText"
             setTimeout(function () {
                 var el = div.getElementsByTagName("div")[0]
-                expect(el[prop]).to.be("ddddd")
+                expect(el[prop].trim()).to.be("ddddd")
             }, 300)
             setTimeout(function () {
                 var el = div.getElementsByTagName("div")[0]
-                expect(el[prop]).to.be("eeeee")
+                expect(el[prop].trim()).to.be("eeeee")
                 clearTest(vm, div, done)
             }, 800)
         })
